@@ -32,7 +32,7 @@ const cards = [
   },
   {
     title: "Финансии",
-    description: "Промет, каса и основни извештаи.",
+    description: "Промет и основни извештаи.",
     to: BLAMEJA_ROUTES.finance,
     color: "bg-blamejaGreen",
     icon: FaChartLine,
