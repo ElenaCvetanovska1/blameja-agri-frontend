@@ -1,0 +1,57 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --breakpoint-xs: 425px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+  --border: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+
+  /* Blameja brand */
+  --blameja-green: #2aa24f;
+  --blameja-green-dark: #1e7a3b;
+  --blameja-green-soft: #e8f6ee;
+
+  --blameja-orange: #f59e0b;
+  --blameja-orange-dark: #b45309;
+  --blameja-orange-soft: #fff3e0;
+
+  --danger: #e53935;
+  --warning: #f6b318;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  /* IMPORTANT: овие имиња прават класи bg-blamejaGreen, text-blamejaOrange, итн. */
+  --color-blamejaGreen: var(--blameja-green);
+  --color-blamejaGreenDark: var(--blameja-green-dark);
+  --color-blamejaGreenSoft: var(--blameja-green-soft);
+
+  --color-blamejaOrange: var(--blameja-orange);
+  --color-blamejaOrangeDark: var(--blameja-orange-dark);
+  --color-blamejaOrangeSoft: var(--blameja-orange-soft);
+
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
