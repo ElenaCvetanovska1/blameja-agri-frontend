@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useStock, type StockRow } from "./hooks/useStock";
 import { useAdjustStockMutation } from "./hooks/useAdjustStockMutation";
-import { toast } from "sonner";
 
 const clampQty = (value: string) => {
   const cleaned = value.replace(",", ".");
@@ -13,7 +13,6 @@ const clampQty = (value: string) => {
 };
 
 const fmtQty = (n: number) => {
-  // ако сакаш само цели, смени во Math.round(n)
   return Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, "") : "0";
 };
 
@@ -88,7 +87,7 @@ export default function StockPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Залиха</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Пребарај по шифра (SKU), баркод или име. Од тука можеш да правиш корекција (+/−).
+            Пребарај по SKU, баркод или име. Од тука можеш да правиш корекција (+/−) со причина.
           </p>
 
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
@@ -109,7 +108,7 @@ export default function StockPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="пр. SKU-001, 389..., Име..."
+            placeholder="пр. SKU-0001, 389..., Тест..."
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm
                        focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
           />
@@ -145,9 +144,7 @@ export default function StockPage() {
                 <tr>
                   <td colSpan={8} className="px-3 py-6 text-center text-red-600">
                     Грешка при вчитување:{" "}
-                    {stockQuery.error instanceof Error
-                      ? stockQuery.error.message
-                      : "unknown"}
+                    {stockQuery.error instanceof Error ? stockQuery.error.message : "unknown"}
                   </td>
                 </tr>
               )}
@@ -170,12 +167,8 @@ export default function StockPage() {
                     <td className="px-3 py-3 font-medium text-slate-900">{r.sku}</td>
                     <td className="px-3 py-3 text-slate-600">{r.barcode ?? "—"}</td>
                     <td className="px-3 py-3 text-slate-900">{r.name}</td>
-                    <td className="px-3 py-3 text-slate-600">
-                      {r.category_name ?? "—"}
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">
-                      {r.subcategory_name ?? "—"}
-                    </td>
+                    <td className="px-3 py-3 text-slate-600">{r.category_name ?? "—"}</td>
+                    <td className="px-3 py-3 text-slate-600">{r.subcategory_name ?? "—"}</td>
 
                     <td className="px-3 py-3 text-right">
                       <span
@@ -213,7 +206,6 @@ export default function StockPage() {
         </div>
       </div>
 
-      {/* ADJUST MODAL */}
       {adjustOpen && selected && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl overflow-hidden">
@@ -235,7 +227,6 @@ export default function StockPage() {
             </div>
 
             <div className="p-4 space-y-4">
-              {/* Direction */}
               <div>
                 <div className="text-xs font-medium text-slate-600">Насока</div>
                 <div className="mt-2 flex gap-3">
@@ -261,7 +252,6 @@ export default function StockPage() {
                 </div>
               </div>
 
-              {/* Qty */}
               <div>
                 <div className="text-xs font-medium text-slate-600">Количина</div>
                 <div className="mt-2 flex items-center gap-2">
@@ -296,14 +286,13 @@ export default function StockPage() {
                 </div>
               </div>
 
-              {/* Reason */}
               <div>
                 <div className="text-xs font-medium text-slate-600">Причина</div>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  placeholder="пр. Погрешна шифра при прием / оштетување / корекција..."
+                  placeholder="пр. Погрешна шифра при прием / корекција..."
                   className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm
                              focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
                 />
