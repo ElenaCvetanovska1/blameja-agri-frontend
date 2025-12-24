@@ -84,9 +84,10 @@ const CategorySubSelect = ({
           <div className="max-h-64 overflow-auto p-2">
             {categoryTree.map((c) => (
               <div key={c.id} className="mb-2">
-                <div className="sticky top-0 z-10 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">
+                <div className="sticky top-0 z-10 bg-white px-2 py-2 text-sm font-semibold text-slate-900">
                   {c.name}
                 </div>
+
 
                 <div className="mt-1">
                   {c.subcategories.map((s) => {
@@ -257,7 +258,7 @@ const ReceivePage = () => {
               setScanError(null);
               setIsScannerOpen(true);
             }}
-            className="rounded-full bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
+            className="rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
           >
             Скенирај баркод
           </button>
