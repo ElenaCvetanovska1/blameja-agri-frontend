@@ -246,19 +246,13 @@ const ReceivePage = () => {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Прием на стока</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Проверка: покажува состојба на залиха за внесена шифра/баркод.
-          </p>
-        </div>
-
-        <div className="flex flex-col items-end gap-1">
           <button
             type="button"
             onClick={() => {
               setScanError(null);
               setIsScannerOpen(true);
             }}
-            className="rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
+            className="mt-3 rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
           >
             Скенирај баркод
           </button>
@@ -269,6 +263,8 @@ const ReceivePage = () => {
             </span>
           )}
         </div>
+
+        
       </div>
 
       <form

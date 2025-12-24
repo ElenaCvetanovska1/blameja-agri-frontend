@@ -29,8 +29,8 @@ type CartItem = {
 		subcategory_name: string | null;
 	};
 	qty: number;
-	priceStr: string; // ✅ string (без стрелки + може да се избрише)
-	discountPercentStr: string; // ✅ string (може да се избрише)
+	priceStr: string; // string (без стрелки + може да се избрише)
+	discountPercentStr: string; // string (може да се избрише)
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -42,7 +42,7 @@ const num = (v: unknown) => {
 
 const safeText = (v: unknown) => (typeof v === 'string' ? v : '').trim();
 
-// ✅ дозволи празно додека куцаш, а на blur стегни 0..100
+// попуст: дозволи празно додека куцаш, а на blur стегни 0..100
 const clampPercent = (raw: string) => {
 	const s = raw.trim();
 	if (s === '') return '';
@@ -56,13 +56,11 @@ const percentNum = (s: string) => {
 	return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
 };
 
-// ✅ за цена: дозволи празно, ., , (ќе го претвориме во .), без стрелки
+// цена: дозволи празно, ., , (ќе го претвориме во .), без стрелки
 const sanitizePriceInput = (raw: string) => {
-	// keep digits + one decimal separator
 	let v = raw.replace(',', '.').replace(/[^\d.]/g, '');
 	const firstDot = v.indexOf('.');
 	if (firstDot !== -1) {
-		// remove other dots
 		v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
 	}
 	return v;
@@ -163,6 +161,10 @@ const SalesPage = () => {
 		setCart((prev) => prev.filter((i) => i.product.id !== productId));
 	};
 
+	const changeQty = (productId: string, nextQty: number) => {
+		updateItem(productId, { qty: Math.max(1, Math.floor(nextQty || 1)) });
+	};
+
 	const addToCartFromRow = async (row: ProductStockRow) => {
 		const productId = row.product_id;
 		const available = num(row.qty_on_hand);
@@ -193,8 +195,8 @@ const SalesPage = () => {
 					{
 						product,
 						qty: 1,
-						priceStr: base > 0 ? String(base) : '', // ✅ ако е 0 -> празно (да може да се внесе)
-						discountPercentStr: '', // ✅ празно по default
+						priceStr: base > 0 ? String(base) : '',
+						discountPercentStr: '',
 					},
 				];
 			}
@@ -240,7 +242,7 @@ const SalesPage = () => {
 
 		setBusy(true);
 		try {
-			// validate stock for each item (чита од product_stock)
+			// validate stock for each item
 			for (const item of cart) {
 				const { data, error } = await supabase
 					.from('product_stock')
@@ -252,7 +254,9 @@ const SalesPage = () => {
 
 				const available = num((data as any)?.qty_on_hand);
 				if (available < item.qty) {
-					toast.error(`Нема доволно залиха за "${item.product.name}". Достапно: ${available}, бараш: ${item.qty}.`);
+					toast.error(
+						`Нема доволно залиха за "${item.product.name}". Достапно: ${available}, бараш: ${item.qty}.`,
+					);
 					setBusy(false);
 					return;
 				}
@@ -392,25 +396,26 @@ const SalesPage = () => {
 
 	return (
 		<div className="max-w-4xl mx-auto space-y-6">
+			{/* HEADER: title + scan button UNDER title */}
 			<div className="space-y-2">
-				<div>
-					<h1 className="text-2xl font-bold text-slate-800">Продажба</h1>
+				<h1 className="text-2xl font-bold text-slate-800">Продажба</h1>
 
+				<div className="flex items-center gap-3">
 					<button
-					type="button"
-					onClick={() => {
-						setScanError(null);
-						setScannerOpen(true);
-					}}
-					className="mt-3 rounded-3xl bg-blamejaGreen px-4 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark disabled:opacity-60"
-					disabled={busy}
+						type="button"
+						onClick={() => {
+							setScanError(null);
+							setScannerOpen(true);
+						}}
+						className="rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark disabled:opacity-60"
+						disabled={busy}
 					>
-					Скенирај баркод
+						Скенирај баркод
 					</button>
-				</div>
 
-				{scanError && <p className="text-xs text-blamejaRed">{scanError}</p>}
+					{scanError && <p className="text-xs text-blamejaRed">{scanError}</p>}
 				</div>
+			</div>
 
 			{/* Add line + autocomplete */}
 			<div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200">
@@ -501,7 +506,7 @@ const SalesPage = () => {
 				</div>
 			</div>
 
-			{/* ✅ ONE combined card: Cart + Note + Totals + Submit */}
+			{/* ONE combined card: Cart + Note + Totals + Submit */}
 			<div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200 space-y-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-semibold text-slate-800">Кошничка</h2>
@@ -527,7 +532,8 @@ const SalesPage = () => {
 
 							return (
 								<div key={item.product.id} className="rounded-xl border border-slate-200 p-3">
-									<div className="flex flex-wrap items-start justify-between gap-3">
+									{/* top row */}
+									<div className="flex items-start justify-between gap-3">
 										<div className="min-w-0">
 											<div className="font-semibold text-slate-800 truncate">{item.product.name}</div>
 
@@ -556,42 +562,64 @@ const SalesPage = () => {
 										</button>
 									</div>
 
-									<div className="mt-3 grid gap-3 md:grid-cols-4 md:items-end">
-										<div className="space-y-1">
+									{/* qty row: input + - (одма до количина) */}
+									<div className="mt-3 flex items-end justify-between gap-3">
+										<div className="flex-1">
 											<label className="block text-xs font-medium text-slate-600">Количина</label>
-											<input
-												type="number"
-												min={1}
-												value={item.qty}
-												onChange={(e) =>
-													updateItem(item.product.id, {
-														qty: Math.max(1, Number(e.target.value) || 1),
-													})
-												}
-												className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
+											<div className="mt-1 flex items-center gap-2">
+												<input
+													type="number"
+													min={1}
+													value={item.qty}
+													onChange={(e) => changeQty(item.product.id, Number(e.target.value) || 1)}
+													className="w-28 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
                                    focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-											/>
+												/>
+
+												<div className="flex items-center gap-2">
+													<button
+														type="button"
+														onClick={() => changeQty(item.product.id, item.qty - 1)}
+														className="h-10 w-10 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+														disabled={busy || item.qty <= 1}
+														aria-label="Намали количина"
+													>
+														−
+													</button>
+													<button
+														type="button"
+														onClick={() => changeQty(item.product.id, item.qty + 1)}
+														className="h-10 w-10 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+														disabled={busy}
+														aria-label="Зголеми количина"
+													>
+														+
+													</button>
+												</div>
+											</div>
 										</div>
 
+										{/* мал простор десно (опционално, може да се тргне) */}
+										<div className="hidden md:block text-xs text-slate-400">{item.product.unit}</div>
+									</div>
+
+									{/* bottom row: price / discount / total (секогаш да се гледаат) */}
+									<div className="mt-3 grid grid-cols-3 gap-2 md:gap-3">
 										<div className="space-y-1">
-											<label className="block text-xs font-medium text-slate-600">Цена (ден/ед.)</label>
+											<label className="block text-xs font-medium text-slate-600">Цена</label>
 											<input
 												inputMode="decimal"
 												value={item.priceStr}
-												onChange={(e) => {
-													updateItem(item.product.id, { priceStr: sanitizePriceInput(e.target.value) });
-												}}
-												onBlur={() => {
-													updateItem(item.product.id, { priceStr: clampPrice(item.priceStr) });
-												}}
-												placeholder="внеси цена"
+												onChange={(e) => updateItem(item.product.id, { priceStr: sanitizePriceInput(e.target.value) })}
+												onBlur={() => updateItem(item.product.id, { priceStr: clampPrice(item.priceStr) })}
+												placeholder="цена"
 												className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
                                    focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 											/>
 										</div>
 
 										<div className="space-y-1">
-											<label className="block text-xs font-medium text-slate-600">Попуст (%)</label>
+											<label className="block text-xs font-medium text-slate-600">Попуст %</label>
 											<input
 												inputMode="numeric"
 												pattern="[0-9]*"
@@ -600,10 +628,8 @@ const SalesPage = () => {
 													const v = e.target.value.replace(/[^\d]/g, '');
 													updateItem(item.product.id, { discountPercentStr: v });
 												}}
-												onBlur={() => {
-													updateItem(item.product.id, { discountPercentStr: clampPercent(item.discountPercentStr) });
-												}}
-												placeholder="внеси попуст"
+												onBlur={() => updateItem(item.product.id, { discountPercentStr: clampPercent(item.discountPercentStr) })}
+												placeholder="попуст"
 												className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
                                    focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 											/>
@@ -612,7 +638,7 @@ const SalesPage = () => {
 										<div className="space-y-1">
 											<label className="block text-xs font-medium text-slate-600">Вкупно</label>
 											<div className="w-full rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800">
-												{lineTotal.toFixed(2)} ден.
+												{lineTotal.toFixed(2)}
 											</div>
 										</div>
 									</div>
