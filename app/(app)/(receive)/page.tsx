@@ -1,471 +1,502 @@
-"use client";
+'use client';
 
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-import { Scanner, type IDetectedBarcode } from "@yudiel/react-qr-scanner";
-import { toast } from "sonner";
+import type { FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Scanner, type IDetectedBarcode } from '@yudiel/react-qr-scanner';
+import { toast } from 'sonner';
 
-import { useCategories } from "./hooks/useCategories";
-import { useSubcategories } from "./hooks/useSubcategories";
-import { useProductLookup } from "./hooks/useProductLookup";
-import { useReceiveMutation } from "./hooks/useReceiveMutation";
+import { useCategoryTree } from './hooks/useCategoryTree';
+import { useReceiveMutation } from './hooks/useReceiveMutation';
+import { useStockLookup, type StockLookupRow } from './hooks/useStockLookup';
+
+/** Custom dropdown што се отвора НАДОЛУ + max height + scroll */
+type CategorySubSelectProps = {
+	categoryTree: Array<{
+		id: string;
+		name: string;
+		subcategories: Array<{ id: string; name: string }>;
+	}>;
+	value: string; // subcategoryId
+	onChange: (subId: string, categoryId: string) => void;
+	disabled?: boolean;
+	placeholder?: string;
+};
+
+const CategorySubSelect = ({
+	categoryTree,
+	value,
+	onChange,
+	disabled,
+	placeholder = 'Избери (пр. Заштита на растенија → Хербициди)',
+}: CategorySubSelectProps) => {
+	const [open, setOpen] = useState(false);
+	const wrapRef = useRef<HTMLDivElement | null>(null);
+
+	const selectedLabel = (() => {
+		for (const c of categoryTree) {
+			for (const s of c.subcategories) {
+				if (s.id === value) return `${c.name} → ${s.name}`;
+			}
+		}
+		return '';
+	})();
+
+	useEffect(() => {
+		const onDocMouseDown = (e: MouseEvent) => {
+			const el = wrapRef.current;
+			if (!el) return;
+			if (e.target instanceof Node && !el.contains(e.target)) setOpen(false);
+		};
+		document.addEventListener('mousedown', onDocMouseDown);
+		return () => document.removeEventListener('mousedown', onDocMouseDown);
+	}, []);
+
+	const handlePick = (subId: string) => {
+		let catId = '';
+		for (const c of categoryTree) {
+			if (c.subcategories.some((s) => s.id === subId)) {
+				catId = c.id;
+				break;
+			}
+		}
+		onChange(subId, catId);
+		setOpen(false);
+	};
+
+	return (
+		<div
+			ref={wrapRef}
+			className="relative"
+		>
+			<button
+				type="button"
+				disabled={disabled}
+				onClick={() => setOpen((p) => !p)}
+				className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm
+                   disabled:opacity-60 disabled:cursor-not-allowed
+                   focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+			>
+				<span className={selectedLabel ? 'text-slate-900' : 'text-slate-500'}>{selectedLabel || placeholder}</span>
+				<span className="float-right text-slate-500">▾</span>
+			</button>
+
+			{open && !disabled && (
+				<div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-slate-200 bg-white shadow-lg">
+					<div className="max-h-64 overflow-auto p-2">
+						{categoryTree.map((c) => (
+							<div
+								key={c.id}
+								className="mb-2"
+							>
+								<div className="sticky top-0 z-10 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">{c.name}</div>
+
+								<div className="mt-1">
+									{c.subcategories.map((s) => {
+										const isActive = value === s.id;
+										return (
+											<button
+												type="button"
+												key={s.id}
+												onClick={() => handlePick(s.id)}
+												className={[
+													'w-full rounded-lg px-3 py-2 text-left text-sm',
+													isActive ? 'bg-blamejaGreen/10 text-slate-900' : 'hover:bg-slate-50',
+												].join(' ')}
+											>
+												{s.name}
+											</button>
+										);
+									})}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+};
 
 const ReceivePage = () => {
-  const [sku, setSku] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [unit, setUnit] = useState("pcs");
+	const [sku, setSku] = useState('');
+	const [barcode, setBarcode] = useState('');
 
-  const [categoryId, setCategoryId] = useState("");
-  const [subcategoryId, setSubcategoryId] = useState("");
+	// (опционални полиња)
+	const [name, setName] = useState('');
+	const [unit, setUnit] = useState('pcs');
+	const [sellingPrice, setSellingPrice] = useState('');
+	const [unitCost, setUnitCost] = useState('');
+	const [description, setDescription] = useState('');
+	const [note, setNote] = useState('');
 
-  const [qty, setQty] = useState("1");
-  const [unitCost, setUnitCost] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
-  const [note, setNote] = useState("");
+	// задолжителни селекции
+	const [categoryId, setCategoryId] = useState('');
+	const [subcategoryId, setSubcategoryId] = useState('');
 
-  const [newCategoryCode, setNewCategoryCode] = useState("");
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newSubcategoryCode, setNewSubcategoryCode] = useState("");
-  const [newSubcategoryName, setNewSubcategoryName] = useState("");
+	// задолжително
+	const [qty, setQty] = useState('1');
 
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
+	const [isScannerOpen, setIsScannerOpen] = useState(false);
+	const [scanError, setScanError] = useState<string | null>(null);
 
-  const {
-    categories,
-    categoriesLoading,
-    categoriesError,
-    addCategory,
-    addCategoryLoading,
-    addCategoryError,
-  } = useCategories();
+	// резултат од проверка
+	const [checked, setChecked] = useState<StockLookupRow | null>(null);
 
-  const {
-    subcategories,
-    subcategoriesLoading,
-    subcategoriesError,
-    addSubcategory,
-    addSubcategoryLoading,
-    addSubcategoryError,
-  } = useSubcategories(categoryId);
+	const {
+		data: categoryTree = [],
+		isLoading: categoryTreeLoading,
+		isError: categoryTreeIsError,
+		error: categoryTreeErrorRaw,
+	} = useCategoryTree();
+	const categoryTreeError = categoryTreeIsError ? (categoryTreeErrorRaw as Error) : null;
 
-  const { lookup, isLoading: lookupLoading } = useProductLookup();
+	const { lookupStock, isLoading: stockLoading } = useStockLookup();
 
-  useEffect(() => {
-    setSubcategoryId("");
-  }, [categoryId]);
+	const receiveMutation = useReceiveMutation({
+		sku,
+		barcode,
+		name,
+		description,
+		unit,
+		sellingPrice,
+		qty,
+		unitCost,
+		note,
+		categoryId,
+		subcategoryId,
+	});
 
-  const receiveMutation = useReceiveMutation({
-    sku,
-    barcode,
-    name,
-    description,
-    unit,
-    sellingPrice,
-    qty,
-    unitCost,
-    note,
-    categoryId,
-    subcategoryId,
-  });
+	const formDisabledBase = categoryTreeLoading || !!categoryTreeError;
 
-  const formDisabledBase =
-    categoriesLoading ||
-    subcategoriesLoading ||
-    !!categoriesError ||
-    !!subcategoriesError;
+	const isFormValid =
+		(sku.trim().length > 0 || barcode.trim().length > 0) &&
+		Number(qty.replace(',', '.')) > 0 &&
+		categoryId.trim().length > 0 &&
+		subcategoryId.trim().length > 0;
 
-  const isFormValid =
-    name.trim().length > 0 &&
-    categoryId.trim().length > 0 &&
-    subcategoryId.trim().length > 0 &&
-    (sku.trim().length > 0 || barcode.trim().length > 0) &&
-    Number(qty.replace(",", ".")) > 0;
+	const isSubmitDisabled = receiveMutation.isPending || stockLoading || formDisabledBase || !isFormValid;
 
-  const isSubmitDisabled =
-    receiveMutation.isPending || lookupLoading || formDisabledBase || !isFormValid;
+	const handleSubmit = (event: FormEvent) => {
+		event.preventDefault();
+		receiveMutation.mutate(undefined, {
+			onSuccess: () => toast.success('Приемот е успешно зачуван ✅'),
+			onError: (err) => toast.error(err instanceof Error ? err.message : 'Грешка при прием.'),
+		});
+	};
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
+	const handleReset = () => {
+		setSku('');
+		setBarcode('');
+		setName('');
+		setUnit('pcs');
+		setSellingPrice('');
+		setUnitCost('');
+		setDescription('');
+		setNote('');
+		setCategoryId('');
+		setSubcategoryId('');
+		setQty('1');
+		setScanError(null);
+		setIsScannerOpen(false);
+		setChecked(null);
+	};
 
-    receiveMutation.mutate(undefined, {
-      onSuccess: () => toast.success("Приемот е успешно зачуван ✅"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Грешка при прием."),
-    });
-  };
+	const handleScan = (detectedCodes: IDetectedBarcode[]) => {
+		if (!detectedCodes?.length) return;
+		const raw = detectedCodes[0]?.rawValue ?? '';
+		if (!raw) return;
 
-  const handleReset = () => {
-    setSku("");
-    setBarcode("");
-    setName("");
-    setDescription("");
-    setUnit("pcs");
-    setCategoryId("");
-    setSubcategoryId("");
-    setQty("1");
-    setUnitCost("");
-    setSellingPrice("");
-    setNote("");
+		setBarcode(raw);
+		setScanError(null);
+		setIsScannerOpen(false);
+		toast.message('Скенирано', { description: raw });
+	};
 
-    setNewCategoryCode("");
-    setNewCategoryName("");
-    setNewSubcategoryCode("");
-    setNewSubcategoryName("");
+	const handleScanError = (err: unknown) => {
+		console.error('Scanner error:', err);
+		setScanError('Настана грешка при пристап до камерата.');
+	};
 
-    setScanError(null);
-    setIsScannerOpen(false);
-  };
+	const handleCheck = async () => {
+		const key = barcode.trim() || sku.trim();
+		if (!key) {
+			toast.error('Внеси SKU или баркод (барем едно).');
+			return;
+		}
 
-  const handleScan = (detectedCodes: IDetectedBarcode[]) => {
-    if (!detectedCodes?.length) return;
-    const raw = detectedCodes[0]?.rawValue ?? "";
-    if (!raw) return;
+		try {
+			const row = await lookupStock(key);
+			setChecked(row);
 
-    setBarcode(raw);
-    setScanError(null);
-    setIsScannerOpen(false);
-    toast.message("Скенирано", { description: raw });
-  };
+			if (!row) {
+				toast.error('Не е пронајден производ во база.');
+				return;
+			}
 
-  const handleScanError = (err: unknown) => {
-    console.error("Scanner error:", err);
-    setScanError("Настана грешка при пристап до камерата.");
-  };
+			toast.success(`На залиха: ${row.qty_on_hand ?? 0}`);
+		} catch (e) {
+			console.error(e);
+			toast.error('Грешка при проверка на залиха.');
+		}
+	};
 
-  const handleLookup = async () => {
-    const key = barcode.trim() || sku.trim();
-    if (!key) {
-      toast.error("Внеси баркод или SKU за проверка.");
-      return;
-    }
+	return (
+		<div className="max-w-2xl mx-auto">
+			<div className="mb-4 flex items-start justify-between gap-3">
+				<div>
+					<h1 className="text-2xl font-bold">Прием на стока</h1>
+					<p className="mt-1 text-xs text-slate-500">Проверка: покажува состојба на залиха за внесена шифра/баркод.</p>
+				</div>
 
-    try {
-      const product = await lookup(key);
-      if (!product) {
-        toast.error("Не е пронајден производ.");
-        return;
-      }
+				<div className="flex flex-col items-end gap-1">
+					<button
+						type="button"
+						onClick={() => {
+							setScanError(null);
+							setIsScannerOpen(true);
+						}}
+						className="rounded-full bg-blamejaGreen px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
+					>
+						Скенирај баркод
+					</button>
 
-      setSku(product.sku ?? "");
-      setBarcode(product.barcode ?? "");
-      setName(product.name ?? "");
-      setDescription(product.description ?? "");
-      setUnit(product.unit ?? "pcs");
-      setSellingPrice(String(product.selling_price ?? 0));
-      setCategoryId(product.category_id ?? "");
-      setSubcategoryId(product.subcategory_id ?? "");
+					{scanError && <span className="max-w-[220px] text-right text-[10px] text-blamejaRed">{scanError}</span>}
+				</div>
+			</div>
 
-      toast.success("Производот е пополнет од база ✅");
-    } catch (e) {
-      console.error(e);
-      toast.error("Грешка при проверка на производ.");
-    }
-  };
+			<form
+				onSubmit={handleSubmit}
+				className="space-y-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200"
+			>
+				{/* SKU + Barcode + Check (иста линија) */}
+				<div className="space-y-2">
+					<p className="text-xs text-slate-500">Внеси SKU или Баркод (барем едно).</p>
 
-  return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Прием на стока</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Само набавна + продажна. Скенирај баркод и „Провери / Пополни“ ако
-            артиклот веќе постои.
-          </p>
-        </div>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+						<div>
+							<label className="block text-sm font-medium mb-1">SKU</label>
+							<input
+								value={sku}
+								onChange={(e) => setSku(e.target.value)}
+								className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								placeholder="AG-001"
+							/>
+						</div>
 
-        <div className="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setScanError(null);
-              setIsScannerOpen(true);
-            }}
-            className="rounded-full bg-blamejaGreen px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
-          >
-            Скенирај баркод
-          </button>
+						<div>
+							<label className="block text-sm font-medium mb-1">Баркод</label>
+							<input
+								value={barcode}
+								onChange={(e) => setBarcode(e.target.value)}
+								className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								placeholder="3830..."
+							/>
+						</div>
 
-          {scanError && (
-            <span className="max-w-[220px] text-right text-[10px] text-blamejaRed">
-              {scanError}
-            </span>
-          )}
-        </div>
-      </div>
+						<div className="flex md:justify-end md:items-end">
+							<button
+								type="button"
+								onClick={() => void handleCheck()}
+								disabled={stockLoading}
+								className="w-full md:w-auto rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700
+                           hover:bg-slate-50 disabled:opacity-60"
+							>
+								{stockLoading ? 'Проверувам...' : 'Проверка'}
+							</button>
+						</div>
+					</div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">SKU (шифра)</label>
-            <input
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-              placeholder="AG-001"
-            />
-          </div>
+					{/* РЕЗУЛТАТ од проверка (цел ред) */}
+					{checked && (
+						<div className="relative rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+							{/* Close button */}
+							<button
+								type="button"
+								onClick={() => setChecked(null)}
+								className="absolute right-2 top-2 rounded-full px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
+								aria-label="Затвори"
+								title="Затвори"
+							>
+								✕
+							</button>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Баркод</label>
-            <input
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-              placeholder="3830..."
-            />
-          </div>
+							<div className="flex items-center justify-between gap-3 pr-8">
+								<div className="font-semibold text-slate-800">
+									Во база имаш: <span className="text-blamejaGreen">{checked.qty_on_hand ?? 0}</span> {checked.unit ?? ''}
+								</div>
+							</div>
 
-          <div className="flex md:justify-end md:items-end">
-            <button
-              type="button"
-              onClick={() => void handleLookup()}
-              disabled={lookupLoading}
-              className="w-full md:w-auto rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700
-                         hover:bg-slate-50 disabled:opacity-60"
-            >
-              {lookupLoading ? "Проверувам..." : "Провери / Пополни"}
-            </button>
-          </div>
-        </div>
+							<div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+								<div>
+									<span className="text-slate-500">SKU:</span> {checked.sku ?? '—'}
+								</div>
+								<div>
+									<span className="text-slate-500">Баркод:</span> {checked.barcode ?? '—'}
+								</div>
+								<div className="md:col-span-2">
+									<span className="text-slate-500">Име:</span> {checked.name ?? '—'}
+								</div>
+								<div>
+									<span className="text-slate-500">Категорија:</span> {checked.category_name ?? '—'}
+								</div>
+								<div>
+									<span className="text-slate-500">Подкатегорија:</span> {checked.subcategory_name ?? '—'}
+								</div>
+								<div>
+									<span className="text-slate-500">Продажна:</span> {checked.selling_price ?? 0}
+								</div>
+								<div>
+									<span className="text-slate-500">Последно движење:</span> {checked.last_movement_at ?? '—'}
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Име на производ</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-              placeholder="Пр. Хербицид ..."
-            />
-          </div>
+				{/* Категорија пред Име/Единица */}
+				<div className="space-y-2">
+					<label className="block text-sm font-medium">Категорија / Подкатегорија</label>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Единица</label>
-            <input
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="pcs / l / kg"
-            />
-          </div>
-        </div>
+					<CategorySubSelect
+						categoryTree={categoryTree}
+						value={subcategoryId}
+						disabled={categoryTreeLoading || !!categoryTreeError}
+						onChange={(subId, catId) => {
+							setSubcategoryId(subId);
+							setCategoryId(catId);
+						}}
+					/>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Опис (опционално)</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
-            placeholder="Активна материја, дозирање..."
-          />
-        </div>
+					{categoryTreeError && <p className="text-xs text-blamejaRed">{categoryTreeError.message}</p>}
+				</div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Категорија</label>
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            disabled={categoriesLoading || !!categoriesError}
-          >
-            <option value="">
-              {categoriesLoading ? "Се вчитуваат..." : "Избери категорија"}
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} — {c.name}
-              </option>
-            ))}
-          </select>
+				{/* Име + Единица */}
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+					<div className="md:col-span-2">
+						<label className="block text-sm font-medium mb-1">Име на производ (опционално)</label>
+						<input
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+							placeholder="Пр. Хербицид ..."
+						/>
+					</div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_auto] gap-2 items-center">
-            <input
-              value={newCategoryCode}
-              onChange={(e) => setNewCategoryCode(e.target.value)}
-              placeholder="Код"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-            <input
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Име"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => addCategory(newCategoryCode, newCategoryName)}
-              disabled={addCategoryLoading}
-              className="px-3 py-2 rounded-full bg-blamejaOrange text-white text-xs font-semibold disabled:opacity-60"
-            >
-              {addCategoryLoading ? "..." : "+ Додај"}
-            </button>
-          </div>
+					<div>
+						<label className="block text-sm font-medium mb-1">Единица (опционално)</label>
+						<input
+							value={unit}
+							onChange={(e) => setUnit(e.target.value)}
+							className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+							placeholder="pcs / l / kg"
+						/>
+					</div>
+				</div>
 
-          {addCategoryError && (
-            <p className="text-xs text-blamejaRed">{addCategoryError.message}</p>
-          )}
-        </div>
+				{/* Количина задолжително, цени опционално */}
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+					<div>
+						<label className="block text-sm font-medium mb-1">Количина</label>
+						<input
+							value={qty}
+							onChange={(e) => setQty(e.target.value)}
+							className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+							inputMode="decimal"
+						/>
+					</div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Подкатегорија</label>
-          <select
-            value={subcategoryId}
-            onChange={(e) => setSubcategoryId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-            disabled={!categoryId || subcategoriesLoading || !!subcategoriesError}
-          >
-            <option value="">
-              {!categoryId
-                ? "Избери категорија прво"
-                : subcategoriesLoading
-                  ? "Се вчитуваат..."
-                  : "Избери подкатегорија"}
-            </option>
-            {subcategories.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} — {s.name}
-              </option>
-            ))}
-          </select>
+					<div>
+						<label className="block text-sm font-medium mb-1">Набавна (опционално)</label>
+						<input
+							value={unitCost}
+							onChange={(e) => setUnitCost(e.target.value)}
+							className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+							inputMode="decimal"
+							placeholder="пр. 120"
+						/>
+					</div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_auto] gap-2 items-center">
-            <input
-              value={newSubcategoryCode}
-              onChange={(e) => setNewSubcategoryCode(e.target.value)}
-              placeholder="Код"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              disabled={!categoryId}
-            />
-            <input
-              value={newSubcategoryName}
-              onChange={(e) => setNewSubcategoryName(e.target.value)}
-              placeholder="Име"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              disabled={!categoryId}
-            />
-            <button
-              type="button"
-              onClick={() => addSubcategory(newSubcategoryCode, newSubcategoryName)}
-              disabled={!categoryId || addSubcategoryLoading}
-              className="px-3 py-2 rounded-full bg-blamejaOrange text-white text-xs font-semibold disabled:opacity-60"
-            >
-              {addSubcategoryLoading ? "..." : "+ Додај"}
-            </button>
-          </div>
+					<div>
+						<label className="block text-sm font-medium mb-1">Продажна (опционално)</label>
+						<input
+							value={sellingPrice}
+							onChange={(e) => setSellingPrice(e.target.value)}
+							className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+							inputMode="decimal"
+							placeholder="пр. 160"
+						/>
+					</div>
+				</div>
 
-          {addSubcategoryError && (
-            <p className="text-xs text-blamejaRed">{addSubcategoryError.message}</p>
-          )}
-        </div>
+				{/* Опис и Забелешка најдолу */}
+				<div>
+					<label className="block text-sm font-medium mb-1">Опис (опционално)</label>
+					<textarea
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
+					/>
+				</div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Количина</label>
-            <input
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              inputMode="decimal"
-            />
-          </div>
+				<div>
+					<label className="block text-sm font-medium mb-1">Забелешка (опционално)</label>
+					<textarea
+						value={note}
+						onChange={(e) => setNote(e.target.value)}
+						className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[70px]"
+					/>
+				</div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Набавна</label>
-            <input
-              value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              inputMode="decimal"
-              placeholder="пр. 120"
-            />
-          </div>
+				<div className="mt-4 flex items-center justify-between gap-3">
+					<button
+						type="button"
+						onClick={handleReset}
+						className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+					>
+						Ресетирај форма
+					</button>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Продажна</label>
-            <input
-              value={sellingPrice}
-              onChange={(e) => setSellingPrice(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              inputMode="decimal"
-              placeholder="пр. 160"
-            />
-          </div>
-        </div>
+					<button
+						type="submit"
+						disabled={isSubmitDisabled}
+						className="px-5 py-2 rounded-full bg-blamejaGreen text-white font-semibold disabled:opacity-60"
+					>
+						{receiveMutation.isPending ? 'Се зачувува...' : 'Зачувај прием'}
+					</button>
+				</div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Забелешка</label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[70px]"
-            placeholder="Фактура, добавувач..."
-          />
-        </div>
+				{receiveMutation.isError && <p className="text-blamejaRed text-sm">{(receiveMutation.error as Error).message}</p>}
+				{receiveMutation.isSuccess && <p className="text-green-600 text-sm">Приемот е успешно снимен.</p>}
+			</form>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Ресетирај форма
-          </button>
+			{isScannerOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+					<div className="w-full max-w-md rounded-2xl bg-white p-4">
+						<div className="mb-2 flex items-center justify-between">
+							<h2 className="text-sm font-semibold">Скенирај баркод</h2>
+							<button
+								type="button"
+								onClick={() => setIsScannerOpen(false)}
+								className="text-sm text-slate-600"
+							>
+								Затвори ✕
+							</button>
+						</div>
 
-          <button
-            type="submit"
-            disabled={isSubmitDisabled}
-            className="px-5 py-2 rounded-full bg-blamejaGreen text-white font-semibold disabled:opacity-60"
-          >
-            {receiveMutation.isPending ? "Се зачувува..." : "Зачувај прием"}
-          </button>
-        </div>
-
-        {receiveMutation.isError && (
-          <p className="text-blamejaRed text-sm">
-            {(receiveMutation.error as Error).message}
-          </p>
-        )}
-        {receiveMutation.isSuccess && (
-          <p className="text-green-600 text-sm">Приемот е успешно снимен.</p>
-        )}
-      </form>
-
-      {isScannerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Скенирај баркод</h2>
-              <button
-                type="button"
-                onClick={() => setIsScannerOpen(false)}
-                className="text-sm text-slate-600"
-              >
-                Затвори ✕
-              </button>
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-slate-200">
-              <Scanner
-                onScan={handleScan}
-                onError={handleScanError}
-                constraints={{ facingMode: "environment" }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+						<div className="overflow-hidden rounded-xl border border-slate-200">
+							<Scanner
+								onScan={handleScan}
+								onError={handleScanError}
+								constraints={{ facingMode: 'environment' }}
+							/>
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	);
 };
 
 export default ReceivePage;
-    

@@ -1,64 +1,64 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true,
-    "defaultBranch": "develop"
-  },
-  "assist": { "actions": { "source": { "organizeImports": "off" } } },
-  "formatter": {
-    "useEditorconfig": true,
-    "formatWithErrors": true,
-    "attributePosition": "multiline",
-    "includes": ["**", "!**/dist", "!.react-router"],
-    "lineWidth": 140
-  },
-  "linter": {
-    "rules": {
-      "recommended": true,
-      "suspicious": {
-        "noConsole": {
-          "level": "error",
-          "options": {
-            "allow": ["error", "log"]
-          }
-        },
-        "noArrayIndexKey": "warn"
-      },
-      "correctness": {
-        "noUnusedVariables": "error",
-        "noUnusedImports": "error"
-      },
-      "a11y": {
-        "useButtonType": "warn"
-      },
-      "style": {
-        "noNonNullAssertion": "off",
-        "noParameterAssign": "error",
-        "useAsConstAssertion": "error",
-        "useDefaultParameterLast": "error",
-        "useEnumInitializers": "error",
-        "useSelfClosingElements": "error",
-        "useSingleVarDeclarator": "error",
-        "noUnusedTemplateLiteral": "error",
-        "useNumberNamespace": "error",
-        "noInferrableTypes": "error",
-        "noUselessElse": "error"
-      }
-    },
-    "includes": ["**", "!**/dist", "!.react-router"]
-  },
-  "javascript": {
-    "formatter": {
-      "jsxQuoteStyle": "double",
-      "quoteProperties": "asNeeded",
-      "semicolons": "always",
-      "arrowParentheses": "always",
-      "bracketSpacing": true,
-      "bracketSameLine": false,
-      "quoteStyle": "single",
-      "trailingCommas": "all"
-    }
-  }
+	"$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true,
+		"defaultBranch": "develop"
+	},
+	"assist": { "actions": { "source": { "organizeImports": "off" } } },
+	"formatter": {
+		"useEditorconfig": true,
+		"formatWithErrors": true,
+		"attributePosition": "multiline",
+		"includes": ["**", "!**/dist", "!.react-router"],
+		"lineWidth": 140
+	},
+	"linter": {
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noConsole": {
+					"level": "error",
+					"options": {
+						"allow": ["error", "log"]
+					}
+				},
+				"noArrayIndexKey": "warn"
+			},
+			"correctness": {
+				"noUnusedVariables": "error",
+				"noUnusedImports": "error"
+			},
+			"a11y": {
+				"useButtonType": "warn"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"noParameterAssign": "error",
+				"useAsConstAssertion": "error",
+				"useDefaultParameterLast": "error",
+				"useEnumInitializers": "error",
+				"useSelfClosingElements": "error",
+				"useSingleVarDeclarator": "error",
+				"noUnusedTemplateLiteral": "error",
+				"useNumberNamespace": "error",
+				"noInferrableTypes": "error",
+				"noUselessElse": "error"
+			}
+		},
+		"includes": ["**", "!**/dist", "!.react-router"]
+	},
+	"javascript": {
+		"formatter": {
+			"jsxQuoteStyle": "double",
+			"quoteProperties": "asNeeded",
+			"semicolons": "always",
+			"arrowParentheses": "always",
+			"bracketSpacing": true,
+			"bracketSameLine": false,
+			"quoteStyle": "single",
+			"trailingCommas": "all"
+		}
+	}
 }
