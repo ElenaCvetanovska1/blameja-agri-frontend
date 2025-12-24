@@ -88,7 +88,6 @@ const CategorySubSelect = ({
                   {c.name}
                 </div>
 
-
                 <div className="mt-1">
                   {c.subcategories.map((s) => {
                     const isActive = value === s.id;
@@ -99,7 +98,9 @@ const CategorySubSelect = ({
                         onClick={() => handlePick(s.id)}
                         className={[
                           "w-full rounded-lg px-3 py-2 text-left text-sm",
-                          isActive ? "bg-blamejaGreen/10 text-slate-900" : "hover:bg-slate-50",
+                          isActive
+                            ? "bg-blamejaGreen/10 text-slate-900"
+                            : "hover:bg-slate-50",
                         ].join(" ")}
                       >
                         {s.name}
@@ -125,8 +126,8 @@ const ReceivePage = () => {
   const [unit, setUnit] = useState("pcs");
   const [sellingPrice, setSellingPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
-  const [description, setDescription] = useState("");
-  const [note, setNote] = useState("");
+
+  const [details, setDetails] = useState("");
 
   // задолжителни селекции
   const [categoryId, setCategoryId] = useState("");
@@ -155,12 +156,15 @@ const ReceivePage = () => {
     sku,
     barcode,
     name,
-    description,
     unit,
     sellingPrice,
     qty,
     unitCost,
-    note,
+
+    // ✅ го праќаме истото во двете (без промена на база)
+    description: details,
+    note: details,
+
     categoryId,
     subcategoryId,
   });
@@ -192,8 +196,7 @@ const ReceivePage = () => {
     setUnit("pcs");
     setSellingPrice("");
     setUnitCost("");
-    setDescription("");
-    setNote("");
+    setDetails("");
     setCategoryId("");
     setSubcategoryId("");
     setQty("1");
@@ -246,6 +249,7 @@ const ReceivePage = () => {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Прием на стока</h1>
+
           <button
             type="button"
             onClick={() => {
@@ -258,13 +262,11 @@ const ReceivePage = () => {
           </button>
 
           {scanError && (
-            <span className="max-w-[220px] text-right text-[10px] text-blamejaRed">
+            <span className="mt-2 block max-w-[220px] text-[10px] text-blamejaRed">
               {scanError}
             </span>
           )}
         </div>
-
-        
       </div>
 
       <form
@@ -311,64 +313,56 @@ const ReceivePage = () => {
             </div>
           </div>
 
-          {/* РЕЗУЛТАТ од проверка (цел ред) */}
-            {checked && (
+          {checked && (
             <div className="relative rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                {/* Close button */}
-                <button
+              <button
                 type="button"
                 onClick={() => setChecked(null)}
                 className="absolute right-2 top-2 rounded-full px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
                 aria-label="Затвори"
                 title="Затвори"
-                >
+              >
                 ✕
-                </button>
+              </button>
 
-                <div className="flex items-center justify-between gap-3 pr-8">
+              <div className="flex items-center justify-between gap-3 pr-8">
                 <div className="font-semibold text-slate-800">
-                    Во база имаш:{" "}
-                    <span className="text-blamejaGreen">{checked.qty_on_hand ?? 0}</span>{" "}
-                    {checked.unit ?? ""}
+                  Во база имаш:{" "}
+                  <span className="text-blamejaGreen">{checked.qty_on_hand ?? 0}</span>{" "}
+                  {checked.unit ?? ""}
                 </div>
-                </div>
+              </div>
 
-                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
                 <div>
-                    <span className="text-slate-500">SKU:</span> {checked.sku ?? "—"}
+                  <span className="text-slate-500">SKU:</span> {checked.sku ?? "—"}
                 </div>
                 <div>
-                    <span className="text-slate-500">Баркод:</span> {checked.barcode ?? "—"}
+                  <span className="text-slate-500">Баркод:</span> {checked.barcode ?? "—"}
                 </div>
                 <div className="md:col-span-2">
-                    <span className="text-slate-500">Име:</span> {checked.name ?? "—"}
+                  <span className="text-slate-500">Име:</span> {checked.name ?? "—"}
                 </div>
                 <div>
-                    <span className="text-slate-500">Категорија:</span>{" "}
-                    {checked.category_name ?? "—"}
+                  <span className="text-slate-500">Категорија:</span> {checked.category_name ?? "—"}
                 </div>
                 <div>
-                    <span className="text-slate-500">Подкатегорија:</span>{" "}
-                    {checked.subcategory_name ?? "—"}
+                  <span className="text-slate-500">Подкатегорија:</span> {checked.subcategory_name ?? "—"}
                 </div>
                 <div>
-                    <span className="text-slate-500">Продажна:</span> {checked.selling_price ?? 0}
+                  <span className="text-slate-500">Продажна:</span> {checked.selling_price ?? 0}
                 </div>
                 <div>
-                    <span className="text-slate-500">Последно движење:</span>{" "}
-                    {checked.last_movement_at ?? "—"}
+                  <span className="text-slate-500">Последно движење:</span> {checked.last_movement_at ?? "—"}
                 </div>
-                </div>
+              </div>
             </div>
-            )}
-
+          )}
         </div>
 
-        {/* Категорија пред Име/Единица */}
+        {/* Категорија / Подкатегорија */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium">
-            Категорија / Подкатегорија
-          </label>
+          <label className="block text-sm font-medium">Категорија / Подкатегорија</label>
 
           <CategorySubSelect
             categoryTree={categoryTree}
@@ -408,7 +402,7 @@ const ReceivePage = () => {
           </div>
         </div>
 
-        {/* Количина задолжително, цени опционално */}
+        {/* Количина + цени */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Количина</label>
@@ -443,25 +437,14 @@ const ReceivePage = () => {
           </div>
         </div>
 
-        {/* Опис и Забелешка најдолу */}
         <div>
-        <label className="block text-sm font-medium mb-1">Опис (опционално)</label>
-        <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[90px]"
-            placeholder="Пр. активна материја, дозирање, намена..."
-        />
-        </div>
-
-        <div>
-        <label className="block text-sm font-medium mb-1">Забелешка (опционално)</label>
-        <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[70px]"
-            placeholder="Пр. добавувач, број на фактура, датум, дополнителни информации..."
-        />
+          <label className="block text-sm font-medium mb-1">Опис / Забелешка (опционално)</label>
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[110px]"
+            placeholder="Пр. активна материја, дозирање, добавувач, број на фактура..."
+          />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
