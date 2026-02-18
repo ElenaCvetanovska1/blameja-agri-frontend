@@ -6,28 +6,29 @@ import { supabase } from 'app/lib/supabase-client';
 import { toast } from 'sonner';
 
 type ProductStockRow = {
-	product_id: string;
-	sku: string | null;
-	barcode: string | null;
-	name: string | null;
-	unit: string | null;
-	selling_price: number | null;
-	qty_on_hand: number | null;
-	category_name: string | null;
-	subcategory_name: string | null;
+  product_id: string;
+  plu: number | null;
+  barcode: string | null;
+  name: string | null;
+  unit: string | null;
+  selling_price: number | null;
+  qty_on_hand: number | null;
+  category_name: string | null;
+  subcategory_name: string | null;
 };
 
 type CartItem = {
 	product: {
 		id: string;
-		sku: string;
+		plu: number | null;
 		barcode: string | null;
 		name: string;
 		unit: string;
 		selling_price: number;
 		category_name: string | null;
 		subcategory_name: string | null;
-	};
+		};
+
 	qty: number;
 	priceStr: string; // string (без стрелки + може да се избрише)
 	discountPercentStr: string; // string (може да се избрише)
@@ -81,14 +82,28 @@ const priceNum = (s: string) => {
 	return Number.isFinite(n) ? Math.max(0, n) : 0;
 };
 
+const parsePlu = (raw: string) => {
+	const t = raw.trim();
+	if (!t) return null;
+	if (!/^\d+$/.test(t)) return null;
+	const n = Number.parseInt(t, 10);
+	return Number.isFinite(n) ? n : null;
+};
+
 const fetchProductFromStockByExactCode = async (code: string): Promise<ProductStockRow | null> => {
 	const trimmed = code.trim();
 	if (!trimmed) return null;
 
+	const pluNum = parsePlu(trimmed);
+
+	const orParts: string[] = [];
+	orParts.push(`barcode.eq.${trimmed}`);
+	if (pluNum !== null) orParts.push(`plu.eq.${pluNum}`);
+
 	const { data, error } = await supabase
 		.from('product_stock')
-		.select('product_id, sku, barcode, name, unit, selling_price, qty_on_hand, category_name, subcategory_name')
-		.or(`sku.eq.${trimmed},barcode.eq.${trimmed}`)
+		.select('product_id, plu, barcode, name, unit, selling_price, qty_on_hand, category_name, subcategory_name')
+		.or(orParts.join(','))
 		.limit(1)
 		.maybeSingle();
 
@@ -96,20 +111,42 @@ const fetchProductFromStockByExactCode = async (code: string): Promise<ProductSt
 	return (data ?? null) as ProductStockRow | null;
 };
 
+
 const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[]> => {
 	const t = term.trim();
 	if (t.length < 1) return [];
 
-	const { data, error } = await supabase
+	const pluNum = parsePlu(t);
+
+	const baseQuery = supabase
 		.from('product_stock')
-		.select('product_id, sku, barcode, name, unit, selling_price, qty_on_hand, category_name, subcategory_name')
-		.or(`sku.ilike.%${t}%,barcode.ilike.%${t}%,name.ilike.%${t}%`)
+		.select('product_id, plu, barcode, name, unit, selling_price, qty_on_hand, category_name, subcategory_name')
+		.or(`barcode.ilike.%${t}%,name.ilike.%${t}%`)
 		.order('name', { ascending: true })
 		.limit(limit);
 
-	if (error) throw error;
-	return (data ?? []) as ProductStockRow[];
+	const pluQuery =
+		pluNum !== null
+			? supabase
+					.from('product_stock')
+					.select('product_id, plu, barcode, name, unit, selling_price, qty_on_hand, category_name, subcategory_name')
+					.eq('plu', pluNum)
+					.limit(limit)
+			: null;
+
+	const [{ data: baseData, error: baseErr }, pluRes] = await Promise.all([baseQuery, pluQuery ?? Promise.resolve({ data: [], error: null } as any)]);
+
+	if (baseErr) throw baseErr;
+	if (pluRes?.error) throw pluRes.error;
+
+	const combined = [...(baseData ?? []), ...(pluRes?.data ?? [])] as ProductStockRow[];
+
+	// dedupe by product_id
+	const map = new Map<string, ProductStockRow>();
+	combined.forEach((r) => map.set(r.product_id, r));
+	return Array.from(map.values()).slice(0, limit);
 };
+
 
 const SalesPage = () => {
 	const [code, setCode] = useState('');
@@ -176,15 +213,16 @@ const SalesPage = () => {
 		}
 
 		const product = {
-			id: productId,
-			sku: safeText(row.sku) || '—',
-			barcode: row.barcode ?? null,
-			name: safeText(row.name) || '—',
-			unit: safeText(row.unit) || 'pcs',
-			selling_price: num(row.selling_price),
-			category_name: row.category_name ?? null,
-			subcategory_name: row.subcategory_name ?? null,
-		};
+	id: productId,
+	plu: row.plu ?? null,
+	barcode: row.barcode ?? null,
+	name: safeText(row.name) || '—',
+	unit: safeText(row.unit) || 'pcs',
+	selling_price: num(row.selling_price),
+	category_name: row.category_name ?? null,
+	subcategory_name: row.subcategory_name ?? null,
+};
+
 
 		setCart((prev) => {
 			const existing = prev.find((p) => p.product.id === productId);
@@ -209,7 +247,7 @@ const SalesPage = () => {
 	const handleAddByCode = async (codeValue?: string) => {
 		const value = (codeValue ?? code).trim();
 		if (!value) {
-			toast.error('Внеси баркод или SKU.');
+			toast.error('Внеси баркод или PLU.');
 			return;
 		}
 
@@ -421,7 +459,7 @@ const SalesPage = () => {
 			<div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200">
 				<div ref={wrapRef} className="relative grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
 					<div className="space-y-1">
-						<label className="block text-xs font-medium text-slate-600">Баркод или SKU (или име)</label>
+						<label className="block text-xs font-medium text-slate-600">Баркод или PLU (или име)</label>
 						<input
 							value={code}
 							onChange={(e) => setCode(e.target.value)}
@@ -452,7 +490,7 @@ const SalesPage = () => {
 
 									{suggestions.map((s) => {
 										const title = safeText(s.name) || '—';
-										const skuText = safeText(s.sku) || '—';
+										const pluText = safeText(s.plu) || '—';
 										const barcodeText = s.barcode ?? '—';
 										const cat = s.category_name ?? '—';
 										const sub = s.subcategory_name ?? '—';
@@ -473,7 +511,7 @@ const SalesPage = () => {
 													<div className="min-w-0">
 														<div className="text-sm font-semibold text-slate-800 truncate">{title}</div>
 														<div className="text-[11px] text-slate-500">
-															SKU: <span className="font-medium">{skuText}</span> • Баркод:{' '}
+															PLU: <span className="font-medium">{pluText}</span> • Баркод:{' '}
 															<span className="font-medium">{barcodeText}</span>
 														</div>
 														<div className="text-[11px] text-slate-500 truncate">
@@ -538,7 +576,7 @@ const SalesPage = () => {
 											<div className="font-semibold text-slate-800 truncate">{item.product.name}</div>
 
 											<div className="text-xs text-slate-500">
-												SKU: <span className="font-medium">{item.product.sku}</span>
+												PLU: <span className="font-medium">{item.product.plu ?? '—'}</span>
 												{item.product.barcode ? (
 													<>
 														{' '}

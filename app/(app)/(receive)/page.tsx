@@ -1,209 +1,220 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Scanner, type IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { toast } from "sonner";
+import { supabase } from "app/lib/supabase-client";
 
-import { useCategoryTree } from "./hooks/useCategoryTree";
 import { useReceiveMutation } from "./hooks/useReceiveMutation";
-import { useStockLookup, type StockLookupRow } from "./hooks/useStockLookup";
 
-/** Custom dropdown што се отвора НАДОЛУ + max height + scroll */
-type CategorySubSelectProps = {
-  categoryTree: Array<{
-    id: string;
-    name: string;
-    subcategories: Array<{ id: string; name: string }>;
-  }>;
-  value: string; // subcategoryId
-  onChange: (subId: string, categoryId: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
+/** ---------- Types ---------- */
+type CategoryRow = { id: string; name: string };
+
+type ProductChoiceRow = {
+  product_id: string;
+  name: string | null;
+  plu: number | null;
+  barcode: string | null;
+  selling_price: number | null;
+  tax_group: number | null;
+  category_id: string | null;
+  category_name: string | null;
 };
 
-const CategorySubSelect = ({
-  categoryTree,
-  value,
-  onChange,
-  disabled,
-  placeholder = "Избери (пр. Заштита на растенија → Хербициди)",
-}: CategorySubSelectProps) => {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
+const num = (v: unknown) => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
-  const selectedLabel = (() => {
-    for (const c of categoryTree) {
-      for (const s of c.subcategories) {
-        if (s.id === value) return `${c.name} → ${s.name}`;
-      }
-    }
-    return "";
-  })();
-
-  useEffect(() => {
-    const onDocMouseDown = (e: MouseEvent) => {
-      const el = wrapRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
-  }, []);
-
-  const handlePick = (subId: string) => {
-    let catId = "";
-    for (const c of categoryTree) {
-      if (c.subcategories.some((s) => s.id === subId)) {
-        catId = c.id;
-        break;
-      }
-    }
-    onChange(subId, catId);
-    setOpen(false);
-  };
-
-  return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setOpen((p) => !p)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm
-                   disabled:opacity-60 disabled:cursor-not-allowed
-                   focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-      >
-        <span className={selectedLabel ? "text-slate-900" : "text-slate-500"}>
-          {selectedLabel || placeholder}
-        </span>
-        <span className="float-right text-slate-500">▾</span>
-      </button>
-
-      {open && !disabled && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-slate-200 bg-white shadow-lg">
-          <div className="max-h-64 overflow-auto p-2">
-            {categoryTree.map((c) => (
-              <div key={c.id} className="mb-2">
-                <div className="sticky top-0 z-10 bg-white px-2 py-2 text-sm font-semibold text-slate-900">
-                  {c.name}
-                </div>
-
-                <div className="mt-1">
-                  {c.subcategories.map((s) => {
-                    const isActive = value === s.id;
-                    return (
-                      <button
-                        type="button"
-                        key={s.id}
-                        onClick={() => handlePick(s.id)}
-                        className={[
-                          "w-full rounded-lg px-3 py-2 text-left text-sm",
-                          isActive
-                            ? "bg-blamejaGreen/10 text-slate-900"
-                            : "hover:bg-slate-50",
-                        ].join(" ")}
-                      >
-                        {s.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+const parseNumOrNull = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const n = Number.parseFloat(trimmed.replace(",", "."));
+  if (Number.isNaN(n)) return undefined;
+  return n;
 };
 
 const ReceivePage = () => {
-  const [sku, setSku] = useState("");
+  // required
+  const [categoryId, setCategoryId] = useState("");
+  const [name, setName] = useState(""); // ✅ mandatory
+
+  // identifiers (at least one)
+  const [plu, setPlu] = useState("");
   const [barcode, setBarcode] = useState("");
 
-  // (опционални полиња)
-  const [name, setName] = useState("");
-  const [unit, setUnit] = useState("pcs");
+  // optional
   const [sellingPrice, setSellingPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
-
   const [details, setDetails] = useState("");
 
-  // задолжителни селекции
-  const [categoryId, setCategoryId] = useState("");
-  const [subcategoryId, setSubcategoryId] = useState("");
-
-  // задолжително
+  // qty required
   const [qty, setQty] = useState("1");
 
+  // tax required-ish (you can change default)
+  const [taxGroup, setTaxGroup] = useState<"5" | "10" | "18">("18");
+
+  // scanner
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
 
-  // резултат од проверка
-  const [checked, setChecked] = useState<StockLookupRow | null>(null);
+  // autocomplete state
+  const [suggestions, setSuggestions] = useState<ProductChoiceRow[]>([]);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
-  const {
-    data: categoryTree = [],
-    isLoading: categoryTreeLoading,
-    isError: categoryTreeIsError,
-    error: categoryTreeErrorRaw,
-  } = useCategoryTree();
-  const categoryTreeError = categoryTreeIsError ? (categoryTreeErrorRaw as Error) : null;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
-  const { lookupStock, isLoading: stockLoading } = useStockLookup();
+  /** ---------- Load categories (simple, no subcategories) ---------- */
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catError, setCatError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setCatLoading(true);
+      setCatError(null);
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id, name")
+          .order("name", { ascending: true });
+
+        if (error) throw error;
+        if (!mounted) return;
+        setCategories((data ?? []) as CategoryRow[]);
+      } catch (e) {
+        console.error(e);
+        if (!mounted) return;
+        setCatError("Грешка при вчитување категории.");
+      } finally {
+        if (mounted) setCatLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /** ---------- Receive mutation (hook) ---------- */
   const receiveMutation = useReceiveMutation({
-    sku,
+    productId: selectedProductId, // ✅ existing product shortcut (ако ти треба во hook)
+    plu,
     barcode,
     name,
-    unit,
     sellingPrice,
     qty,
     unitCost,
-
-    // ✅ го праќаме истото во двете (без промена на база)
     description: details,
     note: details,
-
     categoryId,
-    subcategoryId,
-  });
+    taxGroup,
+  } as any);
 
-  const formDisabledBase = categoryTreeLoading || !!categoryTreeError;
+  /** ---------- Autocomplete fetch via RPC ---------- */
+  const fetchChoices = async (q: string) => {
+    const term = q.trim();
+    const _q = term.length ? term : null;
+    const _category_id = categoryId.trim() ? categoryId.trim() : null;
 
-  const isFormValid =
-    (sku.trim().length > 0 || barcode.trim().length > 0) &&
-    Number(qty.replace(",", ".")) > 0 &&
-    categoryId.trim().length > 0 &&
-    subcategoryId.trim().length > 0;
-
-  const isSubmitDisabled =
-    receiveMutation.isPending || stockLoading || formDisabledBase || !isFormValid;
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    receiveMutation.mutate(undefined, {
-      onSuccess: () => toast.success("Приемот е успешно зачуван ✅"),
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Грешка при прием."),
+    const { data, error } = await supabase.rpc("product_choices_search", {
+      _category_id,
+      _q,
+      _limit: 10,
     });
+
+    if (error) throw error;
+    return (data ?? []) as ProductChoiceRow[];
   };
 
-  const handleReset = () => {
-    setSku("");
-    setBarcode("");
-    setName("");
-    setUnit("pcs");
-    setSellingPrice("");
-    setUnitCost("");
-    setDetails("");
-    setCategoryId("");
-    setSubcategoryId("");
-    setQty("1");
-    setScanError(null);
-    setIsScannerOpen(false);
-    setChecked(null);
+  // debounce search by name/plu/barcode input (we use `name` text as the search term)
+  useEffect(() => {
+    const t = name.trim();
+
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+
+    // ако корисникот избрал производ, и после тоа менува име рачно -> го сметаме како "нова ставка"
+    if (selectedProductId && t !== "") {
+      // leave it, user might edit name; but suggestions should still work
+    }
+
+    // ако нема ништо -> затвори
+    if (t.length < 1) {
+      setSuggestions([]);
+      setSuggestOpen(false);
+      setSuggestLoading(false);
+      return;
+    }
+
+    setSuggestLoading(true);
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const rows = await fetchChoices(t);
+        setSuggestions(rows);
+        setSuggestOpen(rows.length > 0);
+      } catch (e) {
+        console.error(e);
+        setSuggestions([]);
+        setSuggestOpen(false);
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, categoryId]);
+
+  // outside click closes dropdown
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setSuggestOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const pickSuggestion = (row: ProductChoiceRow) => {
+    const pickedName = (row.name ?? "").trim();
+    setSelectedProductId(row.product_id);
+
+    // ✅ name mandatory -> populate
+    setName(pickedName);
+
+    // ✅ auto-fill category if not selected (or even if selected, sync to product)
+    if (row.category_id) setCategoryId(row.category_id);
+
+    // ✅ auto-fill identifiers & price & tax
+    setPlu(row.plu === null || row.plu === undefined ? "" : String(row.plu));
+    setBarcode(row.barcode ?? "");
+    setSellingPrice(row.selling_price === null ? "" : String(num(row.selling_price)));
+    const tg = String(Math.trunc(num(row.tax_group))) as "5" | "10" | "18";
+    if (tg === "5" || tg === "10" || tg === "18") setTaxGroup(tg);
+
+    setSuggestOpen(false);
+    setSuggestions([]);
+    toast.success("Избран производ ✅");
   };
+
+  // if user types manually (new product), clear selectedProductId
+  useEffect(() => {
+    if (!name.trim()) {
+      setSelectedProductId(null);
+      return;
+    }
+    // ако user продолжи да куца после избор, и текстот не одговара на избраниот (не го знаеме),
+    // најбезбедно: ако dropdown е отворен/се куца -> третирај како ново и тргни selectedProductId
+    // (ќе се избере пак од листата ако сака)
+    // Ова е "soft" правило: ќе го тргнеме кога корисникот ќе смени PLU/Barcode или category.
+  }, [name]);
 
   const handleScan = (detectedCodes: IDetectedBarcode[]) => {
     if (!detectedCodes?.length) return;
@@ -221,27 +232,58 @@ const ReceivePage = () => {
     setScanError("Настана грешка при пристап до камерата.");
   };
 
-  const handleCheck = async () => {
-    const key = barcode.trim() || sku.trim();
-    if (!key) {
-      toast.error("Внеси SKU или баркод (барем едно).");
-      return;
-    }
+  const resetForm = () => {
+    setCategoryId("");
+    setName("");
+    setPlu("");
+    setBarcode("");
+    setSellingPrice("");
+    setUnitCost("");
+    setDetails("");
+    setQty("1");
+    setTaxGroup("18");
+    setSelectedProductId(null);
+    setSuggestions([]);
+    setSuggestOpen(false);
+    setScanError(null);
+    setIsScannerOpen(false);
+  };
 
-    try {
-      const row = await lookupStock(key);
-      setChecked(row);
+  const isFormValid = useMemo(() => {
+    const n = name.trim();
+    const cat = categoryId.trim();
+    if (!n) return false; // ✅ name mandatory
+    if (!cat) return false;
 
-      if (!row) {
-        toast.error("Не е пронајден производ во база.");
-        return;
-      }
+    const q = parseNumOrNull(qty);
+    if (q === undefined || q === null || q <= 0) return false;
 
-      toast.success(`На залиха: ${row.qty_on_hand ?? 0}`);
-    } catch (e) {
-      console.error(e);
-      toast.error("Грешка при проверка на залиха.");
-    }
+    // at least one of PLU / barcode
+    if (!plu.trim() && !barcode.trim()) return false;
+
+    // selling/unitcost can be empty, but if provided must be number
+    const sp = parseNumOrNull(sellingPrice);
+    if (sp === undefined) return false;
+
+    const uc = parseNumOrNull(unitCost);
+    if (uc === undefined) return false;
+
+    return true;
+  }, [name, categoryId, qty, plu, barcode, sellingPrice, unitCost]);
+
+  const isSubmitDisabled = receiveMutation.isPending || catLoading || !!catError || !isFormValid;
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+
+    receiveMutation.mutate(undefined, {
+      onSuccess: () => {
+        toast.success("Приемот е успешно зачуван ✅");
+        resetForm();
+      },
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Грешка при прием."),
+    });
   };
 
   return (
@@ -273,136 +315,180 @@ const ReceivePage = () => {
         onSubmit={handleSubmit}
         className="space-y-6 bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200"
       >
-        {/* SKU + Barcode + Check (иста линија) */}
+        {/* Category */}
         <div className="space-y-2">
-          <p className="text-xs text-slate-500">Внеси SKU или Баркод (барем едно).</p>
+          <label className="block text-sm font-medium">Категорија</label>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">SKU</label>
-              <input
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-                placeholder="AG-001"
-              />
-            </div>
+          <select
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              // ако сменил категорија, а претходно имал избран производ -> го тргаме (зашто филтерот се смени)
+              setSelectedProductId(null);
+            }}
+            disabled={catLoading || !!catError}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">{catLoading ? "Се вчитува..." : "Избери категорија"}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Баркод</label>
-              <input
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-                placeholder="3830..."
-              />
-            </div>
-
-            <div className="flex md:justify-end md:items-end">
-              <button
-                type="button"
-                onClick={() => void handleCheck()}
-                disabled={stockLoading}
-                className="w-full md:w-auto rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700
-                           hover:bg-slate-50 disabled:opacity-60"
-              >
-                {stockLoading ? "Проверувам..." : "Проверка"}
-              </button>
-            </div>
-          </div>
-
-          {checked && (
-            <div className="relative rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-              <button
-                type="button"
-                onClick={() => setChecked(null)}
-                className="absolute right-2 top-2 rounded-full px-2 py-1 text-sm text-slate-600 hover:bg-white hover:text-slate-900"
-                aria-label="Затвори"
-                title="Затвори"
-              >
-                ✕
-              </button>
-
-              <div className="flex items-center justify-between gap-3 pr-8">
-                <div className="font-semibold text-slate-800">
-                  Во база имаш:{" "}
-                  <span className="text-blamejaGreen">{checked.qty_on_hand ?? 0}</span>{" "}
-                  {checked.unit ?? ""}
-                </div>
-              </div>
-
-              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2 text-[13px]">
-                <div>
-                  <span className="text-slate-500">SKU:</span> {checked.sku ?? "—"}
-                </div>
-                <div>
-                  <span className="text-slate-500">Баркод:</span> {checked.barcode ?? "—"}
-                </div>
-                <div className="md:col-span-2">
-                  <span className="text-slate-500">Име:</span> {checked.name ?? "—"}
-                </div>
-                <div>
-                  <span className="text-slate-500">Категорија:</span> {checked.category_name ?? "—"}
-                </div>
-                <div>
-                  <span className="text-slate-500">Подкатегорија:</span> {checked.subcategory_name ?? "—"}
-                </div>
-                <div>
-                  <span className="text-slate-500">Продажна:</span> {checked.selling_price ?? 0}
-                </div>
-                <div>
-                  <span className="text-slate-500">Последно движење:</span> {checked.last_movement_at ?? "—"}
-                </div>
-              </div>
-            </div>
-          )}
+          {catError && <p className="text-xs text-blamejaRed">{catError}</p>}
         </div>
 
-        {/* Категорија / Подкатегорија */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Категорија / Подкатегорија</label>
+        {/* Name (mandatory) with autocomplete */}
+        <div ref={wrapRef} className="relative space-y-2">
+          <label className="block text-sm font-medium">
+            Име на производ <span className="text-blamejaRed">*</span>
+          </label>
 
-          <CategorySubSelect
-            categoryTree={categoryTree}
-            value={subcategoryId}
-            disabled={categoryTreeLoading || !!categoryTreeError}
-            onChange={(subId, catId) => {
-              setSubcategoryId(subId);
-              setCategoryId(catId);
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              // ако корисникот куца ново име, тргни selectedProductId
+              setSelectedProductId(null);
             }}
+            onFocus={() => {
+              if (suggestions.length > 0) setSuggestOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSuggestOpen(false);
+            }}
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+            placeholder={
+              categoryId
+                ? "Почни да куцаш (ќе пребарува во избраната категорија)…"
+                : "Почни да куцаш (можеш и без категорија, ќе се пополни сама кога ќе избереш)…"
+            }
           />
 
-          {categoryTreeError && (
-            <p className="text-xs text-blamejaRed">{categoryTreeError.message}</p>
+          {(suggestOpen || suggestLoading) && (
+            <div className="absolute left-0 right-0 top-full mt-2 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+              <div className="max-h-64 overflow-auto">
+                {suggestLoading && (
+                  <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>
+                )}
+
+                {!suggestLoading && suggestions.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
+                )}
+
+                {suggestions.map((s) => {
+                  const title = (s.name ?? "—").trim();
+                  const pluText = s.plu === null ? "—" : String(s.plu);
+                  const barcodeText = s.barcode ?? "—";
+                  const cat = s.category_name ?? "—";
+
+                  return (
+                    <button
+                      key={s.product_id}
+                      type="button"
+                      onClick={() => pickSuggestion(s)}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 truncate">
+                            {title}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            PLU: <span className="font-medium">{pluText}</span> • Баркод:{" "}
+                            <span className="font-medium">{barcodeText}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">{cat}</div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <div className="text-[11px] text-slate-500">Цена</div>
+                          <div className="text-sm font-bold text-slate-900">
+                            {num(s.selling_price).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
+
+          <p className="text-[11px] text-slate-500">
+            Ако внесуваш <b>ново име</b>, прво избери категорија (задолжително) и потоа зачувај прием.
+            Ако избереш постоечки производ, системот ќе пополни PLU/баркод/цена/ДДВ.
+          </p>
         </div>
 
-        {/* Име + Единица */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">Име на производ (опционално)</label>
+        {/* PLU + Barcode */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">PLU</label>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="име..."
+              value={plu}
+              onChange={(e) => {
+                setPlu(e.target.value);
+                setSelectedProductId(null);
+              }}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+              placeholder="пр. 125"
+              inputMode="numeric"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Единица (опционално)</label>
+            <label className="block text-sm font-medium mb-1">Баркод</label>
             <input
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              placeholder="pcs / l / kg"
+              value={barcode}
+              onChange={(e) => {
+                setBarcode(e.target.value);
+                setSelectedProductId(null);
+              }}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+              placeholder="3830..."
             />
+          </div>
+
+          <p className="md:col-span-2 text-[11px] text-slate-500">
+            * Мора да има барем едно: PLU или баркод.
+          </p>
+        </div>
+
+        {/* Tax */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">ДДВ (tax group)</label>
+          <div className="grid grid-cols-3 gap-2">
+            {(["5", "10", "18"] as const).map((v) => {
+              const active = taxGroup === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    setTaxGroup(v);
+                    setSelectedProductId(null);
+                  }}
+                  className={[
+                    "rounded-xl border px-4 py-2 text-sm font-semibold",
+                    active
+                      ? "border-blamejaGreen bg-blamejaGreen/10 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  {v}%
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Количина + цени */}
+        {/* Qty + prices */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-sm font-medium mb-1">Количина</label>
@@ -415,10 +501,13 @@ const ReceivePage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Набавна (опционално)</label>
+            <label className="block text-sm font-medium mb-1">Набавна (опц.)</label>
             <input
               value={unitCost}
-              onChange={(e) => setUnitCost(e.target.value)}
+              onChange={(e) => {
+                setUnitCost(e.target.value);
+                setSelectedProductId(null);
+              }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               inputMode="decimal"
               placeholder="пр. 120"
@@ -426,10 +515,13 @@ const ReceivePage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Продажна (опционално)</label>
+            <label className="block text-sm font-medium mb-1">Продажна (опц.)</label>
             <input
               value={sellingPrice}
-              onChange={(e) => setSellingPrice(e.target.value)}
+              onChange={(e) => {
+                setSellingPrice(e.target.value);
+                setSelectedProductId(null);
+              }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               inputMode="decimal"
               placeholder="пр. 160"
@@ -438,7 +530,7 @@ const ReceivePage = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Опис / Забелешка (опционално)</label>
+          <label className="block text-sm font-medium mb-1">Опис / Забелешка (опц.)</label>
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -450,7 +542,7 @@ const ReceivePage = () => {
         <div className="mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={handleReset}
+            onClick={resetForm}
             className="rounded-full border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
           >
             Ресетирај форма
@@ -470,11 +562,9 @@ const ReceivePage = () => {
             {(receiveMutation.error as Error).message}
           </p>
         )}
-        {receiveMutation.isSuccess && (
-          <p className="text-green-600 text-sm">Приемот е успешно снимен.</p>
-        )}
       </form>
 
+      {/* Scanner overlay */}
       {isScannerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-4">
@@ -496,6 +586,10 @@ const ReceivePage = () => {
                 constraints={{ facingMode: "environment" }}
               />
             </div>
+
+            {scanError && (
+              <p className="mt-2 text-xs text-blamejaRed">{scanError}</p>
+            )}
           </div>
         </div>
       )}

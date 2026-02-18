@@ -3,7 +3,7 @@ import { supabase } from 'app/lib/supabase-client';
 
 export type TopProductRow = {
 	product_id: string;
-	sku: string;
+	plu: number | null;
 	name: string;
 	qty: number;
 	revenue: number;
@@ -12,6 +12,12 @@ export type TopProductRow = {
 const num = (v: unknown) => {
 	const n = typeof v === 'number' ? v : Number(v);
 	return Number.isFinite(n) ? n : 0;
+};
+
+const pluNum = (v: unknown) => {
+	if (v === null || v === undefined) return null;
+	const n = typeof v === 'number' ? v : Number(v);
+	return Number.isFinite(n) ? n : null;
 };
 
 export const useTopProducts = (fromISO: string, toISO: string, limit = 8) => {
@@ -28,7 +34,7 @@ export const useTopProducts = (fromISO: string, toISO: string, limit = 8) => {
 
 			const rows = (data ?? []) as Array<{
 				product_id: string;
-				sku: string;
+				plu: unknown;
 				name: string;
 				qty: unknown;
 				revenue: unknown;
@@ -37,7 +43,7 @@ export const useTopProducts = (fromISO: string, toISO: string, limit = 8) => {
 			return rows.map(
 				(r): TopProductRow => ({
 					product_id: r.product_id,
-					sku: r.sku,
+					plu: pluNum(r.plu),
 					name: r.name,
 					qty: num(r.qty),
 					revenue: num(r.revenue),

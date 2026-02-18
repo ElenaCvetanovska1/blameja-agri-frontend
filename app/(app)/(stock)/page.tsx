@@ -21,7 +21,7 @@ const parseNum = (v: string) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-type SortKey = 'NAME' | 'SKU' | 'QTY' | 'CATEGORY';
+type SortKey = 'NAME' | 'PLU' | 'QTY' | 'CATEGORY';
 
 export default function StockPage() {
   const [search, setSearch] = useState('');
@@ -117,9 +117,8 @@ export default function StockPage() {
       if (sortKey === 'NAME') {
         return dir * String(a.name ?? '').localeCompare(String(b.name ?? ''), 'mk');
       }
-      if (sortKey === 'SKU') {
-        return dir * String(a.sku ?? '').localeCompare(String(b.sku ?? ''), 'mk');
-      }
+      type SortKey = 'NAME' | 'PLU' | 'QTY' | 'CATEGORY';
+
       if (sortKey === 'CATEGORY') {
         return dir * String(a.category_name ?? '').localeCompare(String(b.category_name ?? ''), 'mk');
       }
@@ -143,7 +142,7 @@ export default function StockPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Залиха</h1>
           <p className="mt-1 text-xs text-slate-500">
-            Пребарај по SKU, баркод или име. Корекција = внесуваш <b>нова залиха</b>, системот сам прави +/−.
+            Пребарај по PLU, баркод или име. Корекција = внесуваш <b>нова залиха</b>, системот сам прави +/−.
           </p>
 
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
@@ -166,7 +165,7 @@ export default function StockPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="пр. SKU-0001, 389..., Тест..."
+              placeholder="пр. PLU-0001, 389..., Тест..."
               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm
                          focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
             />
@@ -199,7 +198,7 @@ export default function StockPage() {
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                 >
                   <option value="NAME">Име</option>
-                  <option value="SKU">SKU</option>
+                  <option value="PLU">PLU</option>
                   <option value="QTY">Залиха</option>
                   <option value="CATEGORY">Категорија</option>
                 </select>
@@ -226,7 +225,7 @@ export default function StockPage() {
           <table className="min-w-[900px] w-full text-sm">
             <thead className="bg-slate-50 text-slate-600 text-xs">
               <tr>
-                <th className="px-3 py-3 text-left">SKU</th>
+                <th className="px-3 py-3 text-left">PLU</th>
                 <th className="px-3 py-3 text-left">Баркод</th>
                 <th className="px-3 py-3 text-left">Име</th>
                 <th className="px-3 py-3 text-left">Категорија</th>
@@ -270,7 +269,7 @@ export default function StockPage() {
 
                 return (
                   <tr key={r.product_id} className="border-t border-slate-100">
-                    <td className="px-3 py-3 font-medium text-slate-900">{r.sku}</td>
+                    <td className="px-3 py-3 font-medium text-slate-900">{r.plu ?? "—"}</td>
                     <td className="px-3 py-3 text-slate-600">{r.barcode ?? '—'}</td>
                     <td className="px-3 py-3 text-slate-900">{r.name}</td>
                     <td className="px-3 py-3 text-slate-600">{r.category_name ?? '—'}</td>
@@ -319,7 +318,7 @@ export default function StockPage() {
               <div>
                 <div className="text-sm font-semibold">Корекција на залиха</div>
                 <div className="text-xs text-slate-500">
-                  {selected.sku} — {selected.name}
+                  PLU: {selected.plu ?? "—"} — {selected.name}
                 </div>
               </div>
 

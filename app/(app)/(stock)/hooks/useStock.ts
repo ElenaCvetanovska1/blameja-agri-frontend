@@ -3,7 +3,7 @@ import { supabase } from 'app/lib/supabase-client';
 
 export type StockRow = {
 	product_id: string;
-	sku: string;
+	plu: number | null;
 	barcode: string | null;
 	name: string;
 	unit: string;
@@ -24,6 +24,14 @@ const normalizeNumber = (v: unknown) => {
 	return Number.isFinite(n) ? n : 0;
 };
 
+const parsePlu = (raw: string) => {
+	const t = raw.trim();
+	if (!t) return null;
+	if (!/^\d+$/.test(t)) return null;
+	const n = Number.parseInt(t, 10);
+	return Number.isFinite(n) ? n : null;
+};
+
 export const useStock = (search: string) => {
 	return useQuery({
 		queryKey: ['stock', search],
@@ -31,8 +39,20 @@ export const useStock = (search: string) => {
 			let q = supabase.from('product_stock').select('*').order('name', { ascending: true });
 
 			const term = search.trim();
+
 			if (term.length > 0) {
-				q = q.or(`sku.ilike.%${term}%,barcode.ilike.%${term}%,name.ilike.%${term}%`);
+				const pluNum = parsePlu(term);
+
+				const orParts: string[] = [];
+				orParts.push(`barcode.ilike.%${term}%`);
+				orParts.push(`name.ilike.%${term}%`);
+
+				// ако е број, дозволи и пребарување по plu
+				if (pluNum !== null) {
+					orParts.push(`plu.eq.${pluNum}`);
+				}
+
+				q = q.or(orParts.join(','));
 			}
 
 			const { data, error } = await q;

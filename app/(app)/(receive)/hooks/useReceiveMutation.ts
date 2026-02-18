@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from 'app/lib/supabase-client';
 
 type ReceivePayload = {
-	sku: string;
+	plu: string;
 	barcode: string;
 	name: string;
 	description: string;
@@ -13,6 +13,7 @@ type ReceivePayload = {
 	note: string;
 	categoryId: string;
 	subcategoryId: string;
+	taxGroup: '5' | '10' | '18';
 };
 
 const parseNum = (value: string) => {
@@ -23,12 +24,23 @@ const parseNum = (value: string) => {
 	return num;
 };
 
+const parsePlu = (raw: string) => {
+	const t = raw.trim();
+	if (!t) return null;
+	if (!/^\d+$/.test(t)) return undefined; // внесено нешто што не е број => ERROR
+	const n = Number.parseInt(t, 10);
+	return Number.isFinite(n) ? n : undefined;
+};
+
 export const useReceiveMutation = (payload: ReceivePayload) => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: async () => {
-			const sku = payload.sku.trim();
+			const pluParsed = parsePlu(payload.plu);
+			if (pluParsed === undefined) throw new Error('PLU: невалиден број.');
+
+			const plu = pluParsed; // number | null
 			const barcode = payload.barcode.trim();
 
 			const name = payload.name.trim(); // optional
@@ -37,12 +49,14 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 			const unit = unitInput || 'pcs';
 
 			const note = payload.note.trim(); // optional
-
 			const categoryId = payload.categoryId.trim();
 			const subcategoryId = payload.subcategoryId.trim();
 
+			const taxGroupNum = Number.parseInt(payload.taxGroup, 10);
+			if (![5, 10, 18].includes(taxGroupNum)) throw new Error('ДДВ: невалидно.');
+
 			// ✅ REQUIRED ONLY:
-			if (!sku && !barcode) throw new Error('Внеси SKU или баркод (барем едно).');
+			if (plu === null && !barcode) throw new Error('Внеси PLU или баркод (барем едно).');
 			if (!categoryId) throw new Error('Избери категорија.');
 			if (!subcategoryId) throw new Error('Избери подкатегорија.');
 
@@ -52,7 +66,7 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 
 			const unitCostNum = parseNum(payload.unitCost);
 			if (unitCostNum === undefined) throw new Error('Набавна: невалиден број.');
-			const safeUnitCost = unitCostNum ?? 0; // за stock_movement_items може 0
+			const safeUnitCost = unitCostNum ?? 0;
 
 			const sellingPriceNum = parseNum(payload.sellingPrice);
 			if (sellingPriceNum === undefined) throw new Error('Продажна: невалиден број.');
@@ -61,13 +75,16 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 			const { data: userData } = await supabase.auth.getUser();
 			const userId = userData.user?.id ?? null;
 
-			const lookupKey = sku || barcode;
+			// lookup existing product by (plu OR barcode)
+			const orParts: string[] = [];
+			if (barcode) orParts.push(`barcode.eq.${barcode}`);
+			if (plu !== null) orParts.push(`plu.eq.${plu}`);
+			const orFilter = orParts.join(',');
 
-			// земи и existing вредности за да не ги бришеме ако се оставени празни
 			const { data: existing, error: lookupError } = await supabase
 				.from('products')
-				.select('id, sku, barcode, name, description, selling_price, unit')
-				.or(`sku.eq.${lookupKey},barcode.eq.${lookupKey}`)
+				.select('id, plu, barcode, name, description, selling_price, unit, tax_group')
+				.or(orFilter)
 				.maybeSingle();
 
 			if (lookupError) throw lookupError;
@@ -75,19 +92,18 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 			let productId: string;
 
 			if (!existing) {
-				// INSERT: name мора да постои во DB (ако ти е NOT NULL),
-				// па ако е празно во UI, ставаме fallback
-				const safeName = name || sku || barcode || 'Производ';
+				const safeName = name || (plu !== null ? `PLU ${plu}` : barcode) || 'Производ';
 
 				const { data: inserted, error: insertError } = await supabase
 					.from('products')
 					.insert({
-						sku: sku || null,
+						plu: plu ?? null,
 						barcode: barcode || null,
 						name: safeName,
 						description: description || null,
 						unit,
-						selling_price: safeSellingPrice, // ако празно -> 0
+						selling_price: safeSellingPrice,
+						tax_group: taxGroupNum,
 						is_active: true,
 						category_id: categoryId,
 						subcategory_id: subcategoryId,
@@ -100,29 +116,27 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 			} else {
 				productId = existing.id as string;
 
-				// UPDATE: НЕ бришеме постоечки полиња ако во UI се празни
 				const updatePayload: Record<string, unknown> = {
 					category_id: categoryId,
 					subcategory_id: subcategoryId,
 					is_active: true,
+					tax_group: taxGroupNum,
 				};
 
-				// sku/barcode: ако се внесени -> update, ако празни -> не чепкаме
-				if (sku) updatePayload.sku = sku;
+				// ако е внесен PLU -> update
+				if (plu !== null) updatePayload.plu = plu;
+
+				// ако е внесен barcode -> update
 				if (barcode) updatePayload.barcode = barcode;
 
-				// name/description: ако се внесени -> update, ако празни -> не чепкаме
 				if (name) updatePayload.name = name;
 				if (description) updatePayload.description = description;
-
-				// unit: ако е внесено нешто -> update (инаку остави го)
 				if (unitInput) updatePayload.unit = unit;
 
-				// selling_price: ако user внел број -> update, ако празно -> не чепкаме
+				// selling_price: ако е внесен број -> update, ако празно -> не чепкаме
 				if (sellingPriceNum !== null) updatePayload.selling_price = safeSellingPrice;
 
 				const { error: updateError } = await supabase.from('products').update(updatePayload).eq('id', productId);
-
 				if (updateError) throw updateError;
 			}
 
@@ -147,13 +161,14 @@ export const useReceiveMutation = (payload: ReceivePayload) => {
 				product_id: productId,
 				qty: qtyNum,
 				unit_cost: safeUnitCost,
-				unit_price: safeSellingPrice, // ако не внел продажна -> 0 (историски)
+				unit_price: safeSellingPrice,
 			});
 
 			if (itemError) throw itemError;
 
 			await queryClient.invalidateQueries({ queryKey: ['products'] });
 			await queryClient.invalidateQueries({ queryKey: ['stock'] });
+			await queryClient.invalidateQueries({ queryKey: ['categoryTree'] });
 
 			return { productId, movementId };
 		},

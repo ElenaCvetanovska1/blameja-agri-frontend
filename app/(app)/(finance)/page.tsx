@@ -342,7 +342,7 @@ const FinancePage = () => {
 										<div className="min-w-0">
 											<div className="text-sm font-semibold text-slate-900 line-clamp-2">{p.name}</div>
 											<div className="mt-1 text-[11px] text-slate-500">
-												SKU: <span className="font-medium text-slate-700">{p.sku}</span>
+												PLU: <span className="font-medium text-slate-700">{p.plu ?? "—"}</span>
 											</div>
 										</div>
 
