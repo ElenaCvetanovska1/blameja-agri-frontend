@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { supabase } from '../lib/supabase-client';
 
-export function AuthPage() {
+export const AuthPage = () => {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	async function handleLogin(e: FormEvent) {
+	const handleLogin = async (e: FormEvent) => {
 		e.preventDefault();
 		setLoading(true);
 		setError(null);
@@ -25,7 +25,7 @@ export function AuthPage() {
 		}
 
 		setLoading(false);
-	}
+	};
 
 	return (
 		<div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">

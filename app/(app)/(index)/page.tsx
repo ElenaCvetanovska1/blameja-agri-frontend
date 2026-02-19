@@ -38,7 +38,7 @@ const cards = [
 	},
 ] as const;
 
-export default function HomePage() {
+const HomePage = () => {
 	return (
 		<div className="max-w-3xl mx-auto mt-8 px-4">
 			<div className="text-center mb-6">
@@ -78,4 +78,6 @@ export default function HomePage() {
 			<div className="mt-6 text-center text-xs text-slate-400">Совет: за побрза работа користете баркод скенер (USB) или камера за QR.</div>
 		</div>
 	);
-}
+};
+export default HomePage;
+

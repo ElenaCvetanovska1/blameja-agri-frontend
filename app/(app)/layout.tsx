@@ -3,7 +3,7 @@ import { Outlet, NavLink } from "react-router";
 import { BLAMEJA_ROUTES } from "app/routes";
 import { supabase } from "app/lib/supabase-client";
 
-export default function AppLayout() {
+const AppLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const linkBase =
@@ -185,4 +185,5 @@ export default function AppLayout() {
       </footer>
     </div>
   );
-}
+};
+export default AppLayout;

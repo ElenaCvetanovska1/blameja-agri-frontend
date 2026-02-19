@@ -7,7 +7,7 @@ type AuthGateProps = {
 	children: ReactNode;
 };
 
-export function AuthGate({ children }: AuthGateProps) {
+export const AuthGate = ({ children }: AuthGateProps) => {
 	const [session, setSession] = useState<Session | null>(null);
 	const [loading, setLoading] = useState(true);
 

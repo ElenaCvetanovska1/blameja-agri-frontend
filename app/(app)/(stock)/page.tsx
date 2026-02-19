@@ -33,7 +33,7 @@ const pluAsNumber = (plu: string | null) => {
   return Number.isFinite(n) ? n : null;
 };
 
-export default function StockPage() {
+const StockPage = () => {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<StockRow | null>(null);
 
@@ -419,4 +419,6 @@ export default function StockPage() {
       )}
     </div>
   );
-}
+};
+export default StockPage;
+

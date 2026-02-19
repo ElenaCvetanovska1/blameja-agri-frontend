@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 	},
 });
 
-export function Layout({ children }: { children: ReactNode }) {
+export const Layout = ({ children }: { children: ReactNode }) => {
 	return (
 		<html lang="mk">
 			<head>
@@ -51,12 +51,13 @@ export function Layout({ children }: { children: ReactNode }) {
 			</body>
 		</html>
 	);
-}
+};
 
-export default function App() {
+const App = () => {
 	return (
 		<AuthGate>
 			<Outlet />
 		</AuthGate>
 	);
-}
+};
+export default App;
