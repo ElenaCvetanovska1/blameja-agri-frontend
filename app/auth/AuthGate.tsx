@@ -62,4 +62,4 @@ export const AuthGate = ({ children }: AuthGateProps) => {
 	}
 
 	return <>{children}</>;
-}
+};
