@@ -18,13 +18,12 @@ type ProductStockRow = {
 type CartItem = {
   product: {
     id: string;
-    plu: string | null; // ✅ TEXT
+    plu: string | null;
     barcode: string | null;
     name: string;
     selling_price: number;
     category_name: string | null;
   };
-
   qty: number;
   priceStr: string;
   discountPercentStr: string;
@@ -39,6 +38,7 @@ const num = (v: unknown) => {
 
 const safeText = (v: unknown) => (typeof v === "string" ? v : "").trim();
 
+// попуст: дозволи празно додека куцаш, а на blur стегни 0..100
 const clampPercent = (raw: string) => {
   const s = raw.trim();
   if (s === "") return "";
@@ -52,6 +52,7 @@ const percentNum = (s: string) => {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
 };
 
+// цена: дозволи празно, ., , (ќе го претвориме во .), без стрелки
 const sanitizePriceInput = (raw: string) => {
   let v = raw.replace(",", ".").replace(/[^\d.]/g, "");
   const firstDot = v.indexOf(".");
@@ -76,25 +77,24 @@ const priceNum = (s: string) => {
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 };
 
-// ✅ PLU is text, but we treat it as digits-only for matching
-const parsePluText = (raw: string) => {
+const parseDigitsText = (raw: string) => {
   const t = raw.trim();
   if (!t) return null;
   if (!/^\d+$/.test(t)) return null;
-  return t; // keep as string
+  return t;
 };
 
-const fetchProductFromStockByExactCode = async (
-  code: string
-): Promise<ProductStockRow | null> => {
+const escapeLike = (s: string) => s.replace(/[%_]/g, "\\$&");
+
+const fetchProductFromStockByExactCode = async (code: string): Promise<ProductStockRow | null> => {
   const trimmed = code.trim();
   if (!trimmed) return null;
 
-  const pluText = parsePluText(trimmed);
+  const pluText = parseDigitsText(trimmed);
 
   const orParts: string[] = [];
   orParts.push(`barcode.eq.${trimmed}`);
-  if (pluText !== null) orParts.push(`plu.eq.${pluText}`); // ✅ string compare
+  if (pluText) orParts.push(`plu.eq.${pluText}`);
 
   const { data, error } = await supabase
     .from("product_stock")
@@ -107,28 +107,28 @@ const fetchProductFromStockByExactCode = async (
   return (data ?? null) as ProductStockRow | null;
 };
 
-const searchProducts = async (
-  term: string,
-  limit = 8
-): Promise<ProductStockRow[]> => {
-  const t = term.trim();
-  if (t.length < 1) return [];
+const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[]> => {
+  const t0 = term.trim();
+  if (t0.length < 1) return [];
 
-  const pluText = parsePluText(t);
+  const t = escapeLike(t0);
+  const pluText = parseDigitsText(t0);
 
+  // ✅ додај plu.ilike за partial match
   const baseQuery = supabase
     .from("product_stock")
     .select("product_id, plu, barcode, name, selling_price, qty_on_hand, category_name")
-    .or(`barcode.ilike.%${t}%,name.ilike.%${t}%`)
+    .or(`barcode.ilike.%${t}%,name.ilike.%${t}%,plu.ilike.%${t}%`)
     .order("name", { ascending: true })
     .limit(limit);
 
+  // ✅ ако е digits -> exact match по plu
   const pluQuery =
     pluText !== null
       ? supabase
           .from("product_stock")
           .select("product_id, plu, barcode, name, selling_price, qty_on_hand, category_name")
-          .eq("plu", pluText) // ✅ string compare
+          .eq("plu", pluText)
           .limit(limit)
       : null;
 
@@ -142,6 +142,7 @@ const searchProducts = async (
 
   const combined = [...(baseData ?? []), ...(pluRes?.data ?? [])] as ProductStockRow[];
 
+  // dedupe by product_id
   const map = new Map<string, ProductStockRow>();
   combined.forEach((r) => map.set(r.product_id, r));
   return Array.from(map.values()).slice(0, limit);
@@ -221,21 +222,26 @@ const SalesPage = () => {
     };
 
     setCart((prev) => {
-      const existing = prev.find((p) => p.product.id === productId);
-      if (!existing) {
-        const base = round2(num(product.selling_price));
-        return [
-          ...prev,
-          {
-            product,
-            qty: 1,
-            priceStr: base > 0 ? String(base) : "",
-            discountPercentStr: "",
-          },
-        ];
-      }
-      return prev.map((p) => (p.product.id === productId ? { ...p, qty: p.qty + 1 } : p));
-    });
+  const idx = prev.findIndex((p) => p.product.id === productId);
+
+  // ✅ NEW item -> стави го најгоре
+  if (idx === -1) {
+    const base = round2(num(product.selling_price));
+    const newItem: CartItem = {
+      product,
+      qty: 1,
+      priceStr: base > 0 ? String(base) : "",
+      discountPercentStr: "",
+    };
+    return [newItem, ...prev];
+  }
+
+  // ✅ EXISTING item -> зголеми qty и премести најгоре
+  const updated: CartItem = { ...prev[idx], qty: prev[idx].qty + 1 };
+
+  return [updated, ...prev.filter((_, i) => i !== idx)];
+});
+
 
     toast.success(`Додадено: ${product.name}`);
   };
@@ -299,10 +305,7 @@ const SalesPage = () => {
       // 1) receipt
       const { data: receipt, error: receiptError } = await supabase
         .from("sales_receipts")
-        .insert({
-          payment: "OTHER",
-          total: totals.total,
-        })
+        .insert({ payment: "OTHER", total: totals.total })
         .select("id, receipt_no")
         .single();
 
@@ -315,13 +318,7 @@ const SalesPage = () => {
       const salesItemsPayload = cart.map((item) => {
         const price = priceNum(item.priceStr);
         const discountPerUnit = price * (percentNum(item.discountPercentStr) / 100);
-        return {
-          receipt_id: receiptId,
-          product_id: item.product.id,
-          qty: item.qty,
-          price,
-          discount: discountPerUnit,
-        };
+        return { receipt_id: receiptId, product_id: item.product.id, qty: item.qty, price, discount: discountPerUnit };
       });
 
       const { error: salesItemsError } = await supabase.from("sales_items").insert(salesItemsPayload);
@@ -330,15 +327,11 @@ const SalesPage = () => {
       // 3) stock movement OUT
       const { data: movement, error: movementError } = await supabase
         .from("stock_movements")
-        .insert({
-          type: "OUT",
-          note: note?.trim() ? note.trim() : `Internal sale #${receiptNo}`,
-        })
+        .insert({ type: "OUT", note: note?.trim() ? note.trim() : `Internal sale #${receiptNo}` })
         .select("id")
         .single();
 
       if (movementError) throw movementError;
-
       const movementId = movement.id as string;
 
       const movementItemsPayload = cart.map((item) => {
@@ -346,19 +339,10 @@ const SalesPage = () => {
         const discountPerUnit = price * (percentNum(item.discountPercentStr) / 100);
         const finalUnit = price - discountPerUnit;
 
-        return {
-          movement_id: movementId,
-          product_id: item.product.id,
-          qty: item.qty,
-          unit_cost: 0,
-          unit_price: finalUnit,
-        };
+        return { movement_id: movementId, product_id: item.product.id, qty: item.qty, unit_cost: 0, unit_price: finalUnit };
       });
 
-      const { error: movementItemsError } = await supabase
-        .from("stock_movement_items")
-        .insert(movementItemsPayload);
-
+      const { error: movementItemsError } = await supabase.from("stock_movement_items").insert(movementItemsPayload);
       if (movementItemsError) throw movementItemsError;
 
       toast.success(`Продажба зачувана ✅ (Интерно #${receiptNo})`);
@@ -453,13 +437,10 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {/* Add line + autocomplete */}
       <div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200">
         <div ref={wrapRef} className="relative grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-600">
-              Баркод или PLU (или име)
-            </label>
+            <label className="block text-xs font-medium text-slate-600">Баркод или PLU (или име)</label>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -481,9 +462,7 @@ const SalesPage = () => {
             {(suggestOpen || suggestLoading) && (
               <div className="absolute left-0 right-0 top-full mt-2 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
                 <div className="max-h-64 overflow-auto">
-                  {suggestLoading && (
-                    <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>
-                  )}
+                  {suggestLoading && <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>}
 
                   {!suggestLoading && suggestions.length === 0 && (
                     <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
@@ -544,20 +523,13 @@ const SalesPage = () => {
       <div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-800">Кошничка</h2>
-          <button
-            type="button"
-            onClick={resetSale}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-800"
-            disabled={busy}
-          >
+          <button type="button" onClick={resetSale} className="text-xs font-semibold text-slate-600 hover:text-slate-800" disabled={busy}>
             Ресет
           </button>
         </div>
 
         {cart.length === 0 ? (
-          <div className="text-sm text-slate-500">
-            Нема додадени артикли. Скенирај баркод или избери од листата.
-          </div>
+          <div className="text-sm text-slate-500">Нема додадени артикли. Скенирај баркод или избери од листата.</div>
         ) : (
           <div className="space-y-3">
             {cart.map((item) => {
@@ -571,13 +543,11 @@ const SalesPage = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="font-semibold text-slate-800 truncate">{item.product.name}</div>
-
                       <div className="text-xs text-slate-500">
                         PLU: <span className="font-medium">{item.product.plu ?? "—"}</span>
                         {item.product.barcode ? (
                           <>
-                            {" "}
-                            • Баркод: <span className="font-medium">{item.product.barcode}</span>
+                            {" "}• Баркод: <span className="font-medium">{item.product.barcode}</span>
                           </>
                         ) : null}
                       </div>
@@ -636,9 +606,7 @@ const SalesPage = () => {
                       <input
                         inputMode="decimal"
                         value={item.priceStr}
-                        onChange={(e) =>
-                          updateItem(item.product.id, { priceStr: sanitizePriceInput(e.target.value) })
-                        }
+                        onChange={(e) => updateItem(item.product.id, { priceStr: sanitizePriceInput(e.target.value) })}
                         onBlur={() => updateItem(item.product.id, { priceStr: clampPrice(item.priceStr) })}
                         placeholder="цена"
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
@@ -652,13 +620,8 @@ const SalesPage = () => {
                         inputMode="numeric"
                         pattern="[0-9]*"
                         value={item.discountPercentStr}
-                        onChange={(e) => {
-                          const v = e.target.value.replace(/[^\d]/g, "");
-                          updateItem(item.product.id, { discountPercentStr: v });
-                        }}
-                        onBlur={() =>
-                          updateItem(item.product.id, { discountPercentStr: clampPercent(item.discountPercentStr) })
-                        }
+                        onChange={(e) => updateItem(item.product.id, { discountPercentStr: e.target.value.replace(/[^\d]/g, "") })}
+                        onBlur={() => updateItem(item.product.id, { discountPercentStr: clampPercent(item.discountPercentStr) })}
                         placeholder="попуст"
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none
                                    focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
@@ -724,17 +687,12 @@ const SalesPage = () => {
         </div>
       </div>
 
-      {/* Scanner overlay */}
       {scannerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-4">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Скенирај баркод / QR</h2>
-              <button
-                type="button"
-                onClick={() => setScannerOpen(false)}
-                className="text-sm text-slate-600"
-              >
+              <button type="button" onClick={() => setScannerOpen(false)} className="text-sm text-slate-600">
                 Затвори ✕
               </button>
             </div>
@@ -744,11 +702,7 @@ const SalesPage = () => {
             </p>
 
             <div className="overflow-hidden rounded-xl border border-slate-200">
-              <Scanner
-                onScan={handleScan}
-                onError={handleScanError}
-                constraints={{ facingMode: "environment" }}
-              />
+              <Scanner onScan={handleScan} onError={handleScanError} constraints={{ facingMode: "environment" }} />
             </div>
 
             {scanError && <p className="mt-2 text-xs text-blamejaRed">{scanError}</p>}

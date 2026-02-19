@@ -3,18 +3,12 @@ import { supabase } from "app/lib/supabase-client";
 
 export type StockRow = {
   product_id: string;
-  plu: string | null; // ✅ TEXT
+  plu: string | null;          // ✅ TEXT (како во view)
   barcode: string | null;
-  name: string;
-  selling_price: number;
-  is_active: boolean;
-  category_id: string | null;
-  category_code: string | null;
+  name: string | null;
+  selling_price: number | null;
   category_name: string | null;
-  subcategory_id: string | null;
-  subcategory_code: string | null;
-  qty_on_hand: number;
-  last_movement_at: string | null;
+  qty_on_hand: number | null;
 };
 
 const normalizeNumber = (v: unknown) => {
@@ -22,30 +16,40 @@ const normalizeNumber = (v: unknown) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+// digits-only -> treat as PLU candidate (TEXT)
 const parsePluText = (raw: string) => {
   const t = raw.trim();
   if (!t) return null;
   if (!/^\d+$/.test(t)) return null;
-  return t; // ✅ keep as text
+  return t; // keep text
 };
+
+// (опц.) ако корисник внесе % или _ да не ти прави хаос во ilike
+const escapeLike = (s: string) => s.replace(/[%_]/g, "\\$&");
 
 export const useStock = (search: string) => {
   return useQuery({
     queryKey: ["stock", search],
     queryFn: async () => {
-      let q = supabase.from("product_stock").select("*").order("name", { ascending: true });
+      let q = supabase
+        .from("product_stock")
+        .select("product_id, plu, barcode, name, selling_price, qty_on_hand, category_name")
+        .order("name", { ascending: true });
 
-      const term = search.trim();
-
-      if (term.length > 0) {
-        const pluText = parsePluText(term);
+      const termRaw = search.trim();
+      if (termRaw.length > 0) {
+        const term = escapeLike(termRaw);
+        const pluText = parsePluText(termRaw);
 
         const orParts: string[] = [];
         orParts.push(`barcode.ilike.%${term}%`);
         orParts.push(`name.ilike.%${term}%`);
 
-        // ✅ ако е digits, дозволи и exact match по plu (TEXT)
-        if (pluText !== null) {
+        // ✅ КЛУЧНО: PLU e TEXT -> пребарувај со ilike (partial match)
+        orParts.push(`plu.ilike.%${term}%`);
+
+        // ✅ ако е digits, додади и exact match (брзо)
+        if (pluText) {
           orParts.push(`plu.eq.${pluText}`);
         }
 

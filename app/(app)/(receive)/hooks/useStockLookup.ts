@@ -3,21 +3,19 @@ import { supabase } from "app/lib/supabase-client";
 
 export type StockLookupRow = {
   product_id: string;
-  plu: string | null; // ✅ TEXT
+  plu: string | null;
   barcode: string | null;
-  name: string;
-  selling_price: number;
-  tax_group: number | null;
+  name: string | null;
+  selling_price: number | null;
   category_name: string | null;
-  qty_on_hand: number;
-  last_movement_at: string | null;
+  qty_on_hand: number | null;
 };
 
-const parsePluText = (raw: string) => {
+const parseDigitsText = (raw: string) => {
   const t = raw.trim();
   if (!t) return null;
   if (!/^\d+$/.test(t)) return null;
-  return t; // ✅ keep as text
+  return t;
 };
 
 export const useStockLookup = () => {
@@ -26,17 +24,15 @@ export const useStockLookup = () => {
       const trimmed = code.trim();
       if (!trimmed) throw new Error("Внеси PLU или баркод.");
 
-      const pluText = parsePluText(trimmed);
+      const pluText = parseDigitsText(trimmed);
 
       const orParts: string[] = [];
       orParts.push(`barcode.eq.${trimmed}`);
-      if (pluText !== null) orParts.push(`plu.eq.${pluText}`); // ✅ string compare
+      if (pluText) orParts.push(`plu.eq.${pluText}`);
 
       const { data, error } = await supabase
         .from("product_stock")
-        .select(
-          "product_id, plu, barcode, name, selling_price, tax_group, category_name, qty_on_hand, last_movement_at"
-        )
+        .select("product_id, plu, barcode, name, selling_price, qty_on_hand, category_name")
         .or(orParts.join(","))
         .maybeSingle();
 
