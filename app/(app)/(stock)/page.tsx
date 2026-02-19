@@ -229,7 +229,6 @@ export default function StockPage() {
                 <th className="px-3 py-3 text-left">Баркод</th>
                 <th className="px-3 py-3 text-left">Име</th>
                 <th className="px-3 py-3 text-left">Категорија</th>
-                <th className="px-3 py-3 text-left">Подкат.</th>
                 <th className="px-3 py-3 text-right">Залиха</th>
                 <th className="px-3 py-3 text-right">Продажна</th>
                 <th className="px-3 py-3 text-right">Акции</th>
@@ -273,8 +272,6 @@ export default function StockPage() {
                     <td className="px-3 py-3 text-slate-600">{r.barcode ?? '—'}</td>
                     <td className="px-3 py-3 text-slate-900">{r.name}</td>
                     <td className="px-3 py-3 text-slate-600">{r.category_name ?? '—'}</td>
-                    <td className="px-3 py-3 text-slate-600">{r.subcategory_name ?? '—'}</td>
-
                     <td className="px-3 py-3 text-right">
                       <span
                         className={[
@@ -286,7 +283,7 @@ export default function StockPage() {
                               : 'bg-blamejaGreenSoft text-blamejaGreenDark border border-emerald-100',
                         ].join(' ')}
                       >
-                        {fmtQty(qoh)} {r.unit}
+                        {fmtQty(qoh)}
                       </span>
                     </td>
 
@@ -362,7 +359,6 @@ export default function StockPage() {
                   </button>
 
                   <div className="text-xs text-slate-500 ml-2">
-                    Моментално: <b>{fmtQty(currentQty)}</b> {selected.unit}
                     {delta !== null && (
                       <>
                         {' '}• Промена:{' '}

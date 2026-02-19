@@ -9,18 +9,21 @@ import { supabase } from "app/lib/supabase-client";
 import { useReceiveMutation } from "./hooks/useReceiveMutation";
 
 /** ---------- Types ---------- */
-type CategoryRow = { id: string; name: string };
+type CategoryRow = { id: string; name: string; code: string };
 
 type ProductChoiceRow = {
   product_id: string;
   name: string | null;
-  plu: number | null;
+  plu: string | null; // ✅ TEXT
   barcode: string | null;
   selling_price: number | null;
   tax_group: number | null;
   category_id: string | null;
   category_name: string | null;
 };
+
+const KPK_CODE = "kpk";
+const KPK_FISCAL_PLU = 80;
 
 const num = (v: unknown) => {
   const n = typeof v === "number" ? v : Number(v);
@@ -38,10 +41,10 @@ const parseNumOrNull = (value: string) => {
 const ReceivePage = () => {
   // required
   const [categoryId, setCategoryId] = useState("");
-  const [name, setName] = useState(""); // ✅ mandatory
+  const [name, setName] = useState("");
 
-  // identifiers (at least one)
-  const [plu, setPlu] = useState("");
+  // identifiers
+  const [plu, setPlu] = useState(""); // ✅ text PLU
   const [barcode, setBarcode] = useState("");
 
   // optional
@@ -52,14 +55,14 @@ const ReceivePage = () => {
   // qty required
   const [qty, setQty] = useState("1");
 
-  // tax required-ish (you can change default)
-  const [taxGroup, setTaxGroup] = useState<"5" | "10" | "18">("18");
+  // tax
+  const [taxGroup, setTaxGroup] = useState<"5" | "10" | "18">("5");
 
   // scanner
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
 
-  // autocomplete state
+  // autocomplete
   const [suggestions, setSuggestions] = useState<ProductChoiceRow[]>([]);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -68,7 +71,7 @@ const ReceivePage = () => {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<number | null>(null);
 
-  /** ---------- Load categories (simple, no subcategories) ---------- */
+  /** ---------- Load categories ---------- */
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState<string | null>(null);
@@ -81,7 +84,7 @@ const ReceivePage = () => {
       try {
         const { data, error } = await supabase
           .from("categories")
-          .select("id, name")
+          .select("id, name, code")
           .order("name", { ascending: true });
 
         if (error) throw error;
@@ -100,9 +103,17 @@ const ReceivePage = () => {
     };
   }, []);
 
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === categoryId) ?? null,
+    [categories, categoryId]
+  );
+
+  const isKpk = useMemo(() => {
+    return (selectedCategory?.code ?? "").toLowerCase() === KPK_CODE;
+  }, [selectedCategory]);
+
   /** ---------- Receive mutation (hook) ---------- */
   const receiveMutation = useReceiveMutation({
-    productId: selectedProductId, // ✅ existing product shortcut (ако ти треба во hook)
     plu,
     barcode,
     name,
@@ -113,7 +124,7 @@ const ReceivePage = () => {
     note: details,
     categoryId,
     taxGroup,
-  } as any);
+  });
 
   /** ---------- Autocomplete fetch via RPC ---------- */
   const fetchChoices = async (q: string) => {
@@ -131,18 +142,12 @@ const ReceivePage = () => {
     return (data ?? []) as ProductChoiceRow[];
   };
 
-  // debounce search by name/plu/barcode input (we use `name` text as the search term)
+  // debounce search by name
   useEffect(() => {
     const t = name.trim();
 
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
 
-    // ако корисникот избрал производ, и после тоа менува име рачно -> го сметаме како "нова ставка"
-    if (selectedProductId && t !== "") {
-      // leave it, user might edit name; but suggestions should still work
-    }
-
-    // ако нема ништо -> затвори
     if (t.length < 1) {
       setSuggestions([]);
       setSuggestOpen(false);
@@ -168,7 +173,6 @@ const ReceivePage = () => {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, categoryId]);
 
   // outside click closes dropdown
@@ -183,19 +187,18 @@ const ReceivePage = () => {
   }, []);
 
   const pickSuggestion = (row: ProductChoiceRow) => {
-    const pickedName = (row.name ?? "").trim();
     setSelectedProductId(row.product_id);
 
-    // ✅ name mandatory -> populate
+    const pickedName = (row.name ?? "").trim();
     setName(pickedName);
 
-    // ✅ auto-fill category if not selected (or even if selected, sync to product)
     if (row.category_id) setCategoryId(row.category_id);
 
-    // ✅ auto-fill identifiers & price & tax
-    setPlu(row.plu === null || row.plu === undefined ? "" : String(row.plu));
+    // ✅ auto-fill (PLU is TEXT)
+    setPlu((row.plu ?? "").trim());
     setBarcode(row.barcode ?? "");
     setSellingPrice(row.selling_price === null ? "" : String(num(row.selling_price)));
+
     const tg = String(Math.trunc(num(row.tax_group))) as "5" | "10" | "18";
     if (tg === "5" || tg === "10" || tg === "18") setTaxGroup(tg);
 
@@ -203,18 +206,6 @@ const ReceivePage = () => {
     setSuggestions([]);
     toast.success("Избран производ ✅");
   };
-
-  // if user types manually (new product), clear selectedProductId
-  useEffect(() => {
-    if (!name.trim()) {
-      setSelectedProductId(null);
-      return;
-    }
-    // ако user продолжи да куца после избор, и текстот не одговара на избраниот (не го знаеме),
-    // најбезбедно: ако dropdown е отворен/се куца -> третирај како ново и тргни selectedProductId
-    // (ќе се избере пак од листата ако сака)
-    // Ова е "soft" правило: ќе го тргнеме кога корисникот ќе смени PLU/Barcode или category.
-  }, [name]);
 
   const handleScan = (detectedCodes: IDetectedBarcode[]) => {
     if (!detectedCodes?.length) return;
@@ -252,16 +243,15 @@ const ReceivePage = () => {
   const isFormValid = useMemo(() => {
     const n = name.trim();
     const cat = categoryId.trim();
-    if (!n) return false; // ✅ name mandatory
+    if (!n) return false;
     if (!cat) return false;
+
+    // PLU mandatory (digits-only check is in hook)
+    if (!plu.trim()) return false;
 
     const q = parseNumOrNull(qty);
     if (q === undefined || q === null || q <= 0) return false;
 
-    // at least one of PLU / barcode
-    if (!plu.trim() && !barcode.trim()) return false;
-
-    // selling/unitcost can be empty, but if provided must be number
     const sp = parseNumOrNull(sellingPrice);
     if (sp === undefined) return false;
 
@@ -269,9 +259,10 @@ const ReceivePage = () => {
     if (uc === undefined) return false;
 
     return true;
-  }, [name, categoryId, qty, plu, barcode, sellingPrice, unitCost]);
+  }, [name, categoryId, qty, plu, sellingPrice, unitCost]);
 
-  const isSubmitDisabled = receiveMutation.isPending || catLoading || !!catError || !isFormValid;
+  const isSubmitDisabled =
+    receiveMutation.isPending || catLoading || !!catError || !isFormValid;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -323,13 +314,14 @@ const ReceivePage = () => {
             value={categoryId}
             onChange={(e) => {
               setCategoryId(e.target.value);
-              // ако сменил категорија, а претходно имал избран производ -> го тргаме (зашто филтерот се смени)
               setSelectedProductId(null);
             }}
             disabled={catLoading || !!catError}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
           >
-            <option value="">{catLoading ? "Се вчитува..." : "Избери категорија"}</option>
+            <option value="">
+              {catLoading ? "Се вчитува..." : "Избери категорија"}
+            </option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -339,6 +331,24 @@ const ReceivePage = () => {
 
           {catError && <p className="text-xs text-blamejaRed">{catError}</p>}
         </div>
+
+        {/* Fiscal PLU (only for KPK) */}
+        {isKpk && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              Фискална шифра (фиксно)
+            </label>
+            <input
+              value={String(KPK_FISCAL_PLU)}
+              readOnly
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+            />
+            <p className="text-[11px] text-slate-500">
+              За „Систем капка по капка“ сите артикли се сумираат на фискална под
+              шифра {KPK_FISCAL_PLU}.
+            </p>
+          </div>
+        )}
 
         {/* Name (mandatory) with autocomplete */}
         <div ref={wrapRef} className="relative space-y-2">
@@ -350,7 +360,6 @@ const ReceivePage = () => {
             value={name}
             onChange={(e) => {
               setName(e.target.value);
-              // ако корисникот куца ново име, тргни selectedProductId
               setSelectedProductId(null);
             }}
             onFocus={() => {
@@ -364,7 +373,7 @@ const ReceivePage = () => {
             placeholder={
               categoryId
                 ? "Почни да куцаш (ќе пребарува во избраната категорија)…"
-                : "Почни да куцаш (можеш и без категорија, ќе се пополни сама кога ќе избереш)…"
+                : "Почни да куцаш (ќе се пополни категорија кога ќе избереш)…"
             }
           />
 
@@ -372,16 +381,20 @@ const ReceivePage = () => {
             <div className="absolute left-0 right-0 top-full mt-2 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
               <div className="max-h-64 overflow-auto">
                 {suggestLoading && (
-                  <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>
+                  <div className="px-3 py-2 text-xs text-slate-500">
+                    Се пребарува...
+                  </div>
                 )}
 
                 {!suggestLoading && suggestions.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
+                  <div className="px-3 py-2 text-xs text-slate-500">
+                    Нема резултати.
+                  </div>
                 )}
 
                 {suggestions.map((s) => {
                   const title = (s.name ?? "—").trim();
-                  const pluText = s.plu === null ? "—" : String(s.plu);
+                  const pluText = (s.plu ?? "—").toString();
                   const barcodeText = s.barcode ?? "—";
                   const cat = s.category_name ?? "—";
 
@@ -398,10 +411,13 @@ const ReceivePage = () => {
                             {title}
                           </div>
                           <div className="text-[11px] text-slate-500">
-                            PLU: <span className="font-medium">{pluText}</span> • Баркод:{" "}
+                            PLU: <span className="font-medium">{pluText}</span>{" "}
+                            • Баркод:{" "}
                             <span className="font-medium">{barcodeText}</span>
                           </div>
-                          <div className="text-[11px] text-slate-500 truncate">{cat}</div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {cat}
+                          </div>
                         </div>
 
                         <div className="shrink-0 text-right">
@@ -419,19 +435,22 @@ const ReceivePage = () => {
           )}
 
           <p className="text-[11px] text-slate-500">
-            Ако внесуваш <b>ново име</b>, прво избери категорија (задолжително) и потоа зачувај прием.
             Ако избереш постоечки производ, системот ќе пополни PLU/баркод/цена/ДДВ.
+            Ако внесуваш нов производ: избери категорија, внеси име и PLU.
           </p>
         </div>
 
         {/* PLU + Barcode */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">PLU</label>
+            <label className="block text-sm font-medium mb-1">
+              PLU <span className="text-blamejaRed">*</span>
+            </label>
             <input
               value={plu}
               onChange={(e) => {
-                setPlu(e.target.value);
+                // digits only, still TEXT
+                setPlu(e.target.value.replace(/[^\d]/g, ""));
                 setSelectedProductId(null);
               }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
@@ -442,7 +461,7 @@ const ReceivePage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Баркод</label>
+            <label className="block text-sm font-medium mb-1">Баркод (опц.)</label>
             <input
               value={barcode}
               onChange={(e) => {
@@ -456,7 +475,7 @@ const ReceivePage = () => {
           </div>
 
           <p className="md:col-span-2 text-[11px] text-slate-500">
-            * Мора да има барем едно: PLU или баркод.
+            * PLU е задолжителен. Баркод е опционален.
           </p>
         </div>
 
@@ -530,7 +549,9 @@ const ReceivePage = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Опис / Забелешка (опц.)</label>
+          <label className="block text-sm font-medium mb-1">
+            Опис / Забелешка (опц.)
+          </label>
           <textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -587,9 +608,7 @@ const ReceivePage = () => {
               />
             </div>
 
-            {scanError && (
-              <p className="mt-2 text-xs text-blamejaRed">{scanError}</p>
-            )}
+            {scanError && <p className="mt-2 text-xs text-blamejaRed">{scanError}</p>}
           </div>
         </div>
       )}
