@@ -56,8 +56,7 @@ export default function StockPage() {
 
 		list.sort((a, b) => {
 			if (sortKey === 'NAME') return dir * String(a.name ?? '').localeCompare(String(b.name ?? ''), 'mk');
-			if (sortKey === 'CATEGORY')
-				return dir * String(a.category_name ?? '').localeCompare(String(b.category_name ?? ''), 'mk');
+			if (sortKey === 'CATEGORY') return dir * String(a.category_name ?? '').localeCompare(String(b.category_name ?? ''), 'mk');
 
 			if (sortKey === 'PLU') {
 				const pa = pluAsNumber(a.plu) ?? -1;
@@ -115,7 +114,10 @@ export default function StockPage() {
 								>
 									<option value="">Сите категории</option>
 									{categoryOptions.map((c) => (
-										<option key={c} value={c}>
+										<option
+											key={c}
+											value={c}
+										>
 											{c}
 										</option>
 									))}

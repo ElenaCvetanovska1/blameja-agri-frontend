@@ -8,105 +8,117 @@ const num = (v: unknown) => {
 };
 
 export function StockTable({
-  rows,
-  isLoading,
-  isError,
-  errorText,
-  onAdjust,
+	rows,
+	isLoading,
+	isError,
+	errorText,
+	onAdjust,
 }: {
-  rows: StockRow[];
-  isLoading: boolean;
-  isError: boolean;
-  errorText?: string;
-  onAdjust: (row: StockRow) => void;
+	rows: StockRow[];
+	isLoading: boolean;
+	isError: boolean;
+	errorText?: string;
+	onAdjust: (row: StockRow) => void;
 }) {
-  return (
-    <div className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
-      {/* ✅ фиксна висина + вертикален scroll */}
-      <div className="max-h-[560px] overflow-auto">
-        <table className="min-w-[900px] w-full text-sm">
-          {/* ✅ sticky header */}
-          <thead className="bg-slate-50 text-slate-600 text-xs sticky top-0 z-10">
-            <tr>
-              <th className="px-3 py-3 text-left">PLU</th>
-              <th className="px-3 py-3 text-left">Баркод</th>
-              <th className="px-3 py-3 text-left">Име</th>
-              <th className="px-3 py-3 text-left">Категорија</th>
-              <th className="px-3 py-3 text-right">Залиха</th>
-              <th className="px-3 py-3 text-right">Продажна</th>
-              <th className="px-3 py-3 text-right">Акции</th>
-            </tr>
-          </thead>
+	return (
+		<div className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
+			{/* ✅ фиксна висина + вертикален scroll */}
+			<div className="max-h-[560px] overflow-auto">
+				<table className="min-w-[900px] w-full text-sm">
+					{/* ✅ sticky header */}
+					<thead className="bg-slate-50 text-slate-600 text-xs sticky top-0 z-10">
+						<tr>
+							<th className="px-3 py-3 text-left">PLU</th>
+							<th className="px-3 py-3 text-left">Баркод</th>
+							<th className="px-3 py-3 text-left">Име</th>
+							<th className="px-3 py-3 text-left">Категорија</th>
+							<th className="px-3 py-3 text-right">Залиха</th>
+							<th className="px-3 py-3 text-right">Продажна</th>
+							<th className="px-3 py-3 text-right">Акции</th>
+						</tr>
+					</thead>
 
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
-                  Се вчитува залиха...
-                </td>
-              </tr>
-            )}
+					<tbody>
+						{isLoading && (
+							<tr>
+								<td
+									colSpan={7}
+									className="px-3 py-6 text-center text-slate-500"
+								>
+									Се вчитува залиха...
+								</td>
+							</tr>
+						)}
 
-            {isError && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-red-600">
-                  Грешка при вчитување: {errorText ?? 'unknown'}
-                </td>
-              </tr>
-            )}
+						{isError && (
+							<tr>
+								<td
+									colSpan={7}
+									className="px-3 py-6 text-center text-red-600"
+								>
+									Грешка при вчитување: {errorText ?? 'unknown'}
+								</td>
+							</tr>
+						)}
 
-            {!isLoading && !isError && rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-3 py-10 text-center text-slate-500">
-                  Нема резултати за пребарувањето/филтерите.
-                </td>
-              </tr>
-            )}
+						{!isLoading && !isError && rows.length === 0 && (
+							<tr>
+								<td
+									colSpan={7}
+									className="px-3 py-10 text-center text-slate-500"
+								>
+									Нема резултати за пребарувањето/филтерите.
+								</td>
+							</tr>
+						)}
 
-            {rows.map((r) => {
-              const qoh = num(r.qty_on_hand);
-              const low = qoh > 0 && qoh <= 3;
-              const zero = qoh <= 0;
+						{rows.map((r) => {
+							const qoh = num(r.qty_on_hand);
+							const low = qoh > 0 && qoh <= 3;
+							const zero = qoh <= 0;
 
-              return (
-                <tr key={r.product_id} className="border-t border-slate-100">
-                  <td className="px-3 py-3 font-medium text-slate-900">{r.plu ?? '—'}</td>
-                  <td className="px-3 py-3 text-slate-600">{r.barcode ?? '—'}</td>
-                  <td className="px-3 py-3 text-slate-900">{r.name ?? '—'}</td>
-                  <td className="px-3 py-3 text-slate-600">{r.category_name ?? '—'}</td>
+							return (
+								<tr
+									key={r.product_id}
+									className="border-t border-slate-100"
+								>
+									<td className="px-3 py-3 font-medium text-slate-900">{r.plu ?? '—'}</td>
+									<td className="px-3 py-3 text-slate-600">{r.barcode ?? '—'}</td>
+									<td className="px-3 py-3 text-slate-900">{r.name ?? '—'}</td>
+									<td className="px-3 py-3 text-slate-600">{r.category_name ?? '—'}</td>
 
-                  <td className="px-3 py-3 text-right">
-                    <span
-                      className={[
-                        'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
-                        zero
-                          ? 'bg-red-50 text-red-700 border border-red-100'
-                          : low
-                            ? 'bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100'
-                            : 'bg-blamejaGreenSoft text-blamejaGreenDark border border-emerald-100',
-                      ].join(' ')}
-                    >
-                      {fmtQty(qoh)}
-                    </span>
-                  </td>
+									<td className="px-3 py-3 text-right">
+										<span
+											className={[
+												'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold',
+												zero
+													? 'bg-red-50 text-red-700 border border-red-100'
+													: low
+														? 'bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100'
+														: 'bg-blamejaGreenSoft text-blamejaGreenDark border border-emerald-100',
+											].join(' ')}
+										>
+											{fmtQty(qoh)}
+										</span>
+									</td>
 
-                  <td className="px-3 py-3 text-right text-slate-700">{num(r.selling_price).toFixed(2)}</td>
+									<td className="px-3 py-3 text-right text-slate-700">{num(r.selling_price).toFixed(2)}</td>
 
-                  <td className="px-3 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onAdjust(r)}
-                      className="rounded-full bg-blamejaOrange px-3 py-1.5 text-xs font-semibold text-white hover:bg-blamejaOrangeDark"
-                    >
-                      Корекција
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+									<td className="px-3 py-3 text-right">
+										<button
+											type="button"
+											onClick={() => onAdjust(r)}
+											className="rounded-full bg-blamejaOrange px-3 py-1.5 text-xs font-semibold text-white hover:bg-blamejaOrangeDark"
+										>
+											Корекција
+										</button>
+									</td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	);
 }

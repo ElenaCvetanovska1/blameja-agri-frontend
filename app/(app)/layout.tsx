@@ -75,6 +75,12 @@ const AppLayout = () => {
 							>
 								Финансии
 							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.dispatch}
+								className={navLinkClass}
+							>
+								Испратница
+							</NavLink>
 						</nav>
 
 						{/* Desktop logout */}

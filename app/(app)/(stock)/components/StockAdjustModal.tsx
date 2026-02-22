@@ -31,15 +31,7 @@ const num = (v: unknown) => {
 
 const fmtQty = (n: number) => (Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0');
 
-export function StockAdjustModal({
-	open,
-	row,
-	onClose,
-}: {
-	open: boolean;
-	row: StockRow;
-	onClose: () => void;
-}) {
+export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: StockRow; onClose: () => void }) {
 	const categoriesQ = useCategories();
 	const detailsQ = useProductDetails(row.product_id, open);
 
@@ -159,7 +151,11 @@ export function StockAdjustModal({
 							<div className="text-xs text-slate-500">ID: {row.product_id}</div>
 						</div>
 
-						<button type="button" onClick={onClose} className="text-sm text-slate-600 hover:text-slate-900">
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-sm text-slate-600 hover:text-slate-900"
+						>
 							Затвори ✕
 						</button>
 					</div>
@@ -245,7 +241,10 @@ export function StockAdjustModal({
 								>
 									<option value="">— Без категорија —</option>
 									{categoryOptions.map((c) => (
-										<option key={c.id} value={c.id}>
+										<option
+											key={c.id}
+											value={c.id}
+										>
 											{c.name}
 										</option>
 									))}

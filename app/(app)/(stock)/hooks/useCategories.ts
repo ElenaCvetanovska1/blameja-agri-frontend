@@ -11,10 +11,7 @@ export const useCategories = () => {
 	return useQuery({
 		queryKey: ['categories'],
 		queryFn: async () => {
-			const { data, error } = await supabase
-				.from('categories')
-				.select('id, name, code')
-				.order('name', { ascending: true });
+			const { data, error } = await supabase.from('categories').select('id, name, code').order('name', { ascending: true });
 
 			if (error) throw error;
 			return (data ?? []) as CategoryRow[];
