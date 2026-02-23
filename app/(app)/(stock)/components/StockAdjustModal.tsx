@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { StockRow } from '../hooks/useStock';
 import { useCategories } from '../hooks/useCategories';
-import { useProductDetails } from '../hooks/useProductDetails';
-import { useUpdateProductMutation } from '../hooks/useUpdateProductMutation';
+
 import { useAdjustStockMutation } from '../hooks/useAdjustStockMutation';
 
-// ✅ ADD: existing scanner modal
+// ✅ existing scanner modal
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { ScannerModal } from 'app/(app)/(sales)/components/ScannerModal';
+import { useProductDetails } from '../hooks/useProductDetails';
+import { useUpdateProductMutation } from '../hooks/useUpdateProductMutation';
+
+type Unit = 'пар' | 'кг' | 'м';
 
 const clampQty = (value: string) => {
 	const cleaned = value.replace(',', '.');
@@ -31,6 +34,11 @@ const num = (v: unknown) => {
 
 const fmtQty = (n: number) => (Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0');
 
+const normalizeUnit = (v: unknown): Unit => {
+	if (v === 'кг' || v === 'м' || v === 'пар') return v;
+	return 'пар';
+};
+
 export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: StockRow; onClose: () => void }) {
 	const categoriesQ = useCategories();
 	const detailsQ = useProductDetails(row.product_id, open);
@@ -45,10 +53,13 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	const [sellingPrice, setSellingPrice] = useState('');
 	const [categoryId, setCategoryId] = useState<string>('');
 
+	// ✅ NEW: unit
+	const [unit, setUnit] = useState<Unit>('пар');
+
 	const [qty, setQty] = useState('0');
 	const [reason, setReason] = useState('');
 
-	// ✅ ADD: scanner state
+	// scanner state
 	const [scanOpen, setScanOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
@@ -61,6 +72,10 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 		setName(detailsQ.data.name ?? '');
 		setSellingPrice(String(num(detailsQ.data.selling_price)));
 		setCategoryId(detailsQ.data.category_id ?? '');
+
+		// ✅ NEW: init unit from DB (default 'пар')
+		setUnit(normalizeUnit((detailsQ.data as any).unit));
+
 		setQty(String(num(row.qty_on_hand)));
 		setReason('');
 
@@ -75,16 +90,13 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	const delta = Number.isFinite(targetQtyNum) ? targetQtyNum - currentQty : null;
 
 	const isBusy = updateProduct.isPending || adjustStock.isPending;
-
 	const categoryOptions = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
 
-	// ✅ ADD: handlers for scanner
+	// scanner handlers
 	const handleScan = (detected: IDetectedBarcode[]) => {
-		// земи прв валиден резултат
 		const first = detected?.[0] as any;
 		const value = first?.rawValue ?? first?.value ?? '';
 		const code = String(value).trim();
-
 		if (!code) return;
 
 		setBarcode(code);
@@ -101,6 +113,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 		// 1) update product fields
 		try {
 			const price = Number.parseFloat(sellingPrice.trim().replace(',', '.'));
+
 			await updateProduct.mutateAsync({
 				productId: row.product_id,
 				name,
@@ -108,6 +121,9 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 				plu: plu.trim() ? plu : null,
 				selling_price: Number.isFinite(price) ? price : NaN,
 				category_id: categoryId ? categoryId : null,
+
+				// ✅ NEW
+				unit,
 			});
 		} catch (e) {
 			toast.error(e instanceof Error ? e.message : 'Грешка при зачувување на производ.');
@@ -203,7 +219,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								/>
 							</div>
 
-							{/* ✅ UPDATED: Barcode input + Scan button */}
+							{/* Barcode + Scan */}
 							<div>
 								<label className="block text-xs font-medium text-slate-600">Баркод</label>
 
@@ -230,6 +246,20 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								</div>
 
 								{scanError && <div className="mt-1 text-xs text-blamejaRed">{scanError}</div>}
+							</div>
+
+							{/* ✅ NEW: unit */}
+							<div>
+								<label className="block text-xs font-medium text-slate-600">Ед. мерка</label>
+								<select
+									value={unit}
+									onChange={(e) => setUnit(e.target.value as Unit)}
+									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+								>
+									<option value="пар">пар</option>
+									<option value="кг">кг</option>
+									<option value="м">м</option>
+								</select>
 							</div>
 
 							<div className="sm:col-span-2">
@@ -318,7 +348,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 				</div>
 			</div>
 
-			{/* ✅ ADD: Scanner modal */}
+			{/* Scanner modal */}
 			<ScannerModal
 				open={scanOpen}
 				scanError={scanError}

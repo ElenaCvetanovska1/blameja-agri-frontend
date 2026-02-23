@@ -55,8 +55,8 @@ export const useReceiveMutation = () => {
 			const name = payload.name.trim();
 			if (!name) throw new Error('Име на производ е задолжително.');
 
-			const categoryId = payload.categoryId.trim();
-			if (!categoryId) throw new Error('Избери категорија.');
+			const categoryIdRaw = payload.categoryId?.trim?.() ?? '';
+			const categoryId: string | null = categoryIdRaw ? categoryIdRaw : null;
 
 			const qtyNum = parseNum(payload.qty);
 			if (qtyNum === undefined) throw new Error('Количина: невалиден број.');
@@ -113,8 +113,6 @@ export const useReceiveMutation = () => {
 						tax_group: taxGroupNum,
 						is_active: true,
 						category_id: categoryId,
-
-						// ✅ NEW
 						unit,
 					})
 					.select('id')

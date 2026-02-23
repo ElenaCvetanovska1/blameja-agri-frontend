@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from 'app/lib/supabase-client';
 
+export type Unit = 'пар' | 'кг' | 'м';
+
 export type UpdateProductPayload = {
 	productId: string;
 	name: string;
@@ -8,6 +10,9 @@ export type UpdateProductPayload = {
 	plu: string | null;
 	selling_price: number;
 	category_id: string | null;
+
+	// ✅ NEW
+	unit: Unit;
 };
 
 const cleanText = (v: string) => v.trim();
@@ -22,6 +27,11 @@ const cleanPlu = (v: string) => {
 	if (!t) return null;
 	if (!/^\d+$/.test(t)) throw new Error('PLU мора да биде само бројки.');
 	return t;
+};
+
+const normalizeUnit = (v: unknown): Unit => {
+	if (v === 'кг' || v === 'м' || v === 'пар') return v;
+	return 'пар';
 };
 
 export const useUpdateProductMutation = () => {
@@ -40,6 +50,9 @@ export const useUpdateProductMutation = () => {
 			const plu = cleanPlu(payload.plu ?? '');
 			const barcode = cleanOptional(payload.barcode ?? '');
 
+			// ✅ NEW
+			const unit = normalizeUnit(payload.unit);
+
 			const { error } = await supabase
 				.from('products')
 				.update({
@@ -48,6 +61,10 @@ export const useUpdateProductMutation = () => {
 					barcode,
 					selling_price: price,
 					category_id: payload.category_id ?? null,
+
+					// ✅ NEW
+					unit,
+
 					updated_at: new Date().toISOString(),
 				})
 				.eq('id', payload.productId);
