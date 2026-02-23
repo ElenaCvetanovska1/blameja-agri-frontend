@@ -23,7 +23,6 @@ export const useReceiveForm = () => {
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
-		if (!categoryId.trim()) return false;
 		if (!plu.trim()) return false;
 		if (!qty.trim()) return false;
 
