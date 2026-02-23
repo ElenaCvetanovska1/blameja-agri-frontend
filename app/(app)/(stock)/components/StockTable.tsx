@@ -28,7 +28,7 @@ export function StockTable({
 }) {
 	return (
 		<div className="rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden">
-			<div className="max-h-[560px] overflow-auto">
+			<div className="max-h-[400px] overflow-auto">
 				<table className="min-w-[900px] w-full text-sm">
 					<thead className="bg-slate-50 text-slate-600 text-xs sticky top-0 z-10">
 						<tr>

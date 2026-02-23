@@ -78,21 +78,6 @@ export default function StockPage() {
 	return (
 		<div className="space-y-5">
 			<div className="space-y-3">
-				<div>
-					<h1 className="text-2xl font-bold text-slate-900">Залиха</h1>
-					<p className="mt-1 text-xs text-slate-500">
-						Пребарај по PLU, баркод или име. „Корекција“ = можеш да ги смениш полињата за производот и залихата.
-					</p>
-
-					<div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-							Вкупно: <b>{stats.total}</b>
-						</span>
-						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-							Без залиха: <b>{stats.outOfStock}</b>
-						</span>
-					</div>
-				</div>
 
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div className="w-full sm:max-w-[420px]">
@@ -162,6 +147,17 @@ export default function StockPage() {
 				onAdjust={(r) => setSelected(r)}
 				onDelete={(r) => setToDelete(r)}
 			/>
+
+			<div>
+					<div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+							Вкупно: <b>{stats.total}</b>
+						</span>
+						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+							Без залиха: <b>{stats.outOfStock}</b>
+						</span>
+					</div>
+				</div>
 
 			{selected && (
 				<StockAdjustModal
