@@ -6,14 +6,12 @@ import type { StockRow } from '../hooks/useStock';
 import { useCategories } from '../hooks/useCategories';
 
 import { useAdjustStockMutation } from '../hooks/useAdjustStockMutation';
+import { useProductDetails } from '../hooks/useProductDetails';
+import { useUpdateProductMutation, type Unit } from '../hooks/useUpdateProductMutation';
 
 // ✅ existing scanner modal
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { ScannerModal } from 'app/(app)/(sales)/components/ScannerModal';
-import { useProductDetails } from '../hooks/useProductDetails';
-import { useUpdateProductMutation } from '../hooks/useUpdateProductMutation';
-
-type Unit = 'пар' | 'кг' | 'м';
 
 const clampQty = (value: string) => {
 	const cleaned = value.replace(',', '.');
@@ -53,17 +51,16 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	const [sellingPrice, setSellingPrice] = useState('');
 	const [categoryId, setCategoryId] = useState<string>('');
 
-	// ✅ NEW: unit
+	// ✅ unit
 	const [unit, setUnit] = useState<Unit>('пар');
 
 	const [qty, setQty] = useState('0');
 	const [reason, setReason] = useState('');
 
-	// scanner state
+	// scanner
 	const [scanOpen, setScanOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
-	// init from DB product row (not from view)
 	useEffect(() => {
 		if (!detailsQ.data) return;
 
@@ -72,14 +69,11 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 		setName(detailsQ.data.name ?? '');
 		setSellingPrice(String(num(detailsQ.data.selling_price)));
 		setCategoryId(detailsQ.data.category_id ?? '');
-
-		// ✅ NEW: init unit from DB (default 'пар')
 		setUnit(normalizeUnit((detailsQ.data as any).unit));
 
 		setQty(String(num(row.qty_on_hand)));
 		setReason('');
 
-		// reset scanner state when opening
 		setScanOpen(false);
 		setScanError(null);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,10 +83,9 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	const targetQtyNum = Number.isFinite(parseNum(qty)) ? parseNum(qty) : NaN;
 	const delta = Number.isFinite(targetQtyNum) ? targetQtyNum - currentQty : null;
 
-	const isBusy = updateProduct.isPending || adjustStock.isPending;
+	const isBusy = updateProduct.isPending || adjustStock.isPending || detailsQ.isLoading;
 	const categoryOptions = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
 
-	// scanner handlers
 	const handleScan = (detected: IDetectedBarcode[]) => {
 		const first = detected?.[0] as any;
 		const value = first?.rawValue ?? first?.value ?? '';
@@ -121,8 +114,6 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 				plu: plu.trim() ? plu : null,
 				selling_price: Number.isFinite(price) ? price : NaN,
 				category_id: categoryId ? categoryId : null,
-
-				// ✅ NEW
 				unit,
 			});
 		} catch (e) {
@@ -130,7 +121,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 			return;
 		}
 
-		// 2) adjust stock ONLY if changed
+		// 2) adjust stock if changed
 		const target = parseNum(qty);
 		if (Number.isFinite(target)) {
 			const d = target - currentQty;
@@ -167,11 +158,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							<div className="text-xs text-slate-500">ID: {row.product_id}</div>
 						</div>
 
-						<button
-							type="button"
-							onClick={onClose}
-							className="text-sm text-slate-600 hover:text-slate-900"
-						>
+						<button type="button" onClick={onClose} className="text-sm text-slate-600 hover:text-slate-900">
 							Затвори ✕
 						</button>
 					</div>
@@ -248,7 +235,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								{scanError && <div className="mt-1 text-xs text-blamejaRed">{scanError}</div>}
 							</div>
 
-							{/* ✅ NEW: unit */}
+							{/* unit */}
 							<div>
 								<label className="block text-xs font-medium text-slate-600">Ед. мерка</label>
 								<select
@@ -271,10 +258,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								>
 									<option value="">— Без категорија —</option>
 									{categoryOptions.map((c) => (
-										<option
-											key={c.id}
-											value={c.id}
-										>
+										<option key={c.id} value={c.id}>
 											{c.name}
 										</option>
 									))}
@@ -338,7 +322,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 						<button
 							type="button"
 							onClick={submit}
-							disabled={isBusy || detailsQ.isLoading}
+							disabled={isBusy}
 							className="rounded-full bg-blamejaGreen px-5 py-2 text-xs font-semibold text-white
 							hover:bg-blamejaGreenDark disabled:opacity-60 disabled:cursor-not-allowed"
 						>
@@ -349,13 +333,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 			</div>
 
 			{/* Scanner modal */}
-			<ScannerModal
-				open={scanOpen}
-				scanError={scanError}
-				onClose={() => setScanOpen(false)}
-				onScan={handleScan}
-				onError={handleScanError}
-			/>
+			<ScannerModal open={scanOpen} scanError={scanError} onClose={() => setScanOpen(false)} onScan={handleScan} onError={handleScanError} />
 		</>
 	);
 }

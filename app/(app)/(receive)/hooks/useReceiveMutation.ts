@@ -95,6 +95,7 @@ export const useReceiveMutation = () => {
 				.from('products')
 				.select('id, plu, barcode, name, description, selling_price, tax_group, category_id, unit')
 				.or(orParts.join(','))
+				.eq('is_active', true)
 				.maybeSingle();
 
 			if (lookupError) throw lookupError;

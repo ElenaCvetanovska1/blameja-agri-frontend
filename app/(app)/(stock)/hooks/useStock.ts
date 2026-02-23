@@ -9,6 +9,7 @@ export type StockRow = {
 	selling_price: number | null;
 	category_name: string | null;
 	qty_on_hand: number | null;
+	last_movement_at: string | null;
 };
 
 const normalizeNumber = (v: unknown) => {
@@ -36,7 +37,7 @@ export const useStock = (search: string) => {
 			while (true) {
 				let q = supabase
 					.from('product_stock')
-					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name')
+					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, last_movement_at')
 					.order('name', { ascending: true })
 					.range(from, from + pageSize - 1);
 
@@ -60,7 +61,7 @@ export const useStock = (search: string) => {
 				const chunk = (data ?? []) as StockRow[];
 				all = all.concat(chunk);
 
-				if (chunk.length < pageSize) break; // последна страница
+				if (chunk.length < pageSize) break;
 				from += pageSize;
 			}
 

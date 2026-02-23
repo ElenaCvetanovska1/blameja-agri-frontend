@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { useStock, type StockRow } from './hooks/useStock';
+
 import { StockTable } from './components/StockTable';
 import { StockAdjustModal } from './components/StockAdjustModal';
+import { DeleteProductModal } from './components/DeleteProductModal';
 
 type SortKey = 'NAME' | 'PLU' | 'QTY' | 'CATEGORY';
 
@@ -22,6 +24,7 @@ const pluAsNumber = (plu: string | null) => {
 export default function StockPage() {
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<StockRow | null>(null);
+	const [toDelete, setToDelete] = useState<StockRow | null>(null);
 
 	const [categoryFilter, setCategoryFilter] = useState<string>('');
 	const [sortKey, setSortKey] = useState<SortKey>('NAME');
@@ -114,10 +117,7 @@ export default function StockPage() {
 								>
 									<option value="">Сите категории</option>
 									{categoryOptions.map((c) => (
-										<option
-											key={c}
-											value={c}
-										>
+										<option key={c} value={c}>
 											{c}
 										</option>
 									))}
@@ -160,6 +160,7 @@ export default function StockPage() {
 				isError={stockQuery.isError}
 				errorText={stockQuery.error instanceof Error ? stockQuery.error.message : 'unknown'}
 				onAdjust={(r) => setSelected(r)}
+				onDelete={(r) => setToDelete(r)}
 			/>
 
 			{selected && (
@@ -167,6 +168,14 @@ export default function StockPage() {
 					open={!!selected}
 					row={selected}
 					onClose={() => setSelected(null)}
+				/>
+			)}
+
+			{toDelete && (
+				<DeleteProductModal
+					open={!!toDelete}
+					row={toDelete}
+					onClose={() => setToDelete(null)}
 				/>
 			)}
 		</div>
