@@ -1,103 +1,144 @@
 'use client';
+
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from 'app/lib/supabase-client';
+
 import { useReceiveMutation, type ReceivePayload } from './hooks/useReceiveMutation';
 import { useCategoryOptions } from './hooks/useCategoryOptions';
 import { useProductChoices } from './hooks/useProductChoices';
 import { useReceiveForm } from './hooks/useReceiveForm';
 import { useSupplierChoices, type SupplierRow } from './hooks/useSupplierChoices';
 import { useUpdateSupplierAddressMutation } from './hooks/useUpdateSupplierAddressMutation';
+
 import { ProductNameWithSuggestions } from './components/ProductNameWithSuggestions';
 import { SupplierInputWithSuggestions } from './components/SupplierInputWithSuggestions';
 import { ScannerModal } from './components/ScannerModal';
+
 import { KPK_CODE, KPK_FISCAL_PLU, normalizeTaxGroup, num } from './utils';
 import type { ProductChoiceRow, TaxGroup } from './types';
+
 type SupplierGetOrCreateRow = { id: string; name: string; address: string | null };
+
 const ReceivePage = () => {
 	const form = useReceiveForm();
+
 	// Document fields (UI for now)
 	const [invoiceNo, setInvoiceNo] = useState('');
 	const [supplierName, setSupplierName] = useState('');
 	const [supplierAddress, setSupplierAddress] = useState('');
 	const [invoiceDate, setInvoiceDate] = useState('');
+
 	// supplier selection tracking
 	const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
 	const [selectedSupplierHadAddress, setSelectedSupplierHadAddress] = useState<boolean>(true);
+
 	// browse all suppliers toggle
 	const [openAllSuppliers, setOpenAllSuppliers] = useState(false);
+
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
 	const [scannerOpen, setScannerOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
+
 	const categoriesQuery = useCategoryOptions();
+
 	const selectedCategory = useMemo(() => {
 		return (categoriesQuery.data ?? []).find((c) => c.id === form.categoryId) ?? null;
 	}, [categoriesQuery.data, form.categoryId]);
+
 	const isKpk = useMemo(() => {
 		return (selectedCategory?.code ?? '').toLowerCase() === KPK_CODE;
 	}, [selectedCategory]);
+
 	const choicesQuery = useProductChoices({
 		name: form.name,
 		categoryId: form.categoryId,
 		limit: 10,
 	});
+
 	// suppliers query: browse OR search
 	const suppliersQuery = useSupplierChoices({
 		q: supplierName,
 		limit: openAllSuppliers ? 1000 : 12,
 		openAll: openAllSuppliers,
 	});
+
 	const updateAddressMutation = useUpdateSupplierAddressMutation();
 	const receiveMutation = useReceiveMutation();
+
 	const isSubmitDisabled = receiveMutation.isPending || categoriesQuery.isLoading || !!categoriesQuery.error || !form.isValid;
+
 	const onPickProduct = (row: ProductChoiceRow) => {
 		setSelectedProductId(row.product_id);
+
 		const pickedName = (row.name ?? '').trim();
 		form.setName(pickedName);
+
 		if (row.category_id) form.setCategoryId(row.category_id);
+
 		form.setPlu((row.plu ?? '').trim());
 		form.setBarcode(row.barcode ?? '');
 		form.setSellingPrice(row.selling_price === null ? '' : String(num(row.selling_price)));
+
 		const tg = normalizeTaxGroup(row.tax_group) as TaxGroup;
 		form.setTaxGroup(tg);
+
+		// ✅ NEW: unit (default 'пар')
+		form.setUnit(((row as any).unit ?? 'пар') as 'пар' | 'кг' | 'м');
+
 		toast.success('Избран производ ✅');
 	};
+
 	const onPickSupplier = (row: SupplierRow) => {
 		setSelectedSupplierId(row.id);
 		setSupplierName(row.name);
 		setSupplierAddress(row.address ?? '');
+
 		const had = !!(row.address ?? '').trim();
 		setSelectedSupplierHadAddress(had);
+
 		setOpenAllSuppliers(false);
 		toast.message('Избран добавувач', { description: row.name });
 	};
+
 	// ✅ 1) Ако нема selectedSupplierId, креирај/пронајди (на submit)
 	const ensureSupplierExists = async (): Promise<string | null> => {
 		const name = supplierName.trim();
 		const addr = supplierAddress.trim();
+
 		if (!name) return null;
+
 		// ако веќе е избран, не прави ништо
 		if (selectedSupplierId) return selectedSupplierId;
+
 		const { data, error } = await supabase.rpc('suppliers_get_or_create', {
 			_name: name,
 			_address: addr.length ? addr : null,
 		});
+
 		if (error) throw error;
+
 		const row = (Array.isArray(data) ? data[0] : data) as SupplierGetOrCreateRow | null;
 		if (!row?.id) throw new Error('Не успеа креирање/наоѓање на добавувач.');
+
 		setSelectedSupplierId(row.id);
 		setSupplierName(row.name);
 		setSupplierAddress(row.address ?? '');
 		setSelectedSupplierHadAddress(!!(row.address ?? '').trim());
+
 		return row.id;
 	};
+
 	// ✅ 2) Ако адресата во база била NULL, а корисникот внел адреса -> апдејтирај (на submit)
 	const maybeUpdateSupplierAddressOnSave = async (supplierId: string | null) => {
 		if (!supplierId) return;
 		if (selectedSupplierHadAddress) return;
+
 		const addr = supplierAddress.trim();
 		if (!addr) return;
+
 		await new Promise<void>((resolve, reject) => {
 			updateAddressMutation.mutate(
 				{ supplierId, address: addr },
@@ -111,24 +152,31 @@ const ReceivePage = () => {
 			);
 		});
 	};
+
 	const resetAll = () => {
 		setSelectedProductId(null);
 		form.reset();
+
 		setInvoiceNo('');
 		setSupplierName('');
 		setSupplierAddress('');
 		setInvoiceDate('');
+
 		setSelectedSupplierId(null);
 		setSelectedSupplierHadAddress(true);
 		setOpenAllSuppliers(false);
 	};
+
 	const onSubmit = async (e: FormEvent) => {
 		e.preventDefault();
+
 		try {
 			// 1) ensure supplier exists (create if new)
 			const supplierId = await ensureSupplierExists();
+
 			// 2) update address if it was null in DB and user filled it
 			await maybeUpdateSupplierAddressOnSave(supplierId);
+
 			// 3) save receive (✅ WITH PAYLOAD HERE)
 			const payload: ReceivePayload = {
 				plu: form.plu,
@@ -141,8 +189,13 @@ const ReceivePage = () => {
 				note: form.details,
 				categoryId: form.categoryId,
 				taxGroup: form.taxGroup,
+
+				// ✅ NEW
+				unit: form.unit,
+
 				supplierId,
 			};
+
 			await receiveMutation.mutateAsync(payload);
 			toast.success('Приемот е успешно зачуван ✅');
 			resetAll();
@@ -150,11 +203,13 @@ const ReceivePage = () => {
 			toast.error(err instanceof Error ? err.message : 'Грешка при зачувување.');
 		}
 	};
+
 	return (
 		<div className="space-y-5">
 			<div className="flex items-start justify-between gap-3">
 				<div>
 					<h1 className="text-2xl font-bold">Прием на стока</h1>
+
 					<button
 						type="button"
 						onClick={() => {
@@ -165,9 +220,11 @@ const ReceivePage = () => {
 					>
 						Скенирај баркод
 					</button>
+
 					{scanError && <span className="mt-2 block max-w-[220px] text-[10px] text-blamejaRed">{scanError}</span>}
 				</div>
 			</div>
+
 			<form
 				onSubmit={onSubmit}
 				className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6"
@@ -178,6 +235,7 @@ const ReceivePage = () => {
 						<h2 className="text-sm font-semibold text-slate-800">Документ</h2>
 						<p className="text-[11px] text-slate-500">(сега UI, DB подоцна)</p>
 					</div>
+
 					<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 						<div className="md:col-span-3">
 							<label className="mb-1 block text-sm font-medium">Број на фактура</label>
@@ -188,7 +246,7 @@ const ReceivePage = () => {
 								placeholder="пр. 123/2026"
 							/>
 						</div>
-						{/* ✅ Поширок добавувач: col-span-5 */}
+
 						<div className="md:col-span-4">
 							<SupplierInputWithSuggestions
 								value={supplierName}
@@ -206,7 +264,7 @@ const ReceivePage = () => {
 								placeholder="Добавувач…"
 							/>
 						</div>
-						{/* ✅ Помала адреса: col-span-2 */}
+
 						<div className="md:col-span-3">
 							<label className="mb-1 block text-sm font-medium">Адреса (опц.)</label>
 							<input
@@ -216,6 +274,7 @@ const ReceivePage = () => {
 								placeholder="ул., место…"
 							/>
 						</div>
+
 						<div className="md:col-span-2">
 							<label className="mb-1 block text-sm font-medium">Датум</label>
 							<input
@@ -225,6 +284,7 @@ const ReceivePage = () => {
 								className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
 							/>
 						</div>
+
 						{!selectedSupplierHadAddress && selectedSupplierId && (
 							<div className="md:col-span-12">
 								<p className="text-[11px] text-slate-500">
@@ -234,6 +294,7 @@ const ReceivePage = () => {
 						)}
 					</div>
 				</div>
+
 				{/* Category + KPK */}
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 					<div className="md:col-span-6">
@@ -259,6 +320,7 @@ const ReceivePage = () => {
 						</select>
 						{categoriesQuery.error && <p className="mt-1 text-xs text-blamejaRed">Грешка при вчитување категории.</p>}
 					</div>
+
 					{isKpk && (
 						<div className="md:col-span-6">
 							<label className="mb-1 block text-sm font-medium">Фискална шифра (фиксно)</label>
@@ -270,6 +332,7 @@ const ReceivePage = () => {
 						</div>
 					)}
 				</div>
+
 				{/* Product */}
 				<ProductNameWithSuggestions
 					value={form.name}
@@ -282,6 +345,7 @@ const ReceivePage = () => {
 					suggestions={choicesQuery.data ?? []}
 					onPick={onPickProduct}
 				/>
+
 				{/* ✅ ONE ROW */}
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 					<div className="md:col-span-2">
@@ -299,6 +363,7 @@ const ReceivePage = () => {
 							inputMode="numeric"
 						/>
 					</div>
+
 					<div className="md:col-span-2">
 						<label className="mb-1 block text-sm font-medium">Баркод (опц.)</label>
 						<input
@@ -311,6 +376,7 @@ const ReceivePage = () => {
 							placeholder="3830…"
 						/>
 					</div>
+
 					<div className="md:col-span-3">
 						<label className="mb-1 block text-sm font-medium">ДДВ</label>
 						<div className="flex flex-wrap gap-2">
@@ -337,6 +403,24 @@ const ReceivePage = () => {
 							})}
 						</div>
 					</div>
+
+					{/* ✅ NEW: unit select */}
+					<div className="md:col-span-2">
+						<label className="mb-1 block text-sm font-medium">Ед. мерка</label>
+						<select
+							value={form.unit ?? 'пар'}
+							onChange={(e) => {
+								form.setUnit(e.target.value as 'пар' | 'кг' | 'м');
+								setSelectedProductId(null);
+							}}
+							className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+						>
+							<option value="пар">пар</option>
+							<option value="кг">кг</option>
+							<option value="м">м</option>
+						</select>
+					</div>
+
 					<div className="md:col-span-1">
 						<label className="mb-1 block text-sm font-medium">Кол.</label>
 						<input
@@ -347,6 +431,9 @@ const ReceivePage = () => {
 							placeholder="1"
 						/>
 					</div>
+
+					<div className="md:col-span-1" />
+
 					<div className="md:col-span-2">
 						<label className="mb-1 block text-sm font-medium">Набавна</label>
 						<input
@@ -360,6 +447,7 @@ const ReceivePage = () => {
 							placeholder="120"
 						/>
 					</div>
+
 					<div className="md:col-span-2">
 						<label className="mb-1 block text-sm font-medium">Продажна</label>
 						<input
@@ -374,6 +462,7 @@ const ReceivePage = () => {
 						/>
 					</div>
 				</div>
+
 				<div className="mt-4 flex items-center justify-between gap-3">
 					<button
 						type="button"
@@ -382,6 +471,7 @@ const ReceivePage = () => {
 					>
 						Ресетирај форма
 					</button>
+
 					<button
 						type="submit"
 						disabled={isSubmitDisabled}
@@ -391,6 +481,7 @@ const ReceivePage = () => {
 					</button>
 				</div>
 			</form>
+
 			<ScannerModal
 				open={scannerOpen}
 				onClose={() => setScannerOpen(false)}
@@ -404,4 +495,5 @@ const ReceivePage = () => {
 		</div>
 	);
 };
+
 export default ReceivePage;

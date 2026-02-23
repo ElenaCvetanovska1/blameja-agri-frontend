@@ -9,6 +9,7 @@ export type ProductChoiceRow = {
 	tax_group: number | null;
 	category_id: string | null;
 	category_name: string | null;
+	unit: string | null;
 };
 
 export type TaxGroup = '5' | '10' | '18';

@@ -1,13 +1,16 @@
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from 'app/lib/supabase-client';
 
+export type Unit = 'пар' | 'кг' | 'м';
+
 export type ProductLookup = {
 	id: string;
 	plu: string | null; // ✅ TEXT
 	barcode: string | null;
 	name: string;
 	description: string | null;
-	unit: string;
+
+	unit: Unit; // ✅ strict
 	selling_price: number;
 	tax_group: number | null;
 	category_id: string | null;
@@ -19,6 +22,11 @@ const parsePluText = (raw: string) => {
 	if (!t) return null;
 	if (!/^\d+$/.test(t)) return null;
 	return t; // ✅ keep as text
+};
+
+const normalizeUnit = (v: unknown): Unit => {
+	if (v === 'кг' || v === 'м' || v === 'пар') return v;
+	return 'пар';
 };
 
 export const useProductLookup = () => {
@@ -40,7 +48,13 @@ export const useProductLookup = () => {
 				.maybeSingle();
 
 			if (error) throw error;
-			return (data ?? null) as ProductLookup | null;
+
+			if (!data) return null;
+
+			return {
+				...(data as Omit<ProductLookup, 'unit'>),
+				unit: normalizeUnit((data as any).unit),
+			} as ProductLookup;
 		},
 	});
 

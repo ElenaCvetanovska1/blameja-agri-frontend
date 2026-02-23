@@ -55,12 +55,7 @@ const moneyFmt = new Intl.NumberFormat('en-US', {
 const money = (v: number) => moneyFmt.format(Math.round(v * 100) / 100);
 
 const escapeHtml = (s: string) =>
-	(s ?? '')
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&#039;');
+	(s ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
 const downloadTextFile = (content: string, filename: string, mime = 'text/html') => {
 	const blob = new Blob([content], { type: `${mime};charset=utf-8` });
@@ -264,12 +259,7 @@ export default function DispatchPage() {
 	const [adresa, setAdresa] = useState('');
 
 	// Default 4 rows
-	const [items, setItems] = useState<Item[]>([
-		makeEmptyItem(),
-		makeEmptyItem(),
-		makeEmptyItem(),
-		makeEmptyItem(),
-	]);
+	const [items, setItems] = useState<Item[]>([makeEmptyItem(), makeEmptyItem(), makeEmptyItem(), makeEmptyItem()]);
 
 	const rows = useMemo(() => {
 		return items.map((it, idx) => {
@@ -279,10 +269,7 @@ export default function DispatchPage() {
 	}, [items]);
 
 	const printableRows = useMemo(() => items.filter(shouldPrintRow), [items]);
-	const totalPrintable = useMemo(
-		() => printableRows.reduce((s, it) => s + num(it.kolicina) * num(it.cena), 0),
-		[printableRows],
-	);
+	const totalPrintable = useMemo(() => printableRows.reduce((s, it) => s + num(it.kolicina) * num(it.cena), 0), [printableRows]);
 
 	const updateItem = (id: string, patch: Partial<Item>) => {
 		setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
@@ -370,22 +357,41 @@ export default function DispatchPage() {
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
 					<div className="md:col-span-2">
 						<label className={labelCls}>Бр. Испратница</label>
-						<input className={inputCls} value={docNo} onChange={(e) => setDocNo(e.target.value)} />
+						<input
+							className={inputCls}
+							value={docNo}
+							onChange={(e) => setDocNo(e.target.value)}
+						/>
 					</div>
 
 					<div className="md:col-span-2">
 						<label className={labelCls}>Датум</label>
-						<input type="date" className={inputCls} value={docDate} onChange={(e) => setDocDate(e.target.value)} />
+						<input
+							type="date"
+							className={inputCls}
+							value={docDate}
+							onChange={(e) => setDocDate(e.target.value)}
+						/>
 					</div>
 
 					<div className="md:col-span-4">
 						<label className={labelCls}>Купувач</label>
-						<input className={inputCls} value={kupuvac} onChange={(e) => setKupuvac(e.target.value)} placeholder="Пр. Раде" />
+						<input
+							className={inputCls}
+							value={kupuvac}
+							onChange={(e) => setKupuvac(e.target.value)}
+							placeholder="Пр. Раде"
+						/>
 					</div>
 
 					<div className="md:col-span-4">
 						<label className={labelCls}>Адреса</label>
-						<input className={inputCls} value={adresa} onChange={(e) => setAdresa(e.target.value)} placeholder="Пр. Битола" />
+						<input
+							className={inputCls}
+							value={adresa}
+							onChange={(e) => setAdresa(e.target.value)}
+							placeholder="Пр. Битола"
+						/>
 					</div>
 				</div>
 
@@ -410,19 +416,34 @@ export default function DispatchPage() {
 
 						<tbody>
 							{rows.map((r) => (
-								<tr key={r.id} className="text-sm">
+								<tr
+									key={r.id}
+									className="text-sm"
+								>
 									<td className="p-2 border-b border-slate-100">{r.rb}</td>
 
 									<td className="p-2 border-b border-slate-100">
-										<input className={cellInputCls} value={r.sifra} onChange={(e) => updateItem(r.id, { sifra: e.target.value })} />
+										<input
+											className={cellInputCls}
+											value={r.sifra}
+											onChange={(e) => updateItem(r.id, { sifra: e.target.value })}
+										/>
 									</td>
 
 									<td className="p-2 border-b border-slate-100">
-										<input className={cellInputCls} value={r.naziv} onChange={(e) => updateItem(r.id, { naziv: e.target.value })} />
+										<input
+											className={cellInputCls}
+											value={r.naziv}
+											onChange={(e) => updateItem(r.id, { naziv: e.target.value })}
+										/>
 									</td>
 
 									<td className="p-2 border-b border-slate-100">
-										<input className={cellInputCls} value={r.edinMer} onChange={(e) => updateItem(r.id, { edinMer: e.target.value })} />
+										<input
+											className={cellInputCls}
+											value={r.edinMer}
+											onChange={(e) => updateItem(r.id, { edinMer: e.target.value })}
+										/>
 									</td>
 
 									<td className="p-2 border-b border-slate-100 text-right">
