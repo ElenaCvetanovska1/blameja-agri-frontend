@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { supabase } from 'app/lib/supabase-client';
 
 import type { ProductStockRow } from './types';
-import { parseDigitsText } from './utils';
+import { parseDigitsText, num } from './utils';
 import { useOutsideClick } from './hooks/useOutsideClick';
 import { useProductSearch } from './hooks/useProductSearch';
 import { useCart } from './hooks/useCart';
@@ -14,8 +14,8 @@ import { useSalesSubmit } from './hooks/useSalesSubmit';
 
 import { CodeInputWithSuggestions } from './components/CodeInputWithSuggestions';
 import { CartItemCard } from './components/CartItemCard';
-import { TotalsPanel } from './components/TotalsPanel';
 import { ScannerModal } from './components/ScannerModal';
+import { TotalsPanel } from './components/TotalsPanel';
 
 const fetchProductFromStockByExactCode = async (code: string): Promise<ProductStockRow | null> => {
 	const trimmed = code.trim();
@@ -46,13 +46,31 @@ const SalesPage = () => {
 	const [scannerOpen, setScannerOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
+	// кој продукт да му фокусираме Кол. (и да го селектираме 1)
+	const [focusProductId, setFocusProductId] = useState<string | null>(null);
+
+	// тип на плаќање + колку дава клиентот
+	const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD'>('CASH');
+	const [cashReceivedStr, setCashReceivedStr] = useState('');
+
 	const wrapRef = useRef<HTMLDivElement | null>(null);
 
-	const { cart, totals, resetCart, updateItem, removeItem, changeQty, addToCartFromRow } = useCart();
+	const {
+		cart,
+		totals,
+		resetCart,
+		removeItem,
+		changeQty,
+		addToCartFromRow,
+		patchFinalPrice,
+		clampFinalPriceOnBlur,
+	} = useCart();
+
 	const { submitSale } = useSalesSubmit();
 
 	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code);
 
+	// dropdown се затвора само на клик надвор
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
 
 	const resetSale = () => {
@@ -62,6 +80,9 @@ const SalesPage = () => {
 		setScanError(null);
 		setSuggestions([]);
 		setSuggestOpen(false);
+		setFocusProductId(null);
+		setPaymentMethod('CASH');
+		setCashReceivedStr('');
 	};
 
 	const handleAddByCode = async (codeValue?: string) => {
@@ -80,8 +101,16 @@ const SalesPage = () => {
 				return;
 			}
 
-			await addToCartFromRow(row);
+			// ✅ информативно: ако е 0 или минус, кажи (НО НЕ БЛОКИРАЈ)
+			const qoh = num((row as any).qty_on_hand);
+			if (qoh <= 0) {
+				toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
+			}
 
+			const addedProductId = await addToCartFromRow(row);
+			if (addedProductId) setFocusProductId(addedProductId);
+
+			// исчисти барање после додавање
 			setCode('');
 			setSuggestions([]);
 			setSuggestOpen(false);
@@ -100,6 +129,8 @@ const SalesPage = () => {
 				cart,
 				totals,
 				note,
+				paymentMethod,
+				cashReceivedStr,
 				onSuccess: resetSale,
 			});
 		} catch (e) {
@@ -128,89 +159,116 @@ const SalesPage = () => {
 	};
 
 	return (
-		<div className="max-w-4xl mx-auto space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-2xl font-bold text-slate-800">Продажба</h1>
+		<div className="px-4 py-2">
+			<div className="max-w-[1200px] mx-auto">
+				{/* SEARCH */}
+				<div className="mb-4 rounded-xl bg-white p-4 shadow-sm border border-slate-200">
+					<CodeInputWithSuggestions
+						value={code}
+						onChange={(v) => {
+							setCode(v);
 
-				<div className="flex items-center gap-3">
-					<button
-						type="button"
-						onClick={() => {
+							// држи го dropdown-от отворен додека има текст
+							if (v.trim().length > 0) setSuggestOpen(true);
+							if (v.trim().length === 0) setSuggestOpen(false);
+
+							// штом почнеш да пишуваш, нема повеќе авто-фокус на количина
+							setFocusProductId(null);
+						}}
+						onEnter={() => void handleAddByCode()}
+						busy={busy}
+						wrapRef={wrapRef}
+						suggestions={suggestions}
+						suggestOpen={suggestOpen}
+						suggestLoading={suggestLoading}
+						onOpenIfHasSuggestions={() => {
+							if (code.trim().length > 0) setSuggestOpen(true);
+						}}
+						onCloseSuggestions={() => setSuggestOpen(false)}
+						onPickSuggestion={async (row) => {
+							setSuggestOpen(false);
+
+							// ✅ информативно: ако е 0 или минус, кажи (НО НЕ БЛОКИРАЈ)
+							const qoh = num((row as any).qty_on_hand);
+							if (qoh <= 0) toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
+
+							const addedProductId = await addToCartFromRow(row);
+							if (addedProductId) setFocusProductId(addedProductId);
+
+							setCode('');
+							setSuggestions([]);
+						}}
+						onOpenScanner={() => {
 							setScanError(null);
 							setScannerOpen(true);
 						}}
-						className="rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark disabled:opacity-60"
-						disabled={busy}
-					>
-						Скенирај баркод
-					</button>
-
-					{scanError && <p className="text-xs text-blamejaRed">{scanError}</p>}
-				</div>
-			</div>
-
-			<div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200">
-				<CodeInputWithSuggestions
-					value={code}
-					onChange={setCode}
-					onEnter={() => void handleAddByCode()}
-					busy={busy}
-					wrapRef={wrapRef}
-					suggestions={suggestions}
-					suggestOpen={suggestOpen}
-					suggestLoading={suggestLoading}
-					onOpenIfHasSuggestions={() => {
-						if (suggestions.length > 0) setSuggestOpen(true);
-					}}
-					onCloseSuggestions={() => setSuggestOpen(false)}
-					onPickSuggestion={(row) => {
-						setSuggestOpen(false);
-						void addToCartFromRow(row);
-						setCode('');
-					}}
-				/>
-			</div>
-
-			<div className="rounded-2xl bg-white p-4 md:p-6 shadow-sm border border-slate-200 space-y-4">
-				<div className="flex items-center justify-between">
-					<h2 className="text-lg font-semibold text-slate-800">Кошничка</h2>
-					<button
-						type="button"
-						onClick={resetSale}
-						className="text-xs font-semibold text-slate-600 hover:text-slate-800"
-						disabled={busy}
-					>
-						Ресет
-					</button>
+					/>
 				</div>
 
-				{cart.length === 0 ? (
-					<div className="text-sm text-slate-500">Нема додадени артикли. Скенирај баркод или избери од листата.</div>
-				) : (
-					<div className="space-y-3">
-						{cart.map((item) => (
-							<CartItemCard
-								key={item.product.id}
-								item={item}
-								busy={busy}
-								onRemove={() => removeItem(item.product.id)}
-								onQtyChange={(q) => changeQty(item.product.id, q)}
-								onPatch={(patch) => updateItem(item.product.id, patch)}
-							/>
-						))}
+				{/* MAIN LAYOUT */}
+				<div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
+					{/* LEFT: cart list */}
+					<div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200 max-h-[60vh] overflow-auto">
+						<div className="flex items-center justify-between mb-3">
+							<h2 className="text-lg font-semibold text-slate-800">Кошничка</h2>
+
+							<button
+								type="button"
+								onClick={resetSale}
+								className="text-xs font-semibold text-slate-600 hover:text-slate-800"
+								disabled={busy}
+							>
+								Ресет
+							</button>
+						</div>
+
+						{cart.length === 0 ? (
+							<div className="text-sm text-slate-500">Нема додадени артикли. Скенирај баркод или избери од листата.</div>
+						) : (
+							<div className="space-y-3">
+								{cart.map((item) => (
+									<CartItemCard
+										key={item.product.id}
+										item={item}
+										busy={busy}
+										autoFocusQty={focusProductId === item.product.id}
+										onRemove={() => {
+											setFocusProductId(null);
+											removeItem(item.product.id);
+										}}
+										onQtyChange={(q) => {
+											setFocusProductId(null);
+											changeQty(item.product.id, q);
+										}}
+										onFinalPriceChange={(raw) => {
+											setFocusProductId(null);
+											patchFinalPrice(item.product.id, raw);
+										}}
+										onFinalPriceBlur={() => clampFinalPriceOnBlur(item.product.id)}
+									/>
+								))}
+							</div>
+						)}
 					</div>
-				)}
 
-				<div className="h-px bg-slate-200" />
-
-				<TotalsPanel
-					totals={totals}
-					busy={busy}
-					cartEmpty={cart.length === 0}
-					note={note}
-					onNoteChange={setNote}
-					onSubmit={() => void handleSubmitSale()}
-				/>
+					{/* RIGHT: totals + payment */}
+					<div className="lg:sticky lg:top-6">
+						<div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+							<TotalsPanel
+								totals={totals}
+								busy={busy}
+								cartEmpty={cart.length === 0}
+								note={note}
+								onNoteChange={setNote}
+								onSubmit={() => void handleSubmitSale()}
+								paymentMethod={paymentMethod}
+								onPaymentMethodChange={setPaymentMethod}
+								cashReceivedStr={cashReceivedStr}
+								onCashReceivedStrChange={setCashReceivedStr}
+							/>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			<ScannerModal

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from 'app/lib/supabase-client';
 import type { ProductStockRow } from '../types';
-import { escapeLike, parseDigitsText } from '../utils';
+import { escapeLike, parseDigitsText, num } from '../utils';
 
 const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[]> => {
 	const t0 = term.trim();
@@ -16,7 +16,8 @@ const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[
 		.from('product_stock')
 		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name')
 		.or(`barcode.ilike.%${t}%,name.ilike.%${t}%,plu.ilike.%${t}%`)
-		.order('name', { ascending: true })
+		// ✅ SORT by stock (most first)
+		.order('qty_on_hand', { ascending: false, nullsFirst: false })
 		.limit(limit);
 
 	const pluQuery =
@@ -25,6 +26,8 @@ const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[
 					.from('product_stock')
 					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name')
 					.eq('plu', pluText)
+					// ✅ also sort (not super important for eq, but consistent)
+					.order('qty_on_hand', { ascending: false, nullsFirst: false })
 					.limit(limit)
 			: null;
 
@@ -38,9 +41,15 @@ const searchProducts = async (term: string, limit = 8): Promise<ProductStockRow[
 
 	const combined = [...(baseData ?? []), ...(pluRes?.data ?? [])] as ProductStockRow[];
 
+	// ✅ dedupe by product_id
 	const map = new Map<string, ProductStockRow>();
 	combined.forEach((r) => map.set(r.product_id, r));
-	return Array.from(map.values()).slice(0, limit);
+	const deduped = Array.from(map.values());
+
+	// ✅ final sort safeguard (after merge/dedupe): by stock desc
+	deduped.sort((a, b) => num(b.qty_on_hand) - num(a.qty_on_hand));
+
+	return deduped.slice(0, limit);
 };
 
 export const useProductSearch = (code: string) => {

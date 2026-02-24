@@ -3,25 +3,38 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { CartItem, ProductStockRow, Totals } from '../types';
-import { num, percentNum, priceNum, round2, safeText } from '../utils';
+import {
+	num,
+	priceNum,
+	round2,
+	safeText,
+	clampPrice,
+	sanitizePriceInput,
+	clampFinalToBase,
+	discountPerUnitFromBaseFinal,
+} from '../utils';
 
 export const useCart = () => {
 	const [cart, setCart] = useState<CartItem[]>([]);
 
 	const totals: Totals = useMemo(() => {
-		const subtotal = cart.reduce((sum, item) => sum + item.qty * priceNum(item.priceStr), 0);
-
-		const discountTotal = cart.reduce((sum, item) => {
-			const discPerUnit = priceNum(item.priceStr) * (percentNum(item.discountPercentStr) / 100);
-			return sum + item.qty * discPerUnit;
+		const subtotal = cart.reduce((sum, item) => {
+			const base = num(item.product.selling_price);
+			return sum + item.qty * base;
 		}, 0);
 
-		const total = subtotal - discountTotal;
+		const discountTotal = cart.reduce((sum, item) => {
+			const base = num(item.product.selling_price);
+			const finalRaw = priceNum(item.finalPriceStr);
+			const final = clampFinalToBase(finalRaw, base);
+			const discPerUnit = discountPerUnitFromBaseFinal(base, final);
+			return sum + item.qty * discPerUnit;
+		}, 0);
 
 		return {
 			subtotal: round2(subtotal),
 			discountTotal: round2(discountTotal),
-			total: round2(total),
+			total: round2(subtotal - discountTotal),
 		};
 	}, [cart]);
 
@@ -39,14 +52,36 @@ export const useCart = () => {
 		updateItem(productId, { qty: Math.max(1, Math.floor(nextQty || 1)) });
 	};
 
-	const addToCartFromRow = async (row: ProductStockRow) => {
+	const patchFinalPrice = (productId: string, raw: string) => {
+		updateItem(productId, { finalPriceStr: sanitizePriceInput(raw) });
+	};
+
+	const clampFinalPriceOnBlur = (productId: string) => {
+		const item = cart.find((c) => c.product.id === productId);
+		if (!item) return;
+
+		const base = num(item.product.selling_price);
+		const finalRaw = priceNum(item.finalPriceStr);
+		const final = clampFinalToBase(finalRaw, base);
+
+		updateItem(productId, { finalPriceStr: clampPrice(String(final)) });
+	};
+
+	/**
+	 * ✅ IMPORTANT CHANGE:
+	 * - НЕ блокира ако нема залиха (дозволува да оди во минус)
+	 * - Само пушта warning ако веќе си над залиха
+	 */
+	const addToCartFromRow = async (row: ProductStockRow): Promise<string | null> => {
 		const productId = row.product_id;
 		const available = num(row.qty_on_hand);
 		const inCart = cart.find((c) => c.product.id === productId)?.qty ?? 0;
 
+		// ✅ Allow adding even if available is 0 or less than cart
 		if (available <= inCart) {
-			toast.error(`Нема доволно залиха. Достапно: ${available}, во кошничка: ${inCart}.`);
-			return;
+			toast.warning(
+				`Внимание: залиха ${available}, во кошничка ${inCart}. Продажбата ќе оди во минус.`
+			);
 		}
 
 		const product = {
@@ -67,28 +102,28 @@ export const useCart = () => {
 				const newItem: CartItem = {
 					product,
 					qty: 1,
-					priceStr: base > 0 ? String(base) : '',
-					discountPercentStr: '',
+					finalPriceStr: base > 0 ? String(base) : '',
 				};
 				return [newItem, ...prev];
 			}
 
-			// EXISTING item -> increase qty and move to top
+			// EXISTING item -> +1 qty and move to top
 			const updated: CartItem = { ...prev[idx], qty: prev[idx].qty + 1 };
 			return [updated, ...prev.filter((_, i) => i !== idx)];
 		});
 
 		toast.success(`Додадено: ${product.name}`);
+		return productId;
 	};
 
 	return {
 		cart,
-		setCart,
 		totals,
 		resetCart,
-		updateItem,
 		removeItem,
 		changeQty,
 		addToCartFromRow,
+		patchFinalPrice,
+		clampFinalPriceOnBlur,
 	};
 };

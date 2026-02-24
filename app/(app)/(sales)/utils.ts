@@ -54,3 +54,18 @@ export const parseDigitsText = (raw: string) => {
 };
 
 export const escapeLike = (s: string) => s.replace(/[%_]/g, '\\$&');
+
+
+export const clampFinalToBase = (final: number, base: number) => {
+	return Math.min(Math.max(0, final), Math.max(0, base));
+};
+
+export const discountPerUnitFromBaseFinal = (base: number, final: number) => {
+	return round2(Math.max(0, base - final));
+};
+
+export const discountPercentFromBaseFinal = (base: number, final: number) => {
+	if (base <= 0) return 0;
+	const d = Math.max(0, base - final);
+	return round2((d / base) * 100);
+};

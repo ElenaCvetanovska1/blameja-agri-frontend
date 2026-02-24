@@ -42,3 +42,5 @@ export const ScannerModal = ({ open, scanError, onClose, onScan, onError }: Prop
 		</div>
 	);
 };
+
+export default ScannerModal;

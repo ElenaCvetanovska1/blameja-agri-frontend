@@ -1,6 +1,6 @@
 export type ProductStockRow = {
 	product_id: string;
-	plu: string | null; // TEXT
+	plu: string | null;
 	barcode: string | null;
 	name: string | null;
 	selling_price: number | null;
@@ -18,8 +18,7 @@ export type CartItem = {
 		category_name: string | null;
 	};
 	qty: number;
-	priceStr: string;
-	discountPercentStr: string;
+	finalPriceStr: string;
 };
 
 export type Totals = {
