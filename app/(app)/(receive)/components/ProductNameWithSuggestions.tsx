@@ -55,7 +55,7 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 
 			{show && (
 				<div className="absolute left-0 right-0 top-full mt-2 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-					<div className="max-h-64 overflow-auto">
+					<div className="max-h-34 overflow-auto">
 						{loading && <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>}
 
 						{!loading && suggestions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
