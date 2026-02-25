@@ -26,10 +26,7 @@ export function DeleteProductModal({ open, row, onClose }: Props) {
 	const plu = row.plu ?? '—';
 	const barcode = row.barcode ?? '—';
 	const qty = fmtQty(num(row.qty_on_hand));
-	const lastMovement =
-		row.last_movement_at != null
-			? new Date(row.last_movement_at).toLocaleString('mk-MK')
-			: '—';
+	const lastMovement = row.last_movement_at != null ? new Date(row.last_movement_at).toLocaleString('mk-MK') : '—';
 
 	const handleDelete = async () => {
 		try {
@@ -55,9 +52,7 @@ export function DeleteProductModal({ open, row, onClose }: Props) {
 			<div className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
 				<div className="border-b border-slate-200 px-4 py-3">
 					<div className="text-sm font-semibold text-slate-900">Потврда за бришење</div>
-					<div className="text-xs text-slate-500 mt-1">
-						Дали сте сигурни дека сакате да го избришете овој производ?
-					</div>
+					<div className="text-xs text-slate-500 mt-1">Дали сте сигурни дека сакате да го избришете овој производ?</div>
 				</div>
 
 				<div className="p-4 text-sm text-slate-700 space-y-2">
@@ -80,8 +75,8 @@ export function DeleteProductModal({ open, row, onClose }: Props) {
 					</div>
 
 					<div className="mt-3 text-xs text-slate-500">
-						Ова бришење е безбедно: производот ќе се деактивира и ќе се испразнат PLU/баркод,
-						за да можеш после тоа да внесеш нов производ со истата шифра.
+						Ова бришење е безбедно: производот ќе се деактивира и ќе се испразнат PLU/баркод, за да можеш после тоа да внесеш нов производ
+						со истата шифра.
 					</div>
 				</div>
 

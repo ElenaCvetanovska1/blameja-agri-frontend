@@ -3,13 +3,7 @@
 import { supabase } from 'app/lib/supabase-client';
 import { toast } from 'sonner';
 import type { CartItem, Totals } from '../types';
-import {
-	num,
-	priceNum,
-	clampFinalToBase,
-	discountPerUnitFromBaseFinal,
-	sanitizePriceInput,
-} from '../utils';
+import { num, priceNum, clampFinalToBase, discountPerUnitFromBaseFinal, sanitizePriceInput } from '../utils';
 
 type SubmitArgs = {
 	cart: CartItem[];
@@ -34,9 +28,7 @@ export const useSalesSubmit = () => {
 		if (paymentMethod === 'CASH') {
 			cashReceived = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 			if (cashReceived < totals.total) {
-				toast.error(
-					`Недоволно готово. Вкупно: ${totals.total.toFixed(2)} ден. / Дава: ${cashReceived.toFixed(2)} ден.`
-				);
+				toast.error(`Недоволно готово. Вкупно: ${totals.total.toFixed(2)} ден. / Дава: ${cashReceived.toFixed(2)} ден.`);
 				return;
 			}
 		}
@@ -47,11 +39,7 @@ export const useSalesSubmit = () => {
 		 * - Само покажува warning ако ќе оди во минус.
 		 */
 		for (const item of cart) {
-			const { data, error } = await supabase
-				.from('product_stock')
-				.select('qty_on_hand')
-				.eq('product_id', item.product.id)
-				.maybeSingle();
+			const { data, error } = await supabase.from('product_stock').select('qty_on_hand').eq('product_id', item.product.id).maybeSingle();
 
 			if (error) throw error;
 
@@ -59,7 +47,7 @@ export const useSalesSubmit = () => {
 			if (available < item.qty) {
 				const deficit = item.qty - available;
 				toast.warning(
-					`Внимание: "${item.product.name}" нема доволно залиха. Достапно: ${available}, бараш: ${item.qty}. Ќе оди во минус: -${deficit}.`
+					`Внимание: "${item.product.name}" нема доволно залиха. Достапно: ${available}, бараш: ${item.qty}. Ќе оди во минус: -${deficit}.`,
 				);
 				// ❗ НЕ return — дозволуваме
 			}
@@ -69,7 +57,7 @@ export const useSalesSubmit = () => {
 		const { data: receipt, error: receiptError } = await supabase
 			.from('sales_receipts')
 			.insert({
-				payment: paymentMethod,      // enum (CASH/CARD)
+				payment: paymentMethod, // enum (CASH/CARD)
 				total: totals.total,
 				cash_received: cashReceived, // null ако е CARD
 			})
@@ -106,9 +94,7 @@ export const useSalesSubmit = () => {
 			.from('stock_movements')
 			.insert({
 				type: 'OUT',
-				note: note?.trim()
-					? note.trim()
-					: `Internal sale #${receiptNo} (${paymentMethod === 'CASH' ? 'Cash' : 'Card'})`,
+				note: note?.trim() ? note.trim() : `Internal sale #${receiptNo} (${paymentMethod === 'CASH' ? 'Cash' : 'Card'})`,
 			})
 			.select('id')
 			.single();
@@ -126,7 +112,7 @@ export const useSalesSubmit = () => {
 			return {
 				movement_id: movementId,
 				product_id: item.product.id,
-				qty: item.qty,        // ✅ ова ќе оди OUT
+				qty: item.qty, // ✅ ова ќе оди OUT
 				unit_cost: 0,
 				unit_price: final,
 			};

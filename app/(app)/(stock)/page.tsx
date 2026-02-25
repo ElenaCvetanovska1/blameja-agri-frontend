@@ -78,7 +78,6 @@ export default function StockPage() {
 	return (
 		<div className="space-y-5">
 			<div className="space-y-3">
-
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div className="w-full sm:max-w-[420px]">
 						<label className="block text-xs font-medium text-slate-600">Пребарај</label>
@@ -102,7 +101,10 @@ export default function StockPage() {
 								>
 									<option value="">Сите категории</option>
 									{categoryOptions.map((c) => (
-										<option key={c} value={c}>
+										<option
+											key={c}
+											value={c}
+										>
 											{c}
 										</option>
 									))}
@@ -149,15 +151,15 @@ export default function StockPage() {
 			/>
 
 			<div>
-					<div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-							Вкупно: <b>{stats.total}</b>
-						</span>
-						<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-							Без залиха: <b>{stats.outOfStock}</b>
-						</span>
-					</div>
+				<div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+					<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+						Вкупно: <b>{stats.total}</b>
+					</span>
+					<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+						Без залиха: <b>{stats.outOfStock}</b>
+					</span>
 				</div>
+			</div>
 
 			{selected && (
 				<StockAdjustModal

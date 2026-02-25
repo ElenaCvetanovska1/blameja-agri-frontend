@@ -1,4 +1,7 @@
+// types.ts
 export type CategoryRow = { id: string; name: string; code: string };
+
+export type Unit = 'пар' | 'кг' | 'м';
 
 export type ProductChoiceRow = {
 	product_id: string;
@@ -8,8 +11,9 @@ export type ProductChoiceRow = {
 	selling_price: number | null;
 	tax_group: number | null;
 	category_id: string | null;
-	category_name: string | null;
-	unit: string | null;
+	// allow undefined (safe) — we will normalize before sending to components
+	category_name?: string | null;
+	unit?: Unit | null;
 };
 
 export type TaxGroup = '5' | '10' | '18';

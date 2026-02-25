@@ -55,7 +55,6 @@ export const parseDigitsText = (raw: string) => {
 
 export const escapeLike = (s: string) => s.replace(/[%_]/g, '\\$&');
 
-
 export const clampFinalToBase = (final: number, base: number) => {
 	return Math.min(Math.max(0, final), Math.max(0, base));
 };

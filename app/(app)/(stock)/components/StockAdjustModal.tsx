@@ -158,7 +158,11 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							<div className="text-xs text-slate-500">ID: {row.product_id}</div>
 						</div>
 
-						<button type="button" onClick={onClose} className="text-sm text-slate-600 hover:text-slate-900">
+						<button
+							type="button"
+							onClick={onClose}
+							className="text-sm text-slate-600 hover:text-slate-900"
+						>
 							Затвори ✕
 						</button>
 					</div>
@@ -258,7 +262,10 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								>
 									<option value="">— Без категорија —</option>
 									{categoryOptions.map((c) => (
-										<option key={c.id} value={c.id}>
+										<option
+											key={c.id}
+											value={c.id}
+										>
 											{c.name}
 										</option>
 									))}
@@ -333,7 +340,13 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 			</div>
 
 			{/* Scanner modal */}
-			<ScannerModal open={scanOpen} scanError={scanError} onClose={() => setScanOpen(false)} onScan={handleScan} onError={handleScanError} />
+			<ScannerModal
+				open={scanOpen}
+				scanError={scanError}
+				onClose={() => setScanOpen(false)}
+				onScan={handleScan}
+				onError={handleScanError}
+			/>
 		</>
 	);
 }

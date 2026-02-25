@@ -1,3 +1,4 @@
+// page.tsx (ReceivePage)
 'use client';
 
 import type { FormEvent } from 'react';
@@ -12,12 +13,12 @@ import { useReceiveForm } from './hooks/useReceiveForm';
 import { useSupplierChoices, type SupplierRow } from './hooks/useSupplierChoices';
 import { useUpdateSupplierAddressMutation } from './hooks/useUpdateSupplierAddressMutation';
 
-import { ProductNameWithSuggestions } from './components/ProductNameWithSuggestions';
-import { SupplierInputWithSuggestions } from './components/SupplierInputWithSuggestions';
-import { ScannerModal } from './components/ScannerModal';
+import ProductNameWithSuggestions from './components/ProductNameWithSuggestions';
 
 import { KPK_CODE, KPK_FISCAL_PLU, normalizeTaxGroup, num } from './utils';
-import type { ProductChoiceRow, TaxGroup } from './types';
+import type { ProductChoiceRow, TaxGroup, Unit } from './types';
+import { SupplierInputWithSuggestions } from './components/SupplierInputWithSuggestions';
+import { ScannerModal } from './components/ScannerModal';
 
 type SupplierGetOrCreateRow = { id: string; name: string; address: string | null };
 
@@ -58,6 +59,19 @@ const ReceivePage = () => {
 		limit: 10,
 	});
 
+	// NORMALIZE suggestions so ProductNameWithSuggestions always receives category_name & unit
+	const normalizedChoices: ProductChoiceRow[] = (choicesQuery.data ?? []).map((c) => ({
+		product_id: c.product_id,
+		name: c.name ?? null,
+		plu: c.plu ?? null,
+		barcode: c.barcode ?? null,
+		selling_price: c.selling_price ?? null,
+		tax_group: c.tax_group ?? null,
+		category_id: c.category_id ?? null,
+		category_name: (c as any).category_name ?? null,
+		unit: ((c as any).unit ?? 'пар') as Unit,
+	}));
+
 	// suppliers query: browse OR search
 	const suppliersQuery = useSupplierChoices({
 		q: supplierName,
@@ -85,7 +99,7 @@ const ReceivePage = () => {
 		const tg = normalizeTaxGroup(row.tax_group) as TaxGroup;
 		form.setTaxGroup(tg);
 
-		// ✅ NEW: unit (default 'пар')
+		// unit (normalized upstream) — set to form
 		form.setUnit(((row as any).unit ?? 'пар') as 'пар' | 'кг' | 'м');
 
 		toast.success('Избран производ ✅');
@@ -103,14 +117,12 @@ const ReceivePage = () => {
 		toast.message('Избран добавувач', { description: row.name });
 	};
 
-	// ✅ 1) Ако нема selectedSupplierId, креирај/пронајди (на submit)
+	// ensureSupplierExists / maybeUpdateSupplierAddressOnSave (same as before)
 	const ensureSupplierExists = async (): Promise<string | null> => {
 		const name = supplierName.trim();
 		const addr = supplierAddress.trim();
 
 		if (!name) return null;
-
-		// ако веќе е избран, не прави ништо
 		if (selectedSupplierId) return selectedSupplierId;
 
 		const { data, error } = await supabase.rpc('suppliers_get_or_create', {
@@ -131,7 +143,6 @@ const ReceivePage = () => {
 		return row.id;
 	};
 
-	// ✅ 2) Ако адресата во база била NULL, а корисникот внел адреса -> апдејтирај (на submit)
 	const maybeUpdateSupplierAddressOnSave = async (supplierId: string | null) => {
 		if (!supplierId) return;
 		if (selectedSupplierHadAddress) return;
@@ -171,13 +182,9 @@ const ReceivePage = () => {
 		e.preventDefault();
 
 		try {
-			// 1) ensure supplier exists (create if new)
 			const supplierId = await ensureSupplierExists();
-
-			// 2) update address if it was null in DB and user filled it
 			await maybeUpdateSupplierAddressOnSave(supplierId);
 
-			// 3) save receive (✅ WITH PAYLOAD HERE)
 			const payload: ReceivePayload = {
 				plu: form.plu,
 				barcode: form.barcode,
@@ -189,10 +196,7 @@ const ReceivePage = () => {
 				note: form.details,
 				categoryId: form.categoryId,
 				taxGroup: form.taxGroup,
-
-				// ✅ NEW
 				unit: form.unit,
-
 				supplierId,
 			};
 
@@ -342,11 +346,11 @@ const ReceivePage = () => {
 					}}
 					placeholder={form.categoryId ? 'Почни да куцаш (во избрана категорија)…' : 'Почни да куцаш (ќе се пополни категорија)…'}
 					loading={choicesQuery.isFetching}
-					suggestions={choicesQuery.data ?? []}
+					suggestions={normalizedChoices}
 					onPick={onPickProduct}
 				/>
 
-				{/* ✅ ONE ROW */}
+				{/* ONE ROW */}
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 					<div className="md:col-span-2">
 						<label className="mb-1 block text-sm font-medium">
@@ -404,7 +408,7 @@ const ReceivePage = () => {
 						</div>
 					</div>
 
-					{/* ✅ NEW: unit select */}
+					{/* unit */}
 					<div className="md:col-span-2">
 						<label className="mb-1 block text-sm font-medium">Ед. мерка</label>
 						<select

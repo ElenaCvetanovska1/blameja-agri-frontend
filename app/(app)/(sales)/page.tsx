@@ -55,16 +55,7 @@ const SalesPage = () => {
 
 	const wrapRef = useRef<HTMLDivElement | null>(null);
 
-	const {
-		cart,
-		totals,
-		resetCart,
-		removeItem,
-		changeQty,
-		addToCartFromRow,
-		patchFinalPrice,
-		clampFinalPriceOnBlur,
-	} = useCart();
+	const { cart, totals, resetCart, removeItem, changeQty, addToCartFromRow, patchFinalPrice, clampFinalPriceOnBlur } = useCart();
 
 	const { submitSale } = useSalesSubmit();
 

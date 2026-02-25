@@ -1,7 +1,8 @@
+// components/ProductNameWithSuggestions.tsx
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ProductChoiceRow } from '../types';
+import type { ProductChoiceRow, Unit } from '../types';
 import { num } from '../utils';
 
 type Props = {
@@ -9,7 +10,7 @@ type Props = {
 	onChange: (v: string) => void;
 	placeholder: string;
 	loading: boolean;
-	suggestions: ProductChoiceRow[];
+	suggestions: ProductChoiceRow[]; // normalized by caller
 	onPick: (row: ProductChoiceRow) => void;
 };
 
@@ -48,8 +49,7 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 				onKeyDown={(e) => {
 					if (e.key === 'Escape') setOpen(false);
 				}}
-				className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+				className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 				placeholder={placeholder}
 			/>
 
@@ -62,9 +62,10 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 
 						{suggestions.map((s) => {
 							const title = (s.name ?? '—').trim();
-							const pluText = (s.plu ?? '—').toString();
+							const pluText = s.plu ?? '—';
 							const barcodeText = s.barcode ?? '—';
 							const cat = s.category_name ?? '—';
+							const unit = (s.unit ?? 'пар') as Unit;
 
 							return (
 								<button
@@ -82,7 +83,9 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 											<div className="text-[11px] text-slate-500">
 												PLU: <span className="font-medium">{pluText}</span> • Баркод: <span className="font-medium">{barcodeText}</span>
 											</div>
-											<div className="text-[11px] text-slate-500 truncate">{cat}</div>
+											<div className="text-[11px] text-slate-500 truncate">
+												{cat} • {unit}
+											</div>
 										</div>
 
 										<div className="shrink-0 text-right">
@@ -98,9 +101,11 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 			)}
 
 			<p className="text-[11px] text-slate-500">
-				Ако избереш постоечки производ, системот ќе пополни PLU/баркод/цена/ДДВ. Ако внесуваш нов производ: избери категорија, внеси име и
-				PLU.
+				Ако избереш постоечки производ, системот ќе пополни PLU/баркод/цена/ДДВ/Ед. мера. Ако внесуваш нов производ: избери категорија,
+				внеси име и PLU.
 			</p>
 		</div>
 	);
 };
+
+export default ProductNameWithSuggestions;

@@ -3,8 +3,7 @@
 import type { StockRow } from '../hooks/useStock';
 import { FiTrash2 } from 'react-icons/fi';
 
-const fmtQty = (n: number) =>
-	Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0';
+const fmtQty = (n: number) => (Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0');
 
 const num = (v: unknown) => {
 	const n = typeof v === 'number' ? v : Number(v);
@@ -45,7 +44,10 @@ export function StockTable({
 					<tbody>
 						{isLoading && (
 							<tr>
-								<td colSpan={7} className="px-3 py-6 text-center text-slate-500">
+								<td
+									colSpan={7}
+									className="px-3 py-6 text-center text-slate-500"
+								>
 									Се вчитува залиха...
 								</td>
 							</tr>
@@ -53,7 +55,10 @@ export function StockTable({
 
 						{isError && (
 							<tr>
-								<td colSpan={7} className="px-3 py-6 text-center text-red-600">
+								<td
+									colSpan={7}
+									className="px-3 py-6 text-center text-red-600"
+								>
 									Грешка при вчитување: {errorText ?? 'unknown'}
 								</td>
 							</tr>
@@ -61,7 +66,10 @@ export function StockTable({
 
 						{!isLoading && !isError && rows.length === 0 && (
 							<tr>
-								<td colSpan={7} className="px-3 py-10 text-center text-slate-500">
+								<td
+									colSpan={7}
+									className="px-3 py-10 text-center text-slate-500"
+								>
 									Нема резултати за пребарувањето/филтерите.
 								</td>
 							</tr>
@@ -73,13 +81,14 @@ export function StockTable({
 							const zero = qoh <= 0;
 
 							return (
-								<tr key={r.product_id} className="border-t border-slate-100">   
+								<tr
+									key={r.product_id}
+									className="border-t border-slate-100"
+								>
 									<td className="px-3 py-3 font-medium text-slate-900">{r.plu ?? '—'}</td>
 									<td className="px-3 py-3 text-slate-600">{r.barcode ?? '—'}</td>
 									<td className="px-3 py-3 text-slate-900">{r.name ?? '—'}</td>
-									<td className="px-3 py-3 text-slate-600">
-										{r.category_name ?? '—'}
-									</td>
+									<td className="px-3 py-3 text-slate-600">{r.category_name ?? '—'}</td>
 
 									<td className="px-3 py-3 text-right">
 										<span
@@ -88,17 +97,15 @@ export function StockTable({
 												zero
 													? 'bg-red-50 text-red-700 border border-red-100'
 													: low
-													? 'bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100'
-													: 'bg-blamejaGreenSoft text-blamejaGreenDark border border-emerald-100',
+														? 'bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100'
+														: 'bg-blamejaGreenSoft text-blamejaGreenDark border border-emerald-100',
 											].join(' ')}
 										>
 											{fmtQty(qoh)}
 										</span>
 									</td>
 
-									<td className="px-3 py-3 text-right text-slate-700">
-										{num(r.selling_price).toFixed(2)}
-									</td>
+									<td className="px-3 py-3 text-right text-slate-700">{num(r.selling_price).toFixed(2)}</td>
 
 									<td className="px-3 py-3 text-right">
 										<div className="inline-flex items-center gap-2">

@@ -3,16 +3,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { CartItem, ProductStockRow, Totals } from '../types';
-import {
-	num,
-	priceNum,
-	round2,
-	safeText,
-	clampPrice,
-	sanitizePriceInput,
-	clampFinalToBase,
-	discountPerUnitFromBaseFinal,
-} from '../utils';
+import { num, priceNum, round2, safeText, clampPrice, sanitizePriceInput, clampFinalToBase, discountPerUnitFromBaseFinal } from '../utils';
 
 export const useCart = () => {
 	const [cart, setCart] = useState<CartItem[]>([]);
@@ -79,9 +70,7 @@ export const useCart = () => {
 
 		// ✅ Allow adding even if available is 0 or less than cart
 		if (available <= inCart) {
-			toast.warning(
-				`Внимание: залиха ${available}, во кошничка ${inCart}. Продажбата ќе оди во минус.`
-			);
+			toast.warning(`Внимание: залиха ${available}, во кошничка ${inCart}. Продажбата ќе оди во минус.`);
 		}
 
 		const product = {
