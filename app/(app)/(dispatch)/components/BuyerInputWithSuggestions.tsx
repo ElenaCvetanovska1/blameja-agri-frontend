@@ -68,8 +68,14 @@ export default function BuyerInputWithSuggestions({
 	}, [loading, filtered.length, all.length, maxVisible]);
 
 	return (
-		<div ref={wrapRef} className="relative">
-			<label htmlFor={id} className="mb-1 block text-[11px] font-semibold text-slate-600">
+		<div
+			ref={wrapRef}
+			className="relative"
+		>
+			<label
+				htmlFor={id}
+				className="mb-1 block text-[11px] font-semibold text-slate-600"
+			>
 				{label}
 			</label>
 
@@ -102,13 +108,9 @@ export default function BuyerInputWithSuggestions({
 					<div className="max-h-72 overflow-auto">
 						{loading && <div className="px-3 py-2 text-xs text-slate-500">Се вчитува…</div>}
 
-						{!loading && all.length === 0 && (
-							<div className="px-3 py-2 text-xs text-slate-500">Нема купувачи.</div>
-						)}
+						{!loading && all.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема купувачи.</div>}
 
-						{!loading && all.length > 0 && filtered.length === 0 && (
-							<div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
-						)}
+						{!loading && all.length > 0 && filtered.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
 
 						{!loading &&
 							visible.map((s) => (

@@ -5,69 +5,69 @@ export const makeId = () => crypto.randomUUID();
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const num = (v: unknown) => {
-  const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
+	const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(',', '.'));
+	return Number.isFinite(n) ? n : 0;
 };
 
 const moneyFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const money = (v: number) => moneyFmt.format(Math.round(v * 100) / 100);
 
 export const escapeHtml = (s: string) =>
-  (s ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+	(s ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
 export const downloadTextFile = (content: string, filename: string, mime = 'text/html') => {
-  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+	const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(url);
 };
 
 export const blobToDataUrl = (blob: Blob) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('FileReader error'));
-    reader.onload = () => resolve(String(reader.result));
-    reader.readAsDataURL(blob);
-  });
+	new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onerror = () => reject(new Error('FileReader error'));
+		reader.onload = () => resolve(String(reader.result));
+		reader.readAsDataURL(blob);
+	});
 
 export const normalizeUnit = (v: unknown): Unit => {
-  if (v === 'кг' || v === 'м' || v === 'пар') return v;
-  return 'пар';
+	if (v === 'кг' || v === 'м' || v === 'пар') return v;
+	return 'пар';
 };
 
 export const normalizeSuggestion = (r: ProductLookupRow): ProductSuggestion => ({
-  id: String(r.id),
-  plu: (r.plu ?? '').trim(),
-  barcode: r.barcode ?? null,
-  name: (r.name ?? '—').trim(),
-  unit: normalizeUnit(r.unit),
-  selling_price: num(r.selling_price),
+	id: String(r.id),
+	plu: (r.plu ?? '').trim(),
+	barcode: r.barcode ?? null,
+	name: (r.name ?? '—').trim(),
+	unit: normalizeUnit(r.unit),
+	selling_price: num(r.selling_price),
 });
 
+// ✅ ново: prodaznaCena
 export const makeEmptyItem = (defaults?: Partial<DispatchItem>): DispatchItem => ({
-  id: makeId(),
-  sifra: '',
-  naziv: '',
-  edinMer: '',
-  kolicina: 1,
-  cena: 0,
-  ...defaults,
+	id: makeId(),
+	sifra: '',
+	naziv: '',
+	edinMer: '',
+	kolicina: 1,
+
+	cena: 0, // фиксна
+	prodaznaCena: 0, // продажна
+
+	...defaults,
 });
 
-export const shouldPrintRow = (it: DispatchItem) => Boolean(it.naziv.trim() || num(it.cena) > 0);
+// ✅ print row if has name OR prodaznaCena > 0
+export const shouldPrintRow = (it: DispatchItem) => Boolean(it.naziv.trim() || num(it.prodaznaCena) > 0);
 
 export const buildIspratnicaHtml = (d: DocData) => {
-  const rows = d.items
-    .map(
-      (r) => `
+	const rows = d.items
+		.map(
+			(r) => `
       <tr>
         <td class="c">${r.rb}</td>
         <td>${escapeHtml(r.sifra)}</td>
@@ -75,15 +75,16 @@ export const buildIspratnicaHtml = (d: DocData) => {
         <td class="c">${escapeHtml(r.edinMer)}</td>
         <td class="r">${money(r.kolicina)}</td>
         <td class="r">${money(r.cena)}</td>
+        <td class="r">${money(r.prodaznaCena)}</td>
         <td class="r">${money(r.iznos)}</td>
       </tr>
     `,
-    )
-    .join('');
+		)
+		.join('');
 
-  const logoHtml = d.logoDataUrl ? `<img class="logo" src="${d.logoDataUrl}" alt="logo" />` : '';
+	const logoHtml = d.logoDataUrl ? `<img class="logo" src="${d.logoDataUrl}" alt="logo" />` : '';
 
-  return `<!doctype html>
+	return `<!doctype html>
 <html lang="mk">
 <head>
   <meta charset="utf-8"/>
@@ -115,7 +116,7 @@ export const buildIspratnicaHtml = (d: DocData) => {
     .c { text-align: center; }
     .r { text-align: right; }
     .totalRow{ margin-top: 6px; display: flex; justify-content: flex-end; }
-    .totalBox{ width: 110px; text-align: right; font-size: 14px; font-weight: 800; }
+    .totalBox{ width: 140px; text-align: right; font-size: 14px; font-weight: 800; }
     .footer { margin-top: 18px; display:flex; justify-content:space-between; gap: 20px; }
     .sign { width: 46%; }
     .sign .label { font-weight: 900; }
@@ -155,17 +156,18 @@ export const buildIspratnicaHtml = (d: DocData) => {
       <table>
         <thead>
           <tr>
-            <th style="width:50px;">Ред.</th>
-            <th style="width:90px;">Шифра</th>
+            <th style="width:45px;">Ред.</th>
+            <th style="width:80px;">Шифра</th>
             <th>Назив на материјалите</th>
-            <th style="width:90px;">Един. мер</th>
-            <th style="width:90px;">Количина</th>
-            <th style="width:90px;">Цена со ДДВ</th>
-            <th style="width:110px;">Износ со ДДВ (ден.)</th>
+            <th style="width:70px;">Един. мер</th>
+            <th style="width:80px;">Количина</th>
+            <th style="width:85px;">Цена</th>
+            <th style="width:105px;">Продажна цена</th>
+            <th style="width:110px;">Износ (ден.)</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="7" class="c">Нема ставки</td></tr>`}
+          ${rows || `<tr><td colspan="8" class="c">Нема ставки</td></tr>`}
         </tbody>
       </table>
 
