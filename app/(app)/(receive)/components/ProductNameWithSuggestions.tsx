@@ -10,7 +10,7 @@ type Props = {
 	onChange: (v: string) => void;
 	placeholder: string;
 	loading: boolean;
-	suggestions: ProductChoiceRow[]; // normalized by caller
+	suggestions: ProductChoiceRow[];
 	onPick: (row: ProductChoiceRow) => void;
 };
 

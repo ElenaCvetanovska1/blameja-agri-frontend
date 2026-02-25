@@ -11,7 +11,6 @@ export type ProductChoiceRow = {
 	selling_price: number | null;
 	tax_group: number | null;
 	category_id: string | null;
-	// allow undefined (safe) — we will normalize before sending to components
 	category_name?: string | null;
 	unit?: Unit | null;
 };

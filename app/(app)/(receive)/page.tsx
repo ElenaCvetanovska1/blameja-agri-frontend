@@ -1,4 +1,3 @@
-// page.tsx (ReceivePage)
 'use client';
 
 import type { FormEvent } from 'react';
@@ -59,7 +58,6 @@ const ReceivePage = () => {
 		limit: 10,
 	});
 
-	// NORMALIZE suggestions so ProductNameWithSuggestions always receives category_name & unit
 	const normalizedChoices: ProductChoiceRow[] = (choicesQuery.data ?? []).map((c) => ({
 		product_id: c.product_id,
 		name: c.name ?? null,
@@ -72,7 +70,6 @@ const ReceivePage = () => {
 		unit: ((c as any).unit ?? 'пар') as Unit,
 	}));
 
-	// suppliers query: browse OR search
 	const suppliersQuery = useSupplierChoices({
 		q: supplierName,
 		limit: openAllSuppliers ? 1000 : 12,
