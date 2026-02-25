@@ -1,15 +1,17 @@
-// page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import type { DocData } from './types';
+
+import type { DocData, BuyerRow } from './types';
 import { blobToDataUrl, buildIspratnicaHtml, downloadTextFile, money, num } from './utils';
 import { useDispatchItems } from './hooks/useDispatchItems';
 import DispatchTable from './components/DispatchTable';
 
+import BuyerInputWithSuggestions from './components/BuyerInputWithSuggestions';
+import { useBuyerAll } from './hooks/useBuyerChoices';
+
 export default function DispatchPage() {
-  // HARD-CODE фирма
   const firmaNaziv = 'БЛАМЕЈА';
   const firmaAdresa = 'ул. 8-ми Септември бр. 69, Битола';
   const firmaTelefon = '047/221-398';
@@ -17,10 +19,25 @@ export default function DispatchPage() {
 
   const [docNo, setDocNo] = useState('1');
   const [docDate, setDocDate] = useState(new Date().toISOString().slice(0, 10));
+
   const [kupuvac, setKupuvac] = useState('');
   const [adresa, setAdresa] = useState('');
 
+  
+
+  // ✅ ќе го палиме кога првпат ќе се фокусира купувачот
+  const [buyersEnabled, setBuyersEnabled] = useState(false);
+
+  const buyersQuery = useBuyerAll(buyersEnabled);
+  const allBuyers = buyersQuery.data ?? [];
+
   const { rows, printableRows, totalPrintable, updateItem, addRow, removeRow } = useDispatchItems();
+
+  const onPickBuyer = (row: BuyerRow) => {
+    setKupuvac(row.name ?? '');
+    setAdresa(row.address ?? ''); // ✅ секогаш overwrite (ако нема -> празно)
+    toast.message('Избран купувач', { description: row.name });
+  };
 
   const validate = () => {
     if (!docNo.trim()) return 'Внеси број на испратница.';
@@ -38,26 +55,13 @@ export default function DispatchPage() {
     let logoDataUrl: string | undefined;
     try {
       const res = await fetch('/blamejaLogo.png', { cache: 'no-store' });
-      if (res.ok) {
-        const blob = await res.blob();
-        logoDataUrl = await blobToDataUrl(blob);
-      }
-    } catch {
-      // ignore
-    }
+      if (res.ok) logoDataUrl = await blobToDataUrl(await res.blob());
+    } catch {}
 
     const printable = printableRows.map((it, idx) => {
       const k = num(it.kolicina);
       const c = num(it.cena);
-      return {
-        rb: idx + 1,
-        sifra: it.sifra,
-        naziv: it.naziv,
-        edinMer: it.edinMer || '',
-        kolicina: k,
-        cena: c,
-        iznos: k * c,
-      };
+      return { rb: idx + 1, sifra: it.sifra, naziv: it.naziv, edinMer: it.edinMer || '', kolicina: k, cena: c, iznos: k * c };
     });
 
     const doc: DocData = {
@@ -74,14 +78,12 @@ export default function DispatchPage() {
       total: printable.reduce((s, r) => s + num(r.iznos), 0),
     };
 
-    const html = buildIspratnicaHtml(doc);
-    downloadTextFile(html, `ispratnica-${doc.docNo}.html`);
+    downloadTextFile(buildIspratnicaHtml(doc), `ispratnica-${doc.docNo}.html`);
     toast.success('Превземено. Отвори → “Печати” → исклучи “Headers and footers”.');
   };
 
-  // UI classes
   const labelCls = 'text-[11px] font-semibold text-slate-600';
-  const inputCls = 'mt-1 w-full rounded-lg border border-slate-200 px-2 py-1 text-sm';
+  const inputCls = 'w-full rounded-lg border border-slate-200 px-2 py-2 text-sm';
 
   return (
     <div className="max-w-6xl mx-auto flex flex-col gap-3">
@@ -100,13 +102,24 @@ export default function DispatchPage() {
           </div>
 
           <div className="md:col-span-4">
-            <label className={labelCls}>Купувач</label>
-            <input className={inputCls} value={kupuvac} onChange={(e) => setKupuvac(e.target.value)} placeholder="Пр. Раде" />
+            <div
+              onFocusCapture={() => setBuyersEnabled(true)} // ✅ прв фокус пали fetch
+              onClickCapture={() => setBuyersEnabled(true)}
+            >
+              <BuyerInputWithSuggestions
+                value={kupuvac}
+                onChange={setKupuvac}
+                onPick={onPickBuyer}
+                all={allBuyers}
+                loading={buyersQuery.isFetching}
+                placeholder="Купувач…"
+              />
+            </div>
           </div>
 
           <div className="md:col-span-4">
             <label className={labelCls}>Адреса</label>
-            <input className={inputCls} value={adresa} onChange={(e) => setAdresa(e.target.value)} placeholder="Пр. Битола" />
+            <input className={inputCls} value={adresa} onChange={(e) => setAdresa(e.target.value)} placeholder="Адреса…" />
           </div>
         </div>
 
@@ -115,11 +128,7 @@ export default function DispatchPage() {
         <DispatchTable rows={rows} onUpdate={updateItem} onRemove={removeRow} />
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={addRow}
-            className="rounded-2xl bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-900"
-          >
+          <button type="button" onClick={addRow} className="rounded-2xl bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-900">
             + Додај ред
           </button>
 
@@ -128,11 +137,7 @@ export default function DispatchPage() {
               Вкупно: <span className="font-bold text-slate-900">{money(totalPrintable)} ден.</span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleDownloadDocument}
-              className="rounded-2xl bg-blamejaGreen px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
-            >
+            <button type="button" onClick={handleDownloadDocument} className="rounded-2xl bg-blamejaGreen px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blamejaGreenDark">
               Зачувај / Превземи
             </button>
           </div>

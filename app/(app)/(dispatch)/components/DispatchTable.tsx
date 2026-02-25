@@ -88,7 +88,7 @@ const DispatchRow = ({
             onUpdate(r.id, { sifra: v });
             setSifraOpen(v.trim().length > 0);
           }}
-          placeholder="PLU / баркод…"
+          placeholder="PLU..."
           suggestions={sifraSearch.suggestions}
           open={sifraOpen && (sifraSearch.open || sifraSearch.loading)}
           setOpen={setSifraOpen}

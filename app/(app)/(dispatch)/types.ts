@@ -33,12 +33,18 @@ export type ProductSuggestion = {
   selling_price: number; // normalized
 };
 
+export type BuyerRow = {
+  key: string;
+  name: string;
+  address: string | null;
+  source: 'PERSON' | 'SUPPLIER';
+};
+
 export type DocData = {
   docNo: string;
   docDate: string;
 
   logoDataUrl?: string;
-
   firmaNaziv: string;
   firmaAdresa: string;
   firmaTelefon: string;
@@ -56,6 +62,5 @@ export type DocData = {
     cena: number;
     iznos: number;
   }>;
-
   total: number;
 };
