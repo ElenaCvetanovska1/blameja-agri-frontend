@@ -1,17 +1,23 @@
-// types.ts
 export type Unit = 'пар' | 'кг' | 'м';
 
 export type DispatchItem = {
 	id: string;
-	sifra: string; // PLU текст
+
+	// must exist for DB inserts
+	productId: string | null;
+
+	sifra: string; // PLU text
+	barcode: string | null;
+
 	naziv: string;
 	edinMer: Unit | '';
+
 	kolicina: number;
 
-	// ✅ фиксна цена (од производ)
+	// base (fixed) from product
 	cena: number;
 
-	// ✅ продажна цена (ја внесуваш ти)
+	// sell (editable)
 	prodaznaCena: number;
 };
 
@@ -25,7 +31,7 @@ export type ProductLookupRow = {
 	plu: string | null;
 	barcode: string | null;
 	name: string | null;
-	unit: string | null;
+	unit: string | null; // from DB
 	selling_price: number | null;
 };
 
@@ -65,10 +71,10 @@ export type DocData = {
 		edinMer: string;
 		kolicina: number;
 
-		cena: number; // фиксна
-		prodaznaCena: number; // продажна
+		cena: number;
+		prodaznaCena: number;
 
-		iznos: number; // kolicina * prodaznaCena
+		iznos: number;
 	}>;
 
 	total: number;

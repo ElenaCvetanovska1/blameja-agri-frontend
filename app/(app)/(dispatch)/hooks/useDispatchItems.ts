@@ -1,4 +1,3 @@
-// hooks/useDispatchItems.ts
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -10,7 +9,7 @@ export const useDispatchItems = () => {
 
 	const rows: DispatchRowVM[] = useMemo(() => {
 		return items.map((it, idx) => {
-			const iznos = num(it.kolicina) * num(it.prodaznaCena); // ✅ продава по оваа цена
+			const iznos = num(it.kolicina) * num(it.prodaznaCena);
 			return { ...it, rb: idx + 1, iznos };
 		});
 	}, [items]);

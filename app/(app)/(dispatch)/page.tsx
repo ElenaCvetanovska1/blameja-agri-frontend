@@ -1,57 +1,73 @@
-// page.tsx
 'use client';
 
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import type { BuyerRow, DocData } from './types';
-import { blobToDataUrl, buildIspratnicaHtml, downloadTextFile, money, num } from './utils';
+import { blobToDataUrl, buildDispatchHtml, downloadTextFile, money, num } from './utils';
 
 import { useDispatchItems } from './hooks/useDispatchItems';
 import DispatchTable from './components/DispatchTable';
 
 import BuyerInputWithSuggestions from './components/BuyerInputWithSuggestions';
 import { useBuyerAll } from './hooks/useBuyerChoices';
+import { useDispatchSubmit } from './hooks/useDispatchSubmit';
 
 export default function DispatchPage() {
-	// HARD-CODE фирма
-	const firmaNaziv = 'БЛАМЕЈА';
-	const firmaAdresa = 'ул. 8-ми Септември бр. 69, Битола';
-	const firmaTelefon = '047/221-398';
-	const firmaTransSmetka = '270065696840148 (Халк банка)';
+	// Company (hard-coded)
+	const companyName = 'БЛАМЕЈА';
+	const companyAddress = 'ул. 8-ми Септември бр. 69, Битола';
+	const companyPhone = '047/221-398';
+	const companyBankAccount = '270065696840148 (Халк банка)';
 
 	const [docNo, setDocNo] = useState('1');
 	const [docDate, setDocDate] = useState(new Date().toISOString().slice(0, 10));
 
-	const [kupuvac, setKupuvac] = useState('');
-	const [adresa, setAdresa] = useState('');
+	const [buyerName, setBuyerName] = useState('');
+	const [buyerAddress, setBuyerAddress] = useState('');
 
-	// ✅ ќе го палиме кога првпат ќе се фокусира купувачот
 	const [buyersEnabled, setBuyersEnabled] = useState(false);
 	const buyersQuery = useBuyerAll(buyersEnabled);
 	const allBuyers = buyersQuery.data ?? [];
 
-	const { rows, printableRows, totalPrintable, updateItem, addRow, removeRow } = useDispatchItems();
+	const { rows, printableRows, totalPrintable, updateItem, addRow, removeRow, reset } = useDispatchItems();
+	const { submitDispatch } = useDispatchSubmit();
 
 	const onPickBuyer = (row: BuyerRow) => {
-		setKupuvac(row.name ?? '');
-		setAdresa(row.address ?? ''); // ако нема -> празно
+		setBuyerName(row.name ?? '');
+		setBuyerAddress(row.address ?? '');
 		toast.message('Избран купувач', { description: row.name });
 	};
 
 	const validate = () => {
 		if (!docNo.trim()) return 'Внеси број на испратница.';
-		if (!kupuvac.trim()) return 'Внеси купувач.';
-		if (!adresa.trim()) return 'Внеси адреса.';
-		if (printableRows.length === 0) return 'Внеси барем една ставка (назив или продажна цена).';
-		if (printableRows.some((r) => num(r.kolicina) <= 0)) return 'Количината мора да е > 0 за пополнетите редови.';
+		if (!buyerName.trim()) return 'Внеси купувач.';
+		if (!buyerAddress.trim()) return 'Внеси адреса.';
+		if (printableRows.length === 0) return 'Внеси барем една ставка.';
+		if (printableRows.some((r) => num(r.kolicina) <= 0)) return 'Количината мора да е > 0.';
+		if (printableRows.some((r) => !r.productId)) return 'Сите редови мора да се изберат од предлози (недостасува productId).';
 		return null;
 	};
 
-	const handleDownloadDocument = async () => {
+	const handleSaveAndDownload = async () => {
 		const err = validate();
 		if (err) return toast.error(err);
 
+		// 1) Save to DB
+		try {
+			await submitDispatch({
+				docNo: docNo.trim(),
+				docDate: docDate.trim(),
+				rows: printableRows,
+				total: totalPrintable,
+			});
+		} catch (e) {
+			console.error(e);
+			toast.error('Не успеа зачувување на испратница.');
+			return;
+		}
+
+		// 2) Download HTML
 		let logoDataUrl: string | undefined;
 		try {
 			const res = await fetch('/blamejaLogo.png', { cache: 'no-store' });
@@ -62,7 +78,7 @@ export default function DispatchPage() {
 
 		const printable = printableRows.map((it, idx) => {
 			const k = num(it.kolicina);
-			const fixed = num(it.cena);
+			const base = num(it.cena);
 			const sell = num(it.prodaznaCena);
 
 			return {
@@ -71,11 +87,9 @@ export default function DispatchPage() {
 				naziv: it.naziv,
 				edinMer: it.edinMer || '',
 				kolicina: k,
-
-				cena: fixed, // фиксна
-				prodaznaCena: sell, // продажна
-
-				iznos: k * sell, // ✅ пресметка по продажна цена
+				cena: base,
+				prodaznaCena: sell,
+				iznos: k * sell,
 			};
 		});
 
@@ -83,18 +97,23 @@ export default function DispatchPage() {
 			docNo: docNo.trim(),
 			docDate: docDate.trim(),
 			logoDataUrl,
-			firmaNaziv,
-			firmaAdresa,
-			firmaTelefon,
-			firmaTransSmetka,
-			kupuvac: kupuvac.trim(),
-			adresa: adresa.trim(),
+
+			firmaNaziv: companyName,
+			firmaAdresa: companyAddress,
+			firmaTelefon: companyPhone,
+			firmaTransSmetka: companyBankAccount,
+
+			kupuvac: buyerName.trim(),
+			adresa: buyerAddress.trim(),
+
 			items: printable,
 			total: printable.reduce((s, r) => s + num(r.iznos), 0),
 		};
 
-		downloadTextFile(buildIspratnicaHtml(doc), `ispratnica-${doc.docNo}.html`);
+		downloadTextFile(buildDispatchHtml(doc), `ispratnica-${doc.docNo}.html`);
 		toast.success('Превземено. Отвори → “Печати” → исклучи “Headers and footers”.');
+
+		reset();
 	};
 
 	const labelCls = 'text-[11px] font-semibold text-slate-600';
@@ -131,8 +150,8 @@ export default function DispatchPage() {
 							onClickCapture={() => setBuyersEnabled(true)}
 						>
 							<BuyerInputWithSuggestions
-								value={kupuvac}
-								onChange={setKupuvac}
+								value={buyerName}
+								onChange={setBuyerName}
 								onPick={onPickBuyer}
 								all={allBuyers}
 								loading={buyersQuery.isFetching}
@@ -146,8 +165,8 @@ export default function DispatchPage() {
 						<label className={labelCls}>Адреса</label>
 						<input
 							className={inputCls}
-							value={adresa}
-							onChange={(e) => setAdresa(e.target.value)}
+							value={buyerAddress}
+							onChange={(e) => setBuyerAddress(e.target.value)}
 							placeholder="Адреса…"
 						/>
 					</div>
@@ -177,7 +196,7 @@ export default function DispatchPage() {
 
 						<button
 							type="button"
-							onClick={handleDownloadDocument}
+							onClick={handleSaveAndDownload}
 							className="rounded-2xl bg-blamejaGreen px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
 						>
 							Зачувај / Превземи

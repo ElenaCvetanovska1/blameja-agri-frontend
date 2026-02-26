@@ -1,4 +1,3 @@
-// hooks/useDispatchProductSearch.ts
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +11,6 @@ const searchProducts = async (term: string, limit = 8): Promise<ProductSuggestio
 	const t0 = term.trim();
 	if (t0.length < 1) return [];
 
-	// ✅ main partial search (name/plu/barcode)
 	const base = await supabase
 		.from('products')
 		.select('id, plu, barcode, name, unit, selling_price')
@@ -21,18 +19,15 @@ const searchProducts = async (term: string, limit = 8): Promise<ProductSuggestio
 
 	if (base.error) throw base.error;
 
-	// ✅ if digits, also try exact PLU (priority)
 	let exact: ProductLookupRow[] = [];
 	if (isDigits(t0)) {
 		const ex = await supabase.from('products').select('id, plu, barcode, name, unit, selling_price').eq('plu', t0).limit(limit);
-
 		if (ex.error) throw ex.error;
 		exact = (ex.data ?? []) as ProductLookupRow[];
 	}
 
 	const combined = [...(exact ?? []), ...((base.data ?? []) as ProductLookupRow[])];
 
-	// dedupe by id
 	const map = new Map<string, ProductLookupRow>();
 	for (const r of combined) map.set(String(r.id), r);
 

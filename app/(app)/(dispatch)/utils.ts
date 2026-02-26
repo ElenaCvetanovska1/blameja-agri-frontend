@@ -1,16 +1,16 @@
-// utils.ts
 import type { DispatchItem, DocData, ProductLookupRow, ProductSuggestion, Unit } from './types';
 
 export const makeId = () => crypto.randomUUID();
-export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const num = (v: unknown) => {
 	const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(',', '.'));
 	return Number.isFinite(n) ? n : 0;
 };
 
+export const round2 = (v: number) => Math.round(num(v) * 100) / 100;
+
 const moneyFmt = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const money = (v: number) => moneyFmt.format(Math.round(v * 100) / 100);
+export const money = (v: number) => moneyFmt.format(round2(v));
 
 export const escapeHtml = (s: string) =>
 	(s ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
@@ -34,7 +34,9 @@ export const blobToDataUrl = (blob: Blob) =>
 	});
 
 export const normalizeUnit = (v: unknown): Unit => {
-	if (v === 'кг' || v === 'м' || v === 'пар') return v;
+	const s = String(v ?? '').trim();
+	if (s === 'кг') return 'кг';
+	if (s === 'м') return 'м';
 	return 'пар';
 };
 
@@ -47,24 +49,41 @@ export const normalizeSuggestion = (r: ProductLookupRow): ProductSuggestion => (
 	selling_price: num(r.selling_price),
 });
 
-// ✅ ново: prodaznaCena
 export const makeEmptyItem = (defaults?: Partial<DispatchItem>): DispatchItem => ({
 	id: makeId(),
+
+	productId: null,
 	sifra: '',
+	barcode: null,
+
 	naziv: '',
 	edinMer: '',
+
 	kolicina: 1,
 
-	cena: 0, // фиксна
-	prodaznaCena: 0, // продажна
+	cena: 0,
+	prodaznaCena: 0,
 
 	...defaults,
 });
 
-// ✅ print row if has name OR prodaznaCena > 0
 export const shouldPrintRow = (it: DispatchItem) => Boolean(it.naziv.trim() || num(it.prodaznaCena) > 0);
 
-export const buildIspratnicaHtml = (d: DocData) => {
+// POS-like helpers
+export const clampFinalToBase = (finalPrice: number, basePrice: number) => {
+	const b = num(basePrice);
+	const f = num(finalPrice);
+	if (b <= 0) return round2(f);
+	return round2(Math.min(f, b));
+};
+
+export const discountPerUnitFromBaseFinal = (basePrice: number, finalPrice: number) => {
+	const b = num(basePrice);
+	const f = num(finalPrice);
+	return round2(Math.max(0, b - f));
+};
+
+export const buildDispatchHtml = (d: DocData) => {
 	const rows = d.items
 		.map(
 			(r) => `
@@ -74,8 +93,10 @@ export const buildIspratnicaHtml = (d: DocData) => {
         <td>${escapeHtml(r.naziv)}</td>
         <td class="c">${escapeHtml(r.edinMer)}</td>
         <td class="r">${money(r.kolicina)}</td>
-        <td class="r">${money(r.cena)}</td>
+
+        <!-- ЕДИНСТВЕНА ЦЕНА: ПРОДАЖНАТА, ПРИКАЗАНА КАКО "Цена со ДДВ" -->
         <td class="r">${money(r.prodaznaCena)}</td>
+
         <td class="r">${money(r.iznos)}</td>
       </tr>
     `,
@@ -161,13 +182,15 @@ export const buildIspratnicaHtml = (d: DocData) => {
             <th>Назив на материјалите</th>
             <th style="width:70px;">Един. мер</th>
             <th style="width:80px;">Количина</th>
-            <th style="width:85px;">Цена</th>
-            <th style="width:105px;">Продажна цена</th>
+
+            <!-- НОВА ЕДНА КОЛОНА ЗА ЦЕНА -->
+            <th style="width:110px;">Цена со ДДВ</th>
+
             <th style="width:110px;">Износ (ден.)</th>
           </tr>
         </thead>
         <tbody>
-          ${rows || `<tr><td colspan="8" class="c">Нема ставки</td></tr>`}
+          ${rows || `<tr><td colspan="7" class="c">Нема ставки</td></tr>`}
         </tbody>
       </table>
 

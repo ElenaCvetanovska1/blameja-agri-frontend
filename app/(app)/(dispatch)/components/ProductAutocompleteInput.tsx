@@ -1,4 +1,3 @@
-// components/ProductAutocompleteInput.tsx
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -78,7 +77,7 @@ export const ProductAutocompleteInput = ({
 							<button
 								key={s.id}
 								type="button"
-								onMouseDown={(e) => e.preventDefault()} // keep focus
+								onMouseDown={(e) => e.preventDefault()}
 								onClick={() => {
 									onPick(s);
 									setOpen(false);

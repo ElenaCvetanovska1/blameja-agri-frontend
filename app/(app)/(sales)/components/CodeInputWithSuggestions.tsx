@@ -99,6 +99,8 @@ export const CodeInputWithSuggestions = (props: Props) => {
 							const pluText = s.plu != null ? String(s.plu) : '—';
 							const barcodeText = s.barcode ?? '—';
 							const qtyOnHand = num(s.qty_on_hand);
+							const price = num(s.selling_price);
+							const priceText = price > 0 ? price.toFixed(2) : '—';
 
 							return (
 								<button
@@ -122,8 +124,17 @@ export const CodeInputWithSuggestions = (props: Props) => {
 										</div>
 
 										<div className="shrink-0 text-right">
-											<div className="text-[11px] text-slate-500">Залиха</div>
-											<div className="text-sm font-bold text-slate-900">{qtyOnHand}</div>
+											<div className="flex items-center gap-6">
+												<div>
+													<div className="text-[11px] text-slate-500">Цена</div>
+													<div className="text-sm font-bold text-slate-900 tabular-nums">{priceText}</div>
+												</div>
+
+												<div>
+													<div className="text-[11px] text-slate-500">Залиха</div>
+													<div className="text-sm font-bold text-slate-900 tabular-nums">{qtyOnHand}</div>
+												</div>
+											</div>
 										</div>
 									</div>
 								</button>

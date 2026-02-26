@@ -1,4 +1,3 @@
-// components/DispatchTable.tsx
 'use client';
 
 import { useState } from 'react';
@@ -27,13 +26,8 @@ export const DispatchTable = ({ rows, onUpdate, onRemove }: Props) => {
 						<th className="text-left p-2 border-b border-slate-200">Назив</th>
 						<th className="text-left p-2 border-b border-slate-200 w-[120px]">Един. мер</th>
 						<th className="text-right p-2 border-b border-slate-200 w-[120px]">Количина</th>
-
-						{/* ✅ фиксна */}
 						<th className="text-right p-2 border-b border-slate-200 w-[120px]">Цена</th>
-
-						{/* ✅ продажна */}
 						<th className="text-right p-2 border-b border-slate-200 w-[140px]">Продажна цена</th>
-
 						<th className="text-right p-2 border-b border-slate-200 w-[140px]">Износ</th>
 						<th className="p-2 border-b border-slate-200 w-[80px]" />
 					</tr>
@@ -66,11 +60,9 @@ const DispatchRow = ({
 	onUpdate: (id: string, patch: any) => void;
 	onRemove: (id: string) => void;
 }) => {
-	// ✅ search for sifra (PLU/barcode)
 	const [sifraOpen, setSifraOpen] = useState(false);
 	const sifraSearch = useDispatchProductSearch({ term: r.sifra, limit: 8 });
 
-	// ✅ search for naziv (name)
 	const [nazivOpen, setNazivOpen] = useState(false);
 	const nazivSearch = useDispatchProductSearch({ term: r.naziv, limit: 8 });
 
@@ -78,14 +70,14 @@ const DispatchRow = ({
 		const fixed = Number.isFinite(s.selling_price) ? s.selling_price : 0;
 
 		onUpdate(r.id, {
+			productId: s.id, // required for DB inserts
 			sifra: s.plu ? s.plu : '',
+			barcode: s.barcode ?? null,
+
 			naziv: s.name ?? '',
 			edinMer: s.unit ?? 'пар',
 
-			// ✅ фиксна цена (не се менува)
 			cena: fixed,
-
-			// ✅ default продажна цена = фиксна цена (па после можеш да ја намалиш)
 			prodaznaCena: fixed,
 		});
 	};
@@ -94,7 +86,6 @@ const DispatchRow = ({
 		<tr className="text-sm">
 			<td className="p-2 border-b border-slate-100">{r.rb}</td>
 
-			{/* sifra autocomplete */}
 			<td className="p-2 border-b border-slate-100">
 				<ProductAutocompleteInput
 					value={r.sifra}
@@ -107,11 +98,10 @@ const DispatchRow = ({
 					open={sifraOpen && (sifraSearch.open || sifraSearch.loading)}
 					setOpen={setSifraOpen}
 					loading={sifraSearch.loading}
-					onPick={(s) => applySuggestion(s)}
+					onPick={applySuggestion}
 				/>
 			</td>
 
-			{/* naziv autocomplete */}
 			<td className="p-2 border-b border-slate-100">
 				<ProductAutocompleteInput
 					value={r.naziv}
@@ -124,11 +114,10 @@ const DispatchRow = ({
 					open={nazivOpen && (nazivSearch.open || nazivSearch.loading)}
 					setOpen={setNazivOpen}
 					loading={nazivSearch.loading}
-					onPick={(s) => applySuggestion(s)}
+					onPick={applySuggestion}
 				/>
 			</td>
 
-			{/* unit */}
 			<td className="p-2 border-b border-slate-100">
 				<select
 					className={cellInputCls}
@@ -142,7 +131,6 @@ const DispatchRow = ({
 				</select>
 			</td>
 
-			{/* qty */}
 			<td className="p-2 border-b border-slate-100 text-right">
 				<input
 					inputMode="decimal"
@@ -152,7 +140,6 @@ const DispatchRow = ({
 				/>
 			</td>
 
-			{/* ✅ fixed price (readOnly) */}
 			<td className="p-2 border-b border-slate-100 text-right">
 				<input
 					readOnly
@@ -163,7 +150,6 @@ const DispatchRow = ({
 				/>
 			</td>
 
-			{/* ✅ selling price (editable) */}
 			<td className="p-2 border-b border-slate-100 text-right">
 				<input
 					inputMode="decimal"
@@ -181,10 +167,7 @@ const DispatchRow = ({
 					type="button"
 					onClick={() => onRemove(r.id)}
 					aria-label="Избриши ред"
-					className="inline-flex h-8 w-8 items-center justify-center
-               rounded-full border border-red-200
-               bg-red-50 text-red-600
-               hover:bg-red-100 hover:text-red-700 transition"
+					className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 transition"
 				>
 					<FiTrash2 className="h-4 w-4" />
 				</button>
