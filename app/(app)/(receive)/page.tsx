@@ -13,16 +13,19 @@ import { useSupplierChoices, type SupplierRow } from './hooks/useSupplierChoices
 import { useUpdateSupplierAddressMutation } from './hooks/useUpdateSupplierAddressMutation';
 
 import ProductNameWithSuggestions from './components/ProductNameWithSuggestions';
-
-import { KPK_CODE, KPK_FISCAL_PLU, normalizeTaxGroup, num } from './utils';
-import type { ProductChoiceRow, TaxGroup, Unit } from './types';
 import { SupplierInputWithSuggestions } from './components/SupplierInputWithSuggestions';
 import { ScannerModal } from './components/ScannerModal';
+
+import { KPK_CODE, KPK_FISCAL_PLU, normalizeTaxGroup, num } from './utils';
+import type { ProductChoiceRow, TaxGroup, Unit, StoreNo } from './types';
 
 type SupplierGetOrCreateRow = { id: string; name: string; address: string | null };
 
 const ReceivePage = () => {
 	const form = useReceiveForm();
+
+	// ✅ Store selector (Продавница бр.)
+	const [storeNo, setStoreNo] = useState<StoreNo>(20);
 
 	// Document fields (UI for now)
 	const [invoiceNo, setInvoiceNo] = useState('');
@@ -37,8 +40,10 @@ const ReceivePage = () => {
 	// browse all suppliers toggle
 	const [openAllSuppliers, setOpenAllSuppliers] = useState(false);
 
+	// product selection (optional tracking)
 	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
+	// scanner
 	const [scannerOpen, setScannerOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
@@ -52,22 +57,26 @@ const ReceivePage = () => {
 		return (selectedCategory?.code ?? '').toLowerCase() === KPK_CODE;
 	}, [selectedCategory]);
 
+	// ✅ IMPORTANT: filter suggestions by storeNo
 	const choicesQuery = useProductChoices({
 		name: form.name,
 		categoryId: form.categoryId,
+		storeNo,
 		limit: 10,
 	});
 
+	// ✅ map from Row (id, categories(name)) → ProductChoiceRow (product_id, category_name)
 	const normalizedChoices: ProductChoiceRow[] = (choicesQuery.data ?? []).map((c) => ({
-		product_id: c.product_id,
+		product_id: c.id,
 		name: c.name ?? null,
 		plu: c.plu ?? null,
 		barcode: c.barcode ?? null,
 		selling_price: c.selling_price ?? null,
 		tax_group: c.tax_group ?? null,
 		category_id: c.category_id ?? null,
-		category_name: (c as any).category_name ?? null,
-		unit: ((c as any).unit ?? 'пар') as Unit,
+		category_name: c.categories?.[0]?.name ?? null, // ✅ FIX
+		unit: (c.unit ?? 'пар') as Unit,
+		store_no: (c.store_no ?? storeNo) as StoreNo,
 	}));
 
 	const suppliersQuery = useSupplierChoices({
@@ -79,7 +88,8 @@ const ReceivePage = () => {
 	const updateAddressMutation = useUpdateSupplierAddressMutation();
 	const receiveMutation = useReceiveMutation();
 
-	const isSubmitDisabled = receiveMutation.isPending || categoriesQuery.isLoading || !!categoriesQuery.error || !form.isValid;
+	const isSubmitDisabled =
+		receiveMutation.isPending || categoriesQuery.isLoading || !!categoriesQuery.error || !form.isValid;
 
 	const onPickProduct = (row: ProductChoiceRow) => {
 		setSelectedProductId(row.product_id);
@@ -96,8 +106,8 @@ const ReceivePage = () => {
 		const tg = normalizeTaxGroup(row.tax_group) as TaxGroup;
 		form.setTaxGroup(tg);
 
-		// unit (normalized upstream) — set to form
-		form.setUnit(((row as any).unit ?? 'пар') as 'пар' | 'кг' | 'м');
+		// unit
+		form.setUnit((row.unit ?? 'пар') as 'пар' | 'кг' | 'м');
 
 		toast.success('Избран производ ✅');
 	};
@@ -114,7 +124,6 @@ const ReceivePage = () => {
 		toast.message('Избран добавувач', { description: row.name });
 	};
 
-	// ensureSupplierExists / maybeUpdateSupplierAddressOnSave (same as before)
 	const ensureSupplierExists = async (): Promise<string | null> => {
 		const name = supplierName.trim();
 		const addr = supplierAddress.trim();
@@ -173,6 +182,8 @@ const ReceivePage = () => {
 		setSelectedSupplierId(null);
 		setSelectedSupplierHadAddress(true);
 		setOpenAllSuppliers(false);
+
+		// storeNo оставам како што е (ако сакаш reset на 20 кажи)
 	};
 
 	const onSubmit = async (e: FormEvent) => {
@@ -195,6 +206,9 @@ const ReceivePage = () => {
 				taxGroup: form.taxGroup,
 				unit: form.unit,
 				supplierId,
+
+				// ✅ NEW
+				storeNo,
 			};
 
 			await receiveMutation.mutateAsync(payload);
@@ -206,30 +220,49 @@ const ReceivePage = () => {
 	};
 
 	return (
-		<div className="space-y-5">
+		<div className="space-y-2">
 			<div className="flex items-start justify-between gap-3">
-				<div>
-					<h1 className="text-2xl font-bold">Прием на стока</h1>
+	{/* LEFT SIDE */}
+	<div className="flex flex-col gap-2">
+		<div className="flex items-center gap-3">
+			<span className="text-xs font-semibold text-slate-600">
+				Продавница бр.
+			</span>
 
-					<button
-						type="button"
-						onClick={() => {
-							setScanError(null);
-							setScannerOpen(true);
-						}}
-						className="mt-3 rounded-3xl bg-blamejaGreen px-8 py-4 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
-					>
-						Скенирај баркод
-					</button>
-
-					{scanError && <span className="mt-2 block max-w-[220px] text-[10px] text-blamejaRed">{scanError}</span>}
-				</div>
-			</div>
-
-			<form
-				onSubmit={onSubmit}
-				className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6"
+			<select
+				value={storeNo}
+				onChange={(e) => setStoreNo(Number(e.target.value) as StoreNo)}
+				className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
 			>
+				<option value={20}>20</option>
+				<option value={30}>30</option>
+			</select>
+		</div>
+
+	</div>
+
+	{/* RIGHT SIDE */}
+	<div className="flex flex-col items-end">
+		<button
+			type="button"
+			onClick={() => {
+				setScanError(null);
+				setScannerOpen(true);
+			}}
+			className="rounded-3xl bg-blamejaGreen px-4 py-2 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
+		>
+			Скенирај баркод
+		</button>
+
+		{scanError && (
+			<span className="mt-2 text-[10px] text-blamejaRed">
+				{scanError}
+			</span>
+		)}
+	</div>
+</div>
+
+			<form onSubmit={onSubmit} className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
 				{/* Документ */}
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
@@ -311,10 +344,7 @@ const ReceivePage = () => {
 						>
 							<option value="">{categoriesQuery.isLoading ? 'Се вчитува...' : 'Избери категорија'}</option>
 							{(categoriesQuery.data ?? []).map((c) => (
-								<option
-									key={c.id}
-									value={c.id}
-								>
+								<option key={c.id} value={c.id}>
 									{c.name}
 								</option>
 							))}

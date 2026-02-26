@@ -8,6 +8,11 @@ export const num = (v: unknown) => {
 	return Number.isFinite(n) ? n : 0;
 };
 
+// ✅ NEW: PostgREST ilike escape (%, _ and \)
+export const escapeLike = (input: string) => {
+	return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+};
+
 export const parseNumOrNull = (value: string) => {
 	const trimmed = value.trim();
 	if (!trimmed) return null;

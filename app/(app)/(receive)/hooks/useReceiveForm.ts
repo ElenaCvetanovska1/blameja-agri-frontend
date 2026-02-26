@@ -1,13 +1,17 @@
+// receive/hooks/useReceiveForm.ts
 'use client';
 
 import { useMemo, useState } from 'react';
 
 export type Unit = 'пар' | 'кг' | 'м';
 export type TaxGroup = '5' | '10' | '18';
+export type StoreNo = 20 | 30;
 
 const isValidUnit = (v: unknown): v is Unit => v === 'пар' || v === 'кг' || v === 'м';
 
 export const useReceiveForm = () => {
+	const [storeNo, setStoreNo] = useState<StoreNo>(20);
+
 	const [categoryId, setCategoryId] = useState('');
 	const [name, setName] = useState('');
 	const [plu, setPlu] = useState('');
@@ -17,22 +21,19 @@ export const useReceiveForm = () => {
 	const [sellingPrice, setSellingPrice] = useState('');
 	const [details, setDetails] = useState('');
 	const [taxGroup, setTaxGroup] = useState<TaxGroup>('18');
-
-	// ✅ NEW: unit (ед. мерка) default = 'пар'
 	const [unit, setUnit] = useState<Unit>('пар');
 
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		if (!plu.trim()) return false;
 		if (!qty.trim()) return false;
-
-		// unit is always valid because it's a select, but keep it strict
 		if (!isValidUnit(unit)) return false;
-
 		return true;
-	}, [name, categoryId, plu, qty, unit]);
+	}, [name, plu, qty, unit]);
 
 	const reset = () => {
+		setStoreNo(20);
+
 		setCategoryId('');
 		setName('');
 		setPlu('');
@@ -42,40 +43,32 @@ export const useReceiveForm = () => {
 		setSellingPrice('');
 		setDetails('');
 		setTaxGroup('18');
-
-		// ✅ reset unit to default
 		setUnit('пар');
 	};
 
 	return {
+		// ✅ NEW
+		storeNo,
+		setStoreNo,
+
 		categoryId,
 		setCategoryId,
-
 		name,
 		setName,
-
 		plu,
 		setPlu,
-
 		barcode,
 		setBarcode,
-
 		qty,
 		setQty,
-
 		unitCost,
 		setUnitCost,
-
 		sellingPrice,
 		setSellingPrice,
-
 		details,
 		setDetails,
-
 		taxGroup,
 		setTaxGroup,
-
-		// ✅ expose unit + setter
 		unit,
 		setUnit,
 

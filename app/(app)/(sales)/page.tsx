@@ -17,7 +17,7 @@ import { CartItemCard } from './components/CartItemCard';
 import { ScannerModal } from './components/ScannerModal';
 import { TotalsPanel } from './components/TotalsPanel';
 
-const fetchProductFromStockByExactCode = async (code: string): Promise<ProductStockRow | null> => {
+const fetchProductFromStockByExactCode = async (code: string, storeNo: 20 | 30): Promise<ProductStockRow | null> => {
 	const trimmed = code.trim();
 	if (!trimmed) return null;
 
@@ -29,7 +29,8 @@ const fetchProductFromStockByExactCode = async (code: string): Promise<ProductSt
 
 	const { data, error } = await supabase
 		.from('product_stock')
-		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name')
+		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no')
+		.eq('store_no', storeNo)
 		.or(orParts.join(','))
 		.limit(1)
 		.maybeSingle();
@@ -46,22 +47,22 @@ const SalesPage = () => {
 	const [scannerOpen, setScannerOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
-	// кој продукт да му фокусираме Кол. (и да го селектираме 1)
 	const [focusProductId, setFocusProductId] = useState<string | null>(null);
 
-	// тип на плаќање + колку дава клиентот
 	const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD'>('CASH');
 	const [cashReceivedStr, setCashReceivedStr] = useState('');
+
+	// ✅ НОВО: продавница филтер
+	const [storeNo, setStoreNo] = useState<20 | 30>(20);
 
 	const wrapRef = useRef<HTMLDivElement | null>(null);
 
 	const { cart, totals, resetCart, removeItem, changeQty, addToCartFromRow, patchFinalPrice, clampFinalPriceOnBlur } = useCart();
-
 	const { submitSale } = useSalesSubmit();
 
-	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code);
+	// ✅ НОВО: search зависи од storeNo
+	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code, storeNo);
 
-	// dropdown се затвора само на клик надвор
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
 
 	const resetSale = () => {
@@ -74,6 +75,7 @@ const SalesPage = () => {
 		setFocusProductId(null);
 		setPaymentMethod('CASH');
 		setCashReceivedStr('');
+		// storeNo не го ресетираме (да остане како што избрал user)
 	};
 
 	const handleAddByCode = async (codeValue?: string) => {
@@ -85,14 +87,13 @@ const SalesPage = () => {
 
 		setBusy(true);
 		try {
-			const row = await fetchProductFromStockByExactCode(value);
+			const row = await fetchProductFromStockByExactCode(value, storeNo);
 
 			if (!row) {
-				toast.error('Не е пронајден производ со овој баркод/шифра.');
+				toast.error(`Не е пронајден производ во продавница ${storeNo}.`);
 				return;
 			}
 
-			// ✅ информативно: ако е 0 или минус, кажи (НО НЕ БЛОКИРАЈ)
 			const qoh = num((row as any).qty_on_hand);
 			if (qoh <= 0) {
 				toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
@@ -101,7 +102,6 @@ const SalesPage = () => {
 			const addedProductId = await addToCartFromRow(row);
 			if (addedProductId) setFocusProductId(addedProductId);
 
-			// исчисти барање после додавање
 			setCode('');
 			setSuggestions([]);
 			setSuggestOpen(false);
@@ -150,20 +150,15 @@ const SalesPage = () => {
 	};
 
 	return (
-		<div className="px-4 py-2">
+		<div className="px-4 ">
 			<div className="max-w-[1200px] mx-auto">
-				{/* SEARCH */}
 				<div className="mb-4 rounded-xl bg-white p-4 shadow-sm border border-slate-200">
 					<CodeInputWithSuggestions
 						value={code}
 						onChange={(v) => {
 							setCode(v);
-
-							// држи го dropdown-от отворен додека има текст
 							if (v.trim().length > 0) setSuggestOpen(true);
 							if (v.trim().length === 0) setSuggestOpen(false);
-
-							// штом почнеш да пишуваш, нема повеќе авто-фокус на количина
 							setFocusProductId(null);
 						}}
 						onEnter={() => void handleAddByCode()}
@@ -179,7 +174,6 @@ const SalesPage = () => {
 						onPickSuggestion={async (row) => {
 							setSuggestOpen(false);
 
-							// ✅ информативно: ако е 0 или минус, кажи (НО НЕ БЛОКИРАЈ)
 							const qoh = num((row as any).qty_on_hand);
 							if (qoh <= 0) toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
 
@@ -193,12 +187,18 @@ const SalesPage = () => {
 							setScanError(null);
 							setScannerOpen(true);
 						}}
+						// ✅ НОВО: selector props
+						storeNo={storeNo}
+						onStoreNoChange={(v) => {
+							setStoreNo(v);
+							setCode('');
+							setSuggestions([]);
+							setSuggestOpen(false);
+						}}
 					/>
 				</div>
 
-				{/* MAIN LAYOUT */}
 				<div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
-					{/* LEFT: cart list */}
 					<div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200 max-h-[60vh] overflow-auto">
 						<div className="flex items-center justify-between mb-3">
 							<h2 className="text-lg font-semibold text-slate-800">Кошничка</h2>
@@ -242,7 +242,6 @@ const SalesPage = () => {
 						)}
 					</div>
 
-					{/* RIGHT: totals + payment */}
 					<div className="lg:sticky lg:top-6">
 						<div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
 							<TotalsPanel

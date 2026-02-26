@@ -20,6 +20,10 @@ type Props = {
 
 	onPickSuggestion: (row: ProductStockRow) => void;
 	onOpenScanner?: () => void;
+
+	// ✅ NEW
+	storeNo: 20 | 30;
+	onStoreNoChange: (v: 20 | 30) => void;
 };
 
 export const CodeInputWithSuggestions = (props: Props) => {
@@ -36,16 +40,31 @@ export const CodeInputWithSuggestions = (props: Props) => {
 		onCloseSuggestions,
 		onPickSuggestion,
 		onOpenScanner,
+		storeNo,
+		onStoreNoChange,
 	} = props;
 
 	const inputRef = useRef<HTMLInputElement | null>(null);
 
 	return (
-		<div
-			ref={wrapRef}
-			className="relative"
-		>
-			<label className="block text-xs font-medium text-slate-600 mb-2">Баркод или PLU (или име)</label>
+		<div ref={wrapRef} className="relative">
+			{/* ✅ во истиот rectangle, над пребарување */}
+			<div className="mb-2 flex items-center justify-between gap-3">
+				<label className="block text-xs font-medium text-slate-600">Баркод или PLU (или име)</label>
+
+				<div className="flex items-center gap-2">
+					<span className="text-[11px] text-slate-500">продавница бр</span>
+					<select
+						value={storeNo}
+						onChange={(e) => onStoreNoChange(Number(e.target.value) as 20 | 30)}
+						className="h-8 rounded-lg border border-slate-200 px-2 text-xs font-semibold text-slate-700 bg-white"
+						disabled={busy}
+					>
+						<option value={20}>20</option>
+						<option value={30}>30</option>
+					</select>
+				</div>
+			</div>
 
 			<div className="flex gap-2">
 				<button
@@ -62,10 +81,7 @@ export const CodeInputWithSuggestions = (props: Props) => {
 					ref={inputRef}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
-					onFocus={() => {
-						// ✅ keep it stable; open dropdown if there are results
-						onOpenIfHasSuggestions();
-					}}
+					onFocus={() => onOpenIfHasSuggestions()}
 					onKeyDown={(e) => {
 						if (e.key === 'Enter') {
 							e.preventDefault();
@@ -92,7 +108,9 @@ export const CodeInputWithSuggestions = (props: Props) => {
 					<div className="max-h-64 overflow-auto">
 						{suggestLoading && <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>}
 
-						{!suggestLoading && suggestions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
+						{!suggestLoading && suggestions.length === 0 && (
+							<div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
+						)}
 
 						{suggestions.map((s) => {
 							const title = safeText(s.name) || '—';
@@ -106,11 +124,9 @@ export const CodeInputWithSuggestions = (props: Props) => {
 								<button
 									key={s.product_id}
 									type="button"
-									// ✅ IMPORTANT: prevents input from losing focus
 									onMouseDown={(e) => e.preventDefault()}
 									onClick={() => {
 										onPickSuggestion(s);
-										// ✅ keep typing smooth after pick (optional)
 										inputRef.current?.focus();
 									}}
 									className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
@@ -119,7 +135,8 @@ export const CodeInputWithSuggestions = (props: Props) => {
 										<div className="min-w-0">
 											<div className="text-sm font-semibold text-slate-800 truncate">{title}</div>
 											<div className="text-[11px] text-slate-500">
-												PLU: <span className="font-medium">{pluText}</span> • Баркод: <span className="font-medium">{barcodeText}</span>
+												PLU: <span className="font-medium">{pluText}</span> • Баркод:{' '}
+												<span className="font-medium">{barcodeText}</span>
 											</div>
 										</div>
 

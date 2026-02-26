@@ -1,7 +1,9 @@
+// receive/hooks/useReceiveMutation.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from 'app/lib/supabase-client';
 
 export type Unit = 'пар' | 'кг' | 'м';
+export type StoreNo = 20 | 30;
 
 export type ReceivePayload = {
 	plu: string;
@@ -16,37 +18,36 @@ export type ReceivePayload = {
 	taxGroup: '5' | '10' | '18';
 	supplierId?: string | null;
 
-	// ✅ NEW
 	unit: Unit | null;
+
+	// ✅ NEW
+	storeNo: StoreNo;
 };
 
 const parseNum = (value: string) => {
 	const trimmed = value.trim();
 	if (!trimmed) return null;
-
-	const num = Number.parseFloat(trimmed.replace(',', '.'));
-	if (Number.isNaN(num)) return undefined;
-
-	return num;
+	const n = Number.parseFloat(trimmed.replace(',', '.'));
+	if (Number.isNaN(n)) return undefined;
+	return n;
 };
 
 const parsePluRequired = (raw: string) => {
 	const t = raw.trim();
 	if (!t) return null;
 	if (!/^\d+$/.test(t)) return undefined;
-
 	const n = Number.parseInt(t, 10);
 	return Number.isFinite(n) ? n : undefined;
 };
 
 const isValidUnit = (v: unknown): v is Unit => v === 'пар' || v === 'кг' || v === 'м';
+const isValidStoreNo = (v: unknown): v is StoreNo => v === 20 || v === 30;
 
 export const useReceiveMutation = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
 		mutationFn: async (payload: ReceivePayload) => {
-			// --------- REQUIRED VALIDATION ----------
 			const pluParsed = parsePluRequired(payload.plu);
 			if (pluParsed === undefined) throw new Error('PLU: невалиден број.');
 			if (pluParsed === null) throw new Error('PLU е задолжителен.');
@@ -62,7 +63,6 @@ export const useReceiveMutation = () => {
 			if (qtyNum === undefined) throw new Error('Количина: невалиден број.');
 			if (qtyNum === null || qtyNum <= 0) throw new Error('Количина мора да е > 0.');
 
-			// --------- OPTIONAL FIELDS ----------
 			const barcode = payload.barcode.trim();
 			const description = payload.description.trim();
 			const note = payload.note.trim();
@@ -80,20 +80,21 @@ export const useReceiveMutation = () => {
 
 			const supplierId = payload.supplierId ?? null;
 
-			// ✅ UNIT (default пар)
 			const unit: Unit = isValidUnit(payload.unit) ? payload.unit : 'пар';
+
+			// ✅ storeNo (20/30)
+			const storeNo: StoreNo = isValidStoreNo(payload.storeNo) ? payload.storeNo : 20;
 
 			const { data: userData, error: userErr } = await supabase.auth.getUser();
 			if (userErr) throw userErr;
 			const userId = userData.user?.id ?? null;
 
-			// lookup existing product by (plu OR barcode if provided)
 			const orParts: string[] = [`plu.eq.${plu}`];
 			if (barcode) orParts.push(`barcode.eq.${barcode}`);
 
 			const { data: existing, error: lookupError } = await supabase
 				.from('products')
-				.select('id, plu, barcode, name, description, selling_price, tax_group, category_id, unit')
+				.select('id, plu, barcode, name, description, selling_price, tax_group, category_id, unit, store_no')
 				.or(orParts.join(','))
 				.eq('is_active', true)
 				.maybeSingle();
@@ -115,6 +116,7 @@ export const useReceiveMutation = () => {
 						is_active: true,
 						category_id: categoryId,
 						unit,
+						store_no: storeNo, // ✅ NEW
 					})
 					.select('id')
 					.single();
@@ -130,9 +132,8 @@ export const useReceiveMutation = () => {
 					tax_group: taxGroupNum,
 					plu,
 					name,
-
-					// ✅ NEW (секогаш ќе го усогласи со селекцијата на прием)
 					unit,
+					store_no: storeNo, // ✅ NEW (секогаш усогласи со изборот на прием)
 				};
 
 				if (barcode) updatePayload.barcode = barcode;
@@ -143,7 +144,6 @@ export const useReceiveMutation = () => {
 				if (updateError) throw updateError;
 			}
 
-			// ✅ stock movement (IN) + supplier_id
 			const { data: movement, error: movementError } = await supabase
 				.from('stock_movements')
 				.insert({

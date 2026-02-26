@@ -6,6 +6,7 @@ export type ProductStockRow = {
 	selling_price: number | null;
 	qty_on_hand: number | null;
 	category_name: string | null;
+	store_no?: number | null;
 };
 
 export type CartItem = {
