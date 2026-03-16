@@ -150,6 +150,13 @@ const AppLayout = () => {
 							>
 								Финансии
 							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.dispatch}
+								className={navLinkClass}
+								onClick={() => setMobileOpen(false)}
+							>
+								Финансии
+							</NavLink>
 
 							{/* Mobile logout */}
 							<button
