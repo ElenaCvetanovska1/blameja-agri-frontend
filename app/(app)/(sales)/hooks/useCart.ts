@@ -80,6 +80,7 @@ export const useCart = () => {
 			name: safeText(row.name) || '—',
 			selling_price: num(row.selling_price),
 			category_name: row.category_name ?? null,
+			tax_group: row.tax_group ?? null,
 		};
 
 		setCart((prev) => {

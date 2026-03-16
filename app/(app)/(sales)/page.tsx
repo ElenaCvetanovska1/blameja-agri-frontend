@@ -11,6 +11,7 @@ import { useOutsideClick } from './hooks/useOutsideClick';
 import { useProductSearch } from './hooks/useProductSearch';
 import { useCart } from './hooks/useCart';
 import { useSalesSubmit } from './hooks/useSalesSubmit';
+import { useFiscalSaleFlow } from './hooks/useFiscalSaleFlow';
 
 import { CodeInputWithSuggestions } from './components/CodeInputWithSuggestions';
 import { CartItemCard } from './components/CartItemCard';
@@ -29,7 +30,7 @@ const fetchProductFromStockByExactCode = async (code: string, storeNo: 20 | 30):
 
 	const { data, error } = await supabase
 		.from('product_stock')
-		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no')
+		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
 		.eq('store_no', storeNo)
 		.or(orParts.join(','))
 		.limit(1)
@@ -59,6 +60,7 @@ const SalesPage = () => {
 
 	const { cart, totals, resetCart, removeItem, changeQty, addToCartFromRow, patchFinalPrice, clampFinalPriceOnBlur } = useCart();
 	const { submitSale } = useSalesSubmit();
+	const { runFiscalSale } = useFiscalSaleFlow();
 
 	// ✅ НОВО: search зависи од storeNo
 	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code, storeNo);
@@ -116,7 +118,8 @@ const SalesPage = () => {
 	const handleSubmitSale = async () => {
 		setBusy(true);
 		try {
-			await submitSale({
+			// 1. Save to DB — throws on validation failure or DB error
+			const { receiptId } = await submitSale({
 				cart,
 				totals,
 				note,
@@ -124,9 +127,16 @@ const SalesPage = () => {
 				cashReceivedStr,
 				onSuccess: resetSale,
 			});
-		} catch (e) {
-			console.error(e);
-			toast.error('Грешка при зачувување на продажбата.');
+
+			// 2. Fiscal flow — decoupled; errors are shown as toasts, never block UX
+			void runFiscalSale({ receiptId, cart, totals, paymentMethod });
+		} catch (e: unknown) {
+			const msg = (e as Error)?.message ?? '';
+			// Validation errors already showed their own toast inside submitSale
+			if (msg !== 'empty-cart' && msg !== 'insufficient-cash') {
+				console.error(e);
+				toast.error('Грешка при зачувување на продажбата.');
+			}
 		} finally {
 			setBusy(false);
 		}

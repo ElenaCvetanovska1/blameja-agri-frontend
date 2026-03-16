@@ -14,13 +14,18 @@ type SubmitArgs = {
 	onSuccess?: () => void;
 };
 
+export type SubmitResult = {
+	receiptId: string;
+	receiptNo: number;
+};
+
 export const useSalesSubmit = () => {
-	const submitSale = async (args: SubmitArgs) => {
+	const submitSale = async (args: SubmitArgs): Promise<SubmitResult> => {
 		const { cart, totals, note, paymentMethod, cashReceivedStr, onSuccess } = args;
 
 		if (cart.length === 0) {
 			toast.error('Кошничката е празна.');
-			return;
+			throw new Error('empty-cart');
 		}
 
 		// ✅ CASH: провери дали дава доволно пари (ова си останува)
@@ -29,7 +34,7 @@ export const useSalesSubmit = () => {
 			cashReceived = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 			if (cashReceived < totals.total) {
 				toast.error(`Недоволно готово. Вкупно: ${totals.total.toFixed(2)} ден. / Дава: ${cashReceived.toFixed(2)} ден.`);
-				return;
+				throw new Error('insufficient-cash');
 			}
 		}
 
@@ -130,6 +135,8 @@ export const useSalesSubmit = () => {
 		}
 
 		onSuccess?.();
+
+		return { receiptId, receiptNo };
 	};
 
 	return { submitSale };

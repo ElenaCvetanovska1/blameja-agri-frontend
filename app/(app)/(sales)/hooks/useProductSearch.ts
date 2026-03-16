@@ -14,7 +14,7 @@ const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promis
 
 	const baseQuery = supabase
 		.from('product_stock')
-		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no')
+		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
 		.eq('store_no', storeNo)
 		.or(`barcode.ilike.%${t}%,name.ilike.%${t}%,plu.ilike.%${t}%`)
 		.order('qty_on_hand', { ascending: false, nullsFirst: false })
@@ -24,7 +24,7 @@ const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promis
 		pluText !== null
 			? supabase
 					.from('product_stock')
-					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no')
+					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
 					.eq('store_no', storeNo)
 					.eq('plu', pluText)
 					.order('qty_on_hand', { ascending: false, nullsFirst: false })

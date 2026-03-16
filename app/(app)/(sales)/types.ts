@@ -7,6 +7,7 @@ export type ProductStockRow = {
 	qty_on_hand: number | null;
 	category_name: string | null;
 	store_no?: number | null;
+	tax_group?: number | null;
 };
 
 export type CartItem = {
@@ -17,6 +18,7 @@ export type CartItem = {
 		name: string;
 		selling_price: number;
 		category_name: string | null;
+		tax_group: number | null;
 	};
 	qty: number;
 	finalPriceStr: string;
