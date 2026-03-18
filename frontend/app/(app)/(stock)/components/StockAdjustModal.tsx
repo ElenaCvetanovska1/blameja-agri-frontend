@@ -22,7 +22,7 @@ const clampQty = (value: string) => {
 
 const parseNum = (v: string) => {
 	const n = Number.parseFloat(v.trim().replace(',', '.'));
-	return Number.isFinite(n) ? n : NaN;
+	return Number.isFinite(n) ? n : Number.NaN;
 };
 
 const num = (v: unknown) => {
@@ -61,6 +61,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	const [scanOpen, setScanOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional – only re-run when product id or open state changes
 	useEffect(() => {
 		if (!detailsQ.data) return;
 
@@ -69,7 +70,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 		setName(detailsQ.data.name ?? '');
 		setSellingPrice(String(num(detailsQ.data.selling_price)));
 		setCategoryId(detailsQ.data.category_id ?? '');
-		setUnit(normalizeUnit((detailsQ.data as any).unit));
+		setUnit(normalizeUnit(detailsQ.data.unit));
 
 		setQty(String(num(row.qty_on_hand)));
 		setReason('');
@@ -80,15 +81,15 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	}, [detailsQ.data?.id, open]);
 
 	const currentQty = num(row.qty_on_hand);
-	const targetQtyNum = Number.isFinite(parseNum(qty)) ? parseNum(qty) : NaN;
+	const targetQtyNum = Number.isFinite(parseNum(qty)) ? parseNum(qty) : Number.NaN;
 	const delta = Number.isFinite(targetQtyNum) ? targetQtyNum - currentQty : null;
 
 	const isBusy = updateProduct.isPending || adjustStock.isPending || detailsQ.isLoading;
 	const categoryOptions = useMemo(() => categoriesQ.data ?? [], [categoriesQ.data]);
 
 	const handleScan = (detected: IDetectedBarcode[]) => {
-		const first = detected?.[0] as any;
-		const value = first?.rawValue ?? first?.value ?? '';
+		const first: IDetectedBarcode | undefined = detected?.[0];
+		const value = first?.rawValue ?? '';
 		const code = String(value).trim();
 		if (!code) return;
 
@@ -112,7 +113,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 				name,
 				barcode: barcode.trim() ? barcode : null,
 				plu: plu.trim() ? plu : null,
-				selling_price: Number.isFinite(price) ? price : NaN,
+				selling_price: Number.isFinite(price) ? price : Number.NaN,
 				category_id: categoryId ? categoryId : null,
 				unit,
 			});
@@ -179,8 +180,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 						{/* Product fields */}
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Име</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-name"
+								>
+									Име
+								</label>
 								<input
+									id="stock-modal-name"
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm
@@ -189,8 +196,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							</div>
 
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Продажна цена</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-price"
+								>
+									Продажна цена
+								</label>
 								<input
+									id="stock-modal-price"
 									value={sellingPrice}
 									onChange={(e) => setSellingPrice(e.target.value)}
 									inputMode="decimal"
@@ -200,8 +213,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							</div>
 
 							<div>
-								<label className="block text-xs font-medium text-slate-600">PLU</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-plu"
+								>
+									PLU
+								</label>
 								<input
+									id="stock-modal-plu"
 									value={plu}
 									onChange={(e) => setPlu(e.target.value)}
 									placeholder="само бројки (опц.)"
@@ -212,10 +231,16 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 
 							{/* Barcode + Scan */}
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Баркод</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-barcode"
+								>
+									Баркод
+								</label>
 
 								<div className="mt-1 flex gap-2">
 									<input
+										id="stock-modal-barcode"
 										value={barcode}
 										onChange={(e) => setBarcode(e.target.value)}
 										placeholder="опц."
@@ -241,8 +266,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 
 							{/* unit */}
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Ед. мерка</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-unit"
+								>
+									Ед. мерка
+								</label>
 								<select
+									id="stock-modal-unit"
 									value={unit}
 									onChange={(e) => setUnit(e.target.value as Unit)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -254,8 +285,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							</div>
 
 							<div className="sm:col-span-2">
-								<label className="block text-xs font-medium text-slate-600">Категорија</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-category"
+								>
+									Категорија
+								</label>
 								<select
+									id="stock-modal-category"
 									value={categoryId}
 									onChange={(e) => setCategoryId(e.target.value)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -304,8 +341,14 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 							</div>
 
 							<div className="mt-3">
-								<label className="block text-xs font-medium text-slate-600">Причина (само ако менуваш залиха)</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-modal-reason"
+								>
+									Причина (само ако менуваш залиха)
+								</label>
 								<textarea
+									id="stock-modal-reason"
 									value={reason}
 									onChange={(e) => setReason(e.target.value)}
 									rows={2}

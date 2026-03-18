@@ -53,7 +53,7 @@ export const useProductLookup = () => {
 
 			return {
 				...(data as Omit<ProductLookup, 'unit'>),
-				unit: normalizeUnit((data as any).unit),
+				unit: normalizeUnit((data as { unit: unknown }).unit),
 			} as ProductLookup;
 		},
 	});

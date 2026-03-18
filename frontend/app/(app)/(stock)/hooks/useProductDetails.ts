@@ -42,7 +42,7 @@ export const useProductDetails = (productId: string | null, enabled: boolean) =>
 				plu: data.plu,
 				selling_price: Number(data.selling_price ?? 0),
 				category_id: data.category_id,
-				unit: normalizeUnit((data as any).unit),
+				unit: normalizeUnit((data as { unit: unknown }).unit),
 			} as ProductDetails;
 		},
 	});

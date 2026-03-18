@@ -53,7 +53,12 @@ export const CodeInputWithSuggestions = (props: Props) => {
 		>
 			{/* ✅ во истиот rectangle, над пребарување */}
 			<div className="mb-2 flex items-center justify-between gap-3">
-				<label className="block text-xs font-medium text-slate-600">Баркод или PLU (или име)</label>
+				<label
+					className="block text-xs font-medium text-slate-600"
+					htmlFor="code-input"
+				>
+					Баркод или PLU (или име)
+				</label>
 
 				<div className="flex items-center gap-2">
 					<span className="text-[11px] text-slate-500">продавница бр</span>

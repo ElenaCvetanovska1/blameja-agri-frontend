@@ -35,11 +35,15 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 			ref={wrapRef}
 			className="relative space-y-2"
 		>
-			<label className="block text-sm font-medium">
+			<label
+				className="block text-sm font-medium"
+				htmlFor="receive-product-name"
+			>
 				Име на производ <span className="text-blamejaRed">*</span>
 			</label>
 
 			<input
+				id="receive-product-name"
 				value={value}
 				onChange={(e) => {
 					onChange(e.target.value);

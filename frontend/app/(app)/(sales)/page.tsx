@@ -96,7 +96,7 @@ const SalesPage = () => {
 				return;
 			}
 
-			const qoh = num((row as any).qty_on_hand);
+			const qoh = num(row.qty_on_hand);
 			if (qoh <= 0) {
 				toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
 			}
@@ -184,7 +184,7 @@ const SalesPage = () => {
 						onPickSuggestion={async (row) => {
 							setSuggestOpen(false);
 
-							const qoh = num((row as any).qty_on_hand);
+							const qoh = num(row.qty_on_hand);
 							if (qoh <= 0) toast.warning(`Внимание: залиха ${qoh}. Ќе дозволи продажба во минус.`);
 
 							const addedProductId = await addToCartFromRow(row);

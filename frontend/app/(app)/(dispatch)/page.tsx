@@ -126,8 +126,14 @@ export default function DispatchPage() {
 			<div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
 				<div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
 					<div className="md:col-span-2">
-						<label className={labelCls}>Бр. Испратница</label>
+						<label
+							className={labelCls}
+							htmlFor="dispatch-doc-no"
+						>
+							Бр. Испратница
+						</label>
 						<input
+							id="dispatch-doc-no"
 							className={inputCls}
 							value={docNo}
 							onChange={(e) => setDocNo(e.target.value)}
@@ -135,8 +141,14 @@ export default function DispatchPage() {
 					</div>
 
 					<div className="md:col-span-2">
-						<label className={labelCls}>Датум</label>
+						<label
+							className={labelCls}
+							htmlFor="dispatch-doc-date"
+						>
+							Датум
+						</label>
 						<input
+							id="dispatch-doc-date"
 							type="date"
 							className={inputCls}
 							value={docDate}
@@ -162,8 +174,14 @@ export default function DispatchPage() {
 					</div>
 
 					<div className="md:col-span-4">
-						<label className={labelCls}>Адреса</label>
+						<label
+							className={labelCls}
+							htmlFor="dispatch-buyer-address"
+						>
+							Адреса
+						</label>
 						<input
+							id="dispatch-buyer-address"
 							className={inputCls}
 							value={buyerAddress}
 							onChange={(e) => setBuyerAddress(e.target.value)}

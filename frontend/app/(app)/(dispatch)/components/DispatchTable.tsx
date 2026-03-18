@@ -9,7 +9,7 @@ import ProductAutocompleteInput from './ProductAutocompleteInput';
 
 type Props = {
 	rows: DispatchRowVM[];
-	onUpdate: (id: string, patch: any) => void;
+	onUpdate: (id: string, patch: Partial<DispatchRowVM>) => void;
 	onRemove: (id: string) => void;
 };
 
@@ -57,7 +57,7 @@ const DispatchRow = ({
 }: {
 	r: DispatchRowVM;
 	cellInputCls: string;
-	onUpdate: (id: string, patch: any) => void;
+	onUpdate: (id: string, patch: Partial<DispatchRowVM>) => void;
 	onRemove: (id: string) => void;
 }) => {
 	const [sifraOpen, setSifraOpen] = useState(false);

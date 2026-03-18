@@ -33,7 +33,7 @@ const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promis
 
 	const [{ data: baseData, error: baseErr }, pluRes] = await Promise.all([
 		baseQuery,
-		pluQuery ?? Promise.resolve({ data: [], error: null } as any),
+		pluQuery ?? Promise.resolve({ data: [] as ProductStockRow[], error: null }),
 	]);
 
 	if (baseErr) throw baseErr;

@@ -13,7 +13,7 @@ type Payload = {
 const parseQty = (raw: string) => {
 	const v = raw.trim().replace(',', '.');
 	const num = Number.parseFloat(v);
-	return Number.isFinite(num) ? num : NaN;
+	return Number.isFinite(num) ? num : Number.NaN;
 };
 
 export const useAdjustStockMutation = () => {

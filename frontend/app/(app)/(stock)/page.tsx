@@ -80,8 +80,14 @@ export default function StockPage() {
 			<div className="space-y-3">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 					<div className="w-full sm:max-w-[420px]">
-						<label className="block text-xs font-medium text-slate-600">Пребарај</label>
+						<label
+							className="block text-xs font-medium text-slate-600"
+							htmlFor="stock-search"
+						>
+							Пребарај
+						</label>
 						<input
+							id="stock-search"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
 							placeholder="пр. 123, 389..., Алат..."
@@ -93,8 +99,14 @@ export default function StockPage() {
 					<div className="w-full sm:w-[520px] space-y-2">
 						<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Филтер (категорија)</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-category-filter"
+								>
+									Филтер (категорија)
+								</label>
 								<select
+									id="stock-category-filter"
 									value={categoryFilter}
 									onChange={(e) => setCategoryFilter(e.target.value)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -112,8 +124,14 @@ export default function StockPage() {
 							</div>
 
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Сортирај по</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-sort-key"
+								>
+									Сортирај по
+								</label>
 								<select
+									id="stock-sort-key"
 									value={sortKey}
 									onChange={(e) => setSortKey(e.target.value as SortKey)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -126,8 +144,14 @@ export default function StockPage() {
 							</div>
 
 							<div>
-								<label className="block text-xs font-medium text-slate-600">Насока</label>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="stock-sort-dir"
+								>
+									Насока
+								</label>
 								<select
+									id="stock-sort-dir"
 									value={sortDir}
 									onChange={(e) => setSortDir(e.target.value as 'ASC' | 'DESC')}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"

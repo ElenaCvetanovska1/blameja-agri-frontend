@@ -41,7 +41,7 @@ const ReceivePage = () => {
 	const [openAllSuppliers, setOpenAllSuppliers] = useState(false);
 
 	// product selection (optional tracking)
-	const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+	const [_selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
 	// scanner
 	const [scannerOpen, setScannerOpen] = useState(false);
@@ -267,8 +267,14 @@ const ReceivePage = () => {
 
 					<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 						<div className="md:col-span-3">
-							<label className="mb-1 block text-sm font-medium">Број на фактура</label>
+							<label
+								className="mb-1 block text-sm font-medium"
+								htmlFor="receive-invoice-no"
+							>
+								Број на фактура
+							</label>
 							<input
+								id="receive-invoice-no"
 								value={invoiceNo}
 								onChange={(e) => setInvoiceNo(e.target.value)}
 								className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -295,8 +301,14 @@ const ReceivePage = () => {
 						</div>
 
 						<div className="md:col-span-3">
-							<label className="mb-1 block text-sm font-medium">Адреса (опц.)</label>
+							<label
+								className="mb-1 block text-sm font-medium"
+								htmlFor="receive-supplier-address"
+							>
+								Адреса (опц.)
+							</label>
 							<input
+								id="receive-supplier-address"
 								value={supplierAddress}
 								onChange={(e) => setSupplierAddress(e.target.value)}
 								className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
@@ -305,8 +317,14 @@ const ReceivePage = () => {
 						</div>
 
 						<div className="md:col-span-2">
-							<label className="mb-1 block text-sm font-medium">Датум</label>
+							<label
+								className="mb-1 block text-sm font-medium"
+								htmlFor="receive-invoice-date"
+							>
+								Датум
+							</label>
 							<input
+								id="receive-invoice-date"
 								type="date"
 								value={invoiceDate}
 								onChange={(e) => setInvoiceDate(e.target.value)}
@@ -327,8 +345,14 @@ const ReceivePage = () => {
 				{/* Category + KPK */}
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 					<div className="md:col-span-6">
-						<label className="mb-1 block text-sm font-medium">Категорија</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-category"
+						>
+							Категорија
+						</label>
 						<select
+							id="receive-category"
 							value={form.categoryId}
 							onChange={(e) => {
 								form.setCategoryId(e.target.value);
@@ -352,8 +376,14 @@ const ReceivePage = () => {
 
 					{isKpk && (
 						<div className="md:col-span-6">
-							<label className="mb-1 block text-sm font-medium">Фискална шифра (фиксно)</label>
+							<label
+								className="mb-1 block text-sm font-medium"
+								htmlFor="receive-fiscal-plu"
+							>
+								Фискална шифра (фиксно)
+							</label>
 							<input
+								id="receive-fiscal-plu"
 								value={String(KPK_FISCAL_PLU)}
 								readOnly
 								className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
@@ -378,10 +408,14 @@ const ReceivePage = () => {
 				{/* ONE ROW */}
 				<div className="grid grid-cols-1 gap-3 md:grid-cols-12">
 					<div className="md:col-span-2">
-						<label className="mb-1 block text-sm font-medium">
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-plu"
+						>
 							PLU <span className="text-blamejaRed">*</span>
 						</label>
 						<input
+							id="receive-plu"
 							value={form.plu}
 							onChange={(e) => {
 								form.setPlu(e.target.value.replace(/[^\d]/g, ''));
@@ -394,8 +428,14 @@ const ReceivePage = () => {
 					</div>
 
 					<div className="md:col-span-2">
-						<label className="mb-1 block text-sm font-medium">Баркод (опц.)</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-barcode"
+						>
+							Баркод (опц.)
+						</label>
 						<input
+							id="receive-barcode"
 							value={form.barcode}
 							onChange={(e) => {
 								form.setBarcode(e.target.value);
@@ -407,7 +447,7 @@ const ReceivePage = () => {
 					</div>
 
 					<div className="md:col-span-3">
-						<label className="mb-1 block text-sm font-medium">ДДВ</label>
+						<span className="mb-1 block text-sm font-medium">ДДВ</span>
 						<div className="flex flex-wrap gap-2">
 							{(['5', '10', '18'] as const).map((v) => {
 								const active = form.taxGroup === v;
@@ -435,8 +475,14 @@ const ReceivePage = () => {
 
 					{/* unit */}
 					<div className="md:col-span-2">
-						<label className="mb-1 block text-sm font-medium">Ед. мерка</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-unit"
+						>
+							Ед. мерка
+						</label>
 						<select
+							id="receive-unit"
 							value={form.unit ?? 'пар'}
 							onChange={(e) => {
 								form.setUnit(e.target.value as 'пар' | 'кг' | 'м');
@@ -451,8 +497,14 @@ const ReceivePage = () => {
 					</div>
 
 					<div className="md:col-span-1">
-						<label className="mb-1 block text-sm font-medium">Кол.</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-qty"
+						>
+							Кол.
+						</label>
 						<input
+							id="receive-qty"
 							value={form.qty}
 							onChange={(e) => form.setQty(e.target.value)}
 							className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -464,8 +516,14 @@ const ReceivePage = () => {
 					<div className="md:col-span-1" />
 
 					<div className="md:col-span-2">
-						<label className="mb-1 block text-sm font-medium">Набавна</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-unit-cost"
+						>
+							Набавна
+						</label>
 						<input
+							id="receive-unit-cost"
 							value={form.unitCost}
 							onChange={(e) => {
 								form.setUnitCost(e.target.value);
@@ -478,8 +536,14 @@ const ReceivePage = () => {
 					</div>
 
 					<div className="md:col-span-2">
-						<label className="mb-1 block text-sm font-medium">Продажна</label>
+						<label
+							className="mb-1 block text-sm font-medium"
+							htmlFor="receive-selling-price"
+						>
+							Продажна
+						</label>
 						<input
+							id="receive-selling-price"
 							value={form.sellingPrice}
 							onChange={(e) => {
 								form.setSellingPrice(e.target.value);

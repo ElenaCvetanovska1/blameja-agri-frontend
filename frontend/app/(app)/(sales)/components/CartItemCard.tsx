@@ -71,8 +71,14 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 			<div className="mt-2 grid grid-cols-[84px_1fr_96px] gap-2 items-end">
 				{/* qty */}
 				<div>
-					<label className="block text-[11px] font-medium text-slate-600">Кол.</label>
+					<label
+						className="block text-[11px] font-medium text-slate-600"
+						htmlFor={`cart-qty-${item.product.id}`}
+					>
+						Кол.
+					</label>
 					<input
+						id={`cart-qty-${item.product.id}`}
 						ref={qtyRef}
 						type="number"
 						min={1}
@@ -87,7 +93,12 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 				{/* final price + info */}
 				<div>
 					<div className="flex items-end justify-between">
-						<label className="block text-[11px] font-medium text-slate-600">Цена (внеси)</label>
+						<label
+							className="block text-[11px] font-medium text-slate-600"
+							htmlFor={`cart-price-${item.product.id}`}
+						>
+							Цена (внеси)
+						</label>
 						<div className="text-[11px] text-slate-500">
 							Фиксна: <span className="font-semibold text-slate-700">{base.toFixed(2)}</span>
 						</div>
@@ -111,7 +122,7 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 
 				{/* line total */}
 				<div className="text-right">
-					<label className="block text-[11px] font-medium text-slate-600">Вкупно</label>
+					<span className="block text-[11px] font-medium text-slate-600">Вкупно</span>
 					<div className="mt-1 h-9 rounded-lg bg-slate-100 px-2 flex items-center justify-end text-sm font-semibold text-slate-800">
 						{lineTotal.toFixed(2)}
 					</div>

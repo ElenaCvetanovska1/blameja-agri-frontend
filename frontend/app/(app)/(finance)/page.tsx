@@ -390,8 +390,14 @@ const FinancePage = () => {
 
 				<div className="mt-4 flex flex-wrap items-end gap-3">
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Износ (ден.)</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="finance-cash-amount"
+						>
+							Износ (ден.)
+						</label>
 						<input
+							id="finance-cash-amount"
 							type="number"
 							min="0.01"
 							step="0.01"
@@ -407,7 +413,7 @@ const FinancePage = () => {
 						type="button"
 						disabled={cashBusy}
 						onClick={async () => {
-							const amount = parseFloat(cashAmountStr);
+							const amount = Number.parseFloat(cashAmountStr);
 							if (!Number.isFinite(amount) || amount <= 0) return;
 							const ok = await cashIn(amount);
 							if (ok) setCashAmountStr('');
@@ -421,7 +427,7 @@ const FinancePage = () => {
 						type="button"
 						disabled={cashBusy}
 						onClick={async () => {
-							const amount = parseFloat(cashAmountStr);
+							const amount = Number.parseFloat(cashAmountStr);
 							if (!Number.isFinite(amount) || amount <= 0) return;
 							const ok = await cashOut(amount);
 							if (ok) setCashAmountStr('');

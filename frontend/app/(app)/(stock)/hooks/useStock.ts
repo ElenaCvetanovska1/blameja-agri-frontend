@@ -67,8 +67,8 @@ export const useStock = (search: string) => {
 
 			return all.map((r) => ({
 				...r,
-				selling_price: normalizeNumber((r as any).selling_price),
-				qty_on_hand: normalizeNumber((r as any).qty_on_hand),
+				selling_price: normalizeNumber(r.selling_price),
+				qty_on_hand: normalizeNumber(r.qty_on_hand),
 			}));
 		},
 	});

@@ -48,7 +48,7 @@ export const useSalesSubmit = () => {
 
 			if (error) throw error;
 
-			const available = num((data as any)?.qty_on_hand);
+			const available = num((data as { qty_on_hand: number | null } | null)?.qty_on_hand);
 			if (available < item.qty) {
 				const deficit = item.qty - available;
 				toast.warning(

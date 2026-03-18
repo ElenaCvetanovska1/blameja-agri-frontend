@@ -39,8 +39,8 @@ export const useDispatchSubmit = () => {
 			total: round2(total),
 
 			// не е POS плаќање
-			payment: null as any,
-			cash_received: null as any,
+			payment: null as string | null,
+			cash_received: null as number | null,
 		};
 
 		const { data: receipt, error: receiptErr } = await supabase

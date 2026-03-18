@@ -52,8 +52,14 @@ export const AuthPage = () => {
 						className="space-y-4"
 					>
 						<div className="space-y-1">
-							<label className="block text-xs font-medium text-slate-600">Email</label>
+							<label
+								className="block text-xs font-medium text-slate-600"
+								htmlFor="auth-email"
+							>
+								Email
+							</label>
 							<input
+								id="auth-email"
 								type="email"
 								autoComplete="email"
 								placeholder="user@blameja.com"
@@ -66,8 +72,14 @@ export const AuthPage = () => {
 						</div>
 
 						<div className="space-y-1">
-							<label className="block text-xs font-medium text-slate-600">Лозинка</label>
+							<label
+								className="block text-xs font-medium text-slate-600"
+								htmlFor="auth-password"
+							>
+								Лозинка
+							</label>
 							<input
+								id="auth-password"
 								type="password"
 								autoComplete="current-password"
 								placeholder="••••••••"

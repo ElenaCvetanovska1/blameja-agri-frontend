@@ -158,8 +158,8 @@ export const buildDispatchHtml = (d: DocData) => {
           <div class="firm">
             <div class="name">${escapeHtml(d.firmaNaziv)}</div>
             <div class="muted">${escapeHtml(d.firmaAdresa)}</div>
-            ${d.firmaTelefon ? `<div class="muted">Тел: ${escapeHtml(d.firmaTelefon)}</div>` : ``}
-            ${d.firmaTransSmetka ? `<div class="muted">Транс. сметка: ${escapeHtml(d.firmaTransSmetka)}</div>` : ``}
+            ${d.firmaTelefon ? `<div class="muted">Тел: ${escapeHtml(d.firmaTelefon)}</div>` : ''}
+            ${d.firmaTransSmetka ? `<div class="muted">Транс. сметка: ${escapeHtml(d.firmaTransSmetka)}</div>` : ''}
           </div>
         </div>
 

@@ -43,7 +43,7 @@ export const TotalsPanel = ({
 		<div className="space-y-1">
 			{/* Payment method */}
 			<div>
-				<label className="block text-xs font-medium text-slate-600 mb-2">Начин на плаќање</label>
+				<span className="block text-xs font-medium text-slate-600 mb-2">Начин на плаќање</span>
 
 				<div className="flex gap-2">
 					<button
@@ -78,8 +78,14 @@ export const TotalsPanel = ({
 				{/* Cash input */}
 				{paymentMethod === 'CASH' && (
 					<div className="mt-1">
-						<label className="block text-xs font-medium text-slate-600">Дава (ден.)</label>
+						<label
+							className="block text-xs font-medium text-slate-600"
+							htmlFor="totals-cash-received"
+						>
+							Дава (ден.)
+						</label>
 						<input
+							id="totals-cash-received"
 							inputMode="decimal"
 							value={cashReceivedStr}
 							onChange={(e) => onCashReceivedStrChange(sanitizePriceInput(e.target.value))}
@@ -101,8 +107,14 @@ export const TotalsPanel = ({
 
 			{/* Note */}
 			<div>
-				<label className="block text-xs font-medium text-slate-600">Забелешка (опционално)</label>
+				<label
+					className="block text-xs font-medium text-slate-600"
+					htmlFor="totals-note"
+				>
+					Забелешка (опционално)
+				</label>
 				<textarea
+					id="totals-note"
 					value={note}
 					onChange={(e) => onNoteChange(e.target.value)}
 					rows={3}
