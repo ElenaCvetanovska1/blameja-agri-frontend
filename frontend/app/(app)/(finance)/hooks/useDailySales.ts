@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 export type DailySalesRow = {
-	day: string; // YYYY-MM-DD
+	day: string;
 	receipts_count: number;
 	total: number;
 };
@@ -16,26 +16,15 @@ export const useDailySales = (fromISO: string, toISO: string) => {
 	return useQuery({
 		queryKey: ['finance-daily-sales', fromISO, toISO],
 		queryFn: async () => {
-			const { data, error } = await supabase.rpc('finance_daily_sales', {
-				_from: fromISO,
-				_to: toISO,
-			});
-
-			if (error) throw error;
-
-			const rows = (data ?? []) as Array<{
-				day: string;
-				receipts_count: unknown;
-				total: unknown;
-			}>;
-
-			return rows.map(
-				(r): DailySalesRow => ({
-					day: r.day,
-					receipts_count: Math.trunc(num(r.receipts_count)),
-					total: num(r.total),
-				}),
+			const rows = await api.get<DailySalesRow[]>(
+				`/api/finance/daily-sales?from=${encodeURIComponent(fromISO)}&to=${encodeURIComponent(toISO)}`,
 			);
+
+			return (rows ?? []).map((r): DailySalesRow => ({
+				day:            r.day,
+				receipts_count: Math.trunc(num(r.receipts_count)),
+				total:          num(r.total),
+			}));
 		},
 	});
 };

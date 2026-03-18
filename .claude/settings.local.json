@@ -8,7 +8,14 @@
       "Bash(mkdir -p /c/Users/ecvetanovska/myElenaCVETANOVSKA/blameja-agri-frontend/backend)",
       "Bash(dotnet new:*)",
       "Bash(node -e \":*)",
-      "Bash(npx biome:*)"
+      "Bash(npx biome:*)",
+      "Bash(cat '/c/Endava/EndevLocal/blameja-agri-frontend/frontend/app/\\(app\\)/\\(index\\)/page.tsx')",
+      "Bash(cat '/c/Endava/EndevLocal/blameja-agri-frontend/frontend/app/\\(app\\)/\\(sales\\)/page.tsx')",
+      "Bash(cat '/c/Endava/EndevLocal/blameja-agri-frontend/frontend/app/\\(app\\)/\\(sales\\)/types.ts')",
+      "Bash(cat '/c/Endava/EndevLocal/blameja-agri-frontend/frontend/app/\\(app\\)/\\(receive\\)/types.ts')",
+      "Bash(cat '/c/Endava/EndevLocal/blameja-agri-frontend/frontend/app/\\(app\\)/\\(dispatch\\)/types.ts')",
+      "Bash(find /c/Endava/EndevLocal/blameja-agri-frontend/frontend/app -name *.ts -o -name *.tsx)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

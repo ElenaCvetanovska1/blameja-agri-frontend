@@ -3,7 +3,7 @@
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 import { useReceiveMutation, type ReceivePayload } from './hooks/useReceiveMutation';
 import { useCategoryOptions } from './hooks/useCategoryOptions';
@@ -130,14 +130,11 @@ const ReceivePage = () => {
 		if (!name) return null;
 		if (selectedSupplierId) return selectedSupplierId;
 
-		const { data, error } = await supabase.rpc('suppliers_get_or_create', {
-			_name: name,
-			_address: addr.length ? addr : null,
+		const row = await api.post<SupplierGetOrCreateRow>('/api/suppliers/get-or-create', {
+			name,
+			address: addr.length ? addr : null,
 		});
 
-		if (error) throw error;
-
-		const row = (Array.isArray(data) ? data[0] : data) as SupplierGetOrCreateRow | null;
 		if (!row?.id) throw new Error('Не успеа креирање/наоѓање на добавувач.');
 
 		setSelectedSupplierId(row.id);

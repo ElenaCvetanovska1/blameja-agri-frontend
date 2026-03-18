@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 export type Unit = 'пар' | 'кг' | 'м';
 
@@ -10,8 +10,6 @@ export type UpdateProductPayload = {
 	plu: string | null;
 	selling_price: number;
 	category_id: string | null;
-
-	// ✅ NEW
 	unit: Unit;
 };
 
@@ -42,34 +40,23 @@ export const useUpdateProductMutation = () => {
 			if (!payload.productId) throw new Error('Нема избран производ.');
 
 			const name = cleanText(payload.name);
-			if (!name) throw new Error('Име е задолжително.');
+			if (!name) throw new Error('Ime е задолжително.');
 
 			const price = Number(payload.selling_price);
 			if (!Number.isFinite(price) || price < 0) throw new Error('Продажна цена мора да е број >= 0.');
 
-			const plu = cleanPlu(payload.plu ?? '');
+			const plu     = cleanPlu(payload.plu ?? '');
 			const barcode = cleanOptional(payload.barcode ?? '');
+			const unit    = normalizeUnit(payload.unit);
 
-			// ✅ NEW
-			const unit = normalizeUnit(payload.unit);
-
-			const { error } = await supabase
-				.from('products')
-				.update({
-					name,
-					plu,
-					barcode,
-					selling_price: price,
-					category_id: payload.category_id ?? null,
-
-					// ✅ NEW
-					unit,
-
-					updated_at: new Date().toISOString(),
-				})
-				.eq('id', payload.productId);
-
-			if (error) throw error;
+			await api.put(`/api/products/${payload.productId}`, {
+				name,
+				plu,
+				barcode,
+				selling_price: price,
+				category_id:   payload.category_id ?? null,
+				unit,
+			});
 		},
 		onSuccess: async (_data, vars) => {
 			await qc.invalidateQueries({ queryKey: ['stock'], exact: false });

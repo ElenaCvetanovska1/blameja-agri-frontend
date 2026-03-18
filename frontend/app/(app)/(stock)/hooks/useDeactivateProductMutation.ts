@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 type Payload = {
 	productId: string;
@@ -13,21 +13,7 @@ export const useDeactivateProductMutation = () => {
 		mutationFn: async ({ productId, clearCodes = true }: Payload) => {
 			if (!productId) throw new Error('Нема избран производ.');
 
-			// Soft delete: is_active=false
-			// + optional: clear barcode/plu за да нема конфликт и да не се "фаќа" при пребарување
-			const updatePayload: Record<string, unknown> = {
-				is_active: false,
-				updated_at: new Date().toISOString(),
-			};
-
-			if (clearCodes) {
-				updatePayload.barcode = null;
-				updatePayload.plu = null;
-			}
-
-			const { error } = await supabase.from('products').update(updatePayload).eq('id', productId);
-
-			if (error) throw error;
+			await api.post(`/api/products/${productId}/deactivate`, { clear_codes: clearCodes });
 		},
 		onSuccess: async () => {
 			await qc.invalidateQueries({ queryKey: ['stock'], exact: false });

@@ -1,11 +1,8 @@
-// app/lib/supabase-client.ts
-import { createClient } from '@supabase/supabase-js';
+// This file has been intentionally emptied as part of the architectural migration.
+// All direct Supabase access has been moved to the backend (Blameja.Api).
+// Use app/lib/api-client.ts instead.
+//
+// If you see a TypeScript import error pointing here, find the importing file
+// and replace its Supabase call with the equivalent backend API call.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-	throw new Error('Missing Supabase env vars. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export {};

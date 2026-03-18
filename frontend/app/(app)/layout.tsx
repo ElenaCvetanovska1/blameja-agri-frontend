@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router';
 import { BLAMEJA_ROUTES } from 'app/routes';
-import { supabase } from 'app/lib/supabase-client';
+import { api, tokenStorage } from 'app/lib/api-client';
 
 const AppLayout = () => {
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -12,8 +12,15 @@ const AppLayout = () => {
 		`${linkBase} ${isActive ? 'bg-white text-blamejaGreen' : 'text-white/90 hover:bg-white/10'}`;
 
 	const handleLogout = async () => {
-		await supabase.auth.signOut();
+		try {
+			// Best-effort server-side token revocation — non-blocking
+			await api.post('/api/auth/logout');
+		} catch {
+			// ignore — we clear local tokens regardless
+		}
+		tokenStorage.clear();
 		setMobileOpen(false);
+		window.location.reload();
 	};
 
 	return (
@@ -155,7 +162,7 @@ const AppLayout = () => {
 								className={navLinkClass}
 								onClick={() => setMobileOpen(false)}
 							>
-								Финансии
+								Испратница
 							</NavLink>
 
 							{/* Mobile logout */}

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { supabase } from '../lib/supabase-client';
+import { api, tokenStorage, type LoginResponse } from '../lib/api-client';
 
 export const AuthPage = () => {
 	const [email, setEmail] = useState('');
@@ -13,18 +13,16 @@ export const AuthPage = () => {
 		setLoading(true);
 		setError(null);
 
-		const { error } = await supabase.auth.signInWithPassword({
-			email,
-			password,
-		});
-
-		if (error) {
+		try {
+			const data = await api.post<LoginResponse>('/api/auth/login', { email, password });
+			tokenStorage.setTokens(data.access_token, data.refresh_token);
+			// Reload triggers AuthGate to re-check the token and render the app
+			window.location.reload();
+		} catch {
 			setError('Погрешен email или лозинка.');
+		} finally {
 			setLoading(false);
-			return;
 		}
-
-		setLoading(false);
 	};
 
 	return (

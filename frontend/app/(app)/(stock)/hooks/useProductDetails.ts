@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 export type Unit = 'пар' | 'кг' | 'м';
 
@@ -10,8 +10,6 @@ export type ProductDetails = {
 	plu: string | null;
 	selling_price: number;
 	category_id: string | null;
-
-	// ✅ NEW
 	unit: Unit;
 };
 
@@ -27,22 +25,24 @@ export const useProductDetails = (productId: string | null, enabled: boolean) =>
 		queryFn: async () => {
 			if (!productId) throw new Error('Missing productId');
 
-			const { data, error } = await supabase
-				.from('products')
-				.select('id, name, barcode, plu, selling_price, category_id, unit')
-				.eq('id', productId)
-				.single();
-
-			if (error) throw error;
+			const data = await api.get<{
+				id: string;
+				name: string;
+				barcode: string | null;
+				plu: string | null;
+				selling_price: number;
+				category_id: string | null;
+				unit: unknown;
+			}>(`/api/stock/${productId}`);
 
 			return {
-				id: data.id,
-				name: data.name,
-				barcode: data.barcode,
-				plu: data.plu,
+				id:            data.id,
+				name:          data.name,
+				barcode:       data.barcode,
+				plu:           data.plu,
 				selling_price: Number(data.selling_price ?? 0),
-				category_id: data.category_id,
-				unit: normalizeUnit((data as { unit: unknown }).unit),
+				category_id:   data.category_id,
+				unit:          normalizeUnit(data.unit),
 			} as ProductDetails;
 		},
 	});

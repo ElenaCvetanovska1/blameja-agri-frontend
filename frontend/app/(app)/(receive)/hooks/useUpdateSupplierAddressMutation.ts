@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 type Payload = {
 	supplierId: string;
@@ -10,13 +10,7 @@ const updateSupplierAddress = async ({ supplierId, address }: Payload) => {
 	const trimmed = address.trim();
 	if (!trimmed) return;
 
-	// ✅ препорачано преку RPC (за RLS контрола)
-	const { error } = await supabase.rpc('supplier_update_address', {
-		_supplier_id: supplierId,
-		_address: trimmed,
-	});
-
-	if (error) throw error;
+	await api.patch(`/api/suppliers/${supplierId}/address`, { address: trimmed });
 };
 
 export const useUpdateSupplierAddressMutation = () => {

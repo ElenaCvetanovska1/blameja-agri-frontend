@@ -1,53 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 import type { ProductStockRow } from '../types';
-import { escapeLike, parseDigitsText, num } from '../utils';
+import { num } from '../utils';
 
 const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promise<ProductStockRow[]> => {
 	const t0 = term.trim();
 	if (t0.length < 1) return [];
 
-	const t = escapeLike(t0);
-	const pluText = parseDigitsText(t0);
+	const rows = await api.get<ProductStockRow[]>(
+		`/api/sales/products/search?q=${encodeURIComponent(t0)}&storeNo=${storeNo}&limit=${limit}`,
+	);
 
-	const baseQuery = supabase
-		.from('product_stock')
-		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
-		.eq('store_no', storeNo)
-		.or(`barcode.ilike.%${t}%,name.ilike.%${t}%,plu.ilike.%${t}%`)
-		.order('qty_on_hand', { ascending: false, nullsFirst: false })
-		.limit(limit);
-
-	const pluQuery =
-		pluText !== null
-			? supabase
-					.from('product_stock')
-					.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
-					.eq('store_no', storeNo)
-					.eq('plu', pluText)
-					.order('qty_on_hand', { ascending: false, nullsFirst: false })
-					.limit(limit)
-			: null;
-
-	const [{ data: baseData, error: baseErr }, pluRes] = await Promise.all([
-		baseQuery,
-		pluQuery ?? Promise.resolve({ data: [] as ProductStockRow[], error: null }),
-	]);
-
-	if (baseErr) throw baseErr;
-	if (pluRes?.error) throw pluRes.error;
-
-	const combined = [...(baseData ?? []), ...(pluRes?.data ?? [])] as ProductStockRow[];
-
-	const map = new Map<string, ProductStockRow>();
-	combined.forEach((r) => map.set(r.product_id, r));
-	const deduped = Array.from(map.values());
-
-	deduped.sort((a, b) => num(b.qty_on_hand) - num(a.qty_on_hand));
-
-	return deduped.slice(0, limit);
+	return (rows ?? []).sort((a, b) => num(b.qty_on_hand) - num(a.qty_on_hand));
 };
 
 export const useProductSearch = (code: string, storeNo: 20 | 30) => {

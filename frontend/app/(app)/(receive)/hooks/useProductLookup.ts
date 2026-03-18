@@ -1,27 +1,19 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 export type Unit = 'пар' | 'кг' | 'м';
 
 export type ProductLookup = {
 	id: string;
-	plu: string | null; // ✅ TEXT
+	plu: string | null;
 	barcode: string | null;
 	name: string;
 	description: string | null;
-
-	unit: Unit; // ✅ strict
+	unit: Unit;
 	selling_price: number;
 	tax_group: number | null;
 	category_id: string | null;
 	subcategory_id: string | null;
-};
-
-const parsePluText = (raw: string) => {
-	const t = raw.trim();
-	if (!t) return null;
-	if (!/^\d+$/.test(t)) return null;
-	return t; // ✅ keep as text
 };
 
 const normalizeUnit = (v: unknown): Unit => {
@@ -35,25 +27,15 @@ export const useProductLookup = () => {
 			const trimmed = code.trim();
 			if (!trimmed) throw new Error('Внеси баркод или PLU.');
 
-			const pluText = parsePluText(trimmed);
-
-			const orParts: string[] = [];
-			orParts.push(`barcode.eq.${trimmed}`);
-			if (pluText !== null) orParts.push(`plu.eq.${pluText}`); // ✅ string compare
-
-			const { data, error } = await supabase
-				.from('products')
-				.select('id, plu, barcode, name, description, unit, selling_price, tax_group, category_id, subcategory_id')
-				.or(orParts.join(','))
-				.maybeSingle();
-
-			if (error) throw error;
+			const data = await api.get<ProductLookup | null>(
+				`/api/receive/products/lookup?code=${encodeURIComponent(trimmed)}`,
+			);
 
 			if (!data) return null;
 
 			return {
-				...(data as Omit<ProductLookup, 'unit'>),
-				unit: normalizeUnit((data as { unit: unknown }).unit),
+				...data,
+				unit: normalizeUnit(data.unit),
 			} as ProductLookup;
 		},
 	});

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 type Payload = {
 	productId: string;
@@ -15,6 +15,8 @@ const parseQty = (raw: string) => {
 	const num = Number.parseFloat(v);
 	return Number.isFinite(num) ? num : Number.NaN;
 };
+
+
 
 export const useAdjustStockMutation = () => {
 	const queryClient = useQueryClient();
@@ -34,31 +36,15 @@ export const useAdjustStockMutation = () => {
 			const reason = payload.reason.trim();
 			if (!reason) throw new Error('Внеси причина (кратко).');
 
-			const direction: 'PLUS' | 'MINUS' = delta > 0 ? 'PLUS' : 'MINUS';
-			const qtyToApply = Math.abs(delta);
-
-			const { data: userData, error: userErr } = await supabase.auth.getUser();
-			if (userErr) throw userErr;
-			const userId = userData.user?.id ?? null;
-
-			const { data: movement, error: mErr } = await supabase
-				.from('stock_movements')
-				.insert({ type: 'ADJUST', note: reason, created_by: userId })
-				.select('id')
-				.single();
-
-			if (mErr) throw mErr;
-
-			const { error: iErr } = await supabase.from('stock_movement_items').insert({
-				movement_id: movement.id,
-				product_id: payload.productId,
-				qty: qtyToApply,
-				adjust_direction: direction,
-				unit_cost: payload.unitCost ?? 0,
-				unit_price: payload.unitPrice ?? 0,
+			// userId is resolved server-side from JWT — no longer sent from client
+		await api.post('/api/stock/adjust', {
+			product_id: payload.productId,
+			target_qty: target,
+			current_qty: current,
+			reason,
+			unit_cost: payload.unitCost ?? 0,
+			unit_price: payload.unitPrice ?? 0,
 			});
-
-			if (iErr) throw iErr;
 		},
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ['stock'], exact: false });

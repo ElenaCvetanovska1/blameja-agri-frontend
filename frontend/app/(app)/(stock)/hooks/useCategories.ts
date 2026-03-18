@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 export type CategoryRow = {
 	id: string;
@@ -10,11 +10,6 @@ export type CategoryRow = {
 export const useCategories = () => {
 	return useQuery({
 		queryKey: ['categories'],
-		queryFn: async () => {
-			const { data, error } = await supabase.from('categories').select('id, name, code').order('name', { ascending: true });
-
-			if (error) throw error;
-			return (data ?? []) as CategoryRow[];
-		},
+		queryFn: () => api.get<CategoryRow[]>('/api/categories'),
 	});
 };

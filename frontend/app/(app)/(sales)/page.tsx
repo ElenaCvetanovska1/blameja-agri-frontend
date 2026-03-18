@@ -3,10 +3,10 @@
 import { useRef, useState } from 'react';
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { toast } from 'sonner';
-import { supabase } from 'app/lib/supabase-client';
+import { api } from 'app/lib/api-client';
 
 import type { ProductStockRow } from './types';
-import { parseDigitsText, num } from './utils';
+import { num } from './utils';
 import { useOutsideClick } from './hooks/useOutsideClick';
 import { useProductSearch } from './hooks/useProductSearch';
 import { useCart } from './hooks/useCart';
@@ -22,22 +22,11 @@ const fetchProductFromStockByExactCode = async (code: string, storeNo: 20 | 30):
 	const trimmed = code.trim();
 	if (!trimmed) return null;
 
-	const pluText = parseDigitsText(trimmed);
+	const product = await api.get<ProductStockRow | null>(
+		`/api/sales/products/lookup?code=${encodeURIComponent(trimmed)}&storeNo=${storeNo}`,
+	);
 
-	const orParts: string[] = [];
-	orParts.push(`barcode.eq.${trimmed}`);
-	if (pluText) orParts.push(`plu.eq.${pluText}`);
-
-	const { data, error } = await supabase
-		.from('product_stock')
-		.select('product_id, plu, barcode, name, selling_price, qty_on_hand, category_name, store_no, tax_group')
-		.eq('store_no', storeNo)
-		.or(orParts.join(','))
-		.limit(1)
-		.maybeSingle();
-
-	if (error) throw error;
-	return (data ?? null) as ProductStockRow | null;
+	return product ?? null;
 };
 
 const SalesPage = () => {
@@ -53,7 +42,6 @@ const SalesPage = () => {
 	const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD'>('CASH');
 	const [cashReceivedStr, setCashReceivedStr] = useState('');
 
-	// ✅ НОВО: продавница филтер
 	const [storeNo, setStoreNo] = useState<20 | 30>(20);
 
 	const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -62,7 +50,6 @@ const SalesPage = () => {
 	const { submitSale } = useSalesSubmit();
 	const { runFiscalSale } = useFiscalSaleFlow();
 
-	// ✅ НОВО: search зависи од storeNo
 	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code, storeNo);
 
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
@@ -77,7 +64,6 @@ const SalesPage = () => {
 		setFocusProductId(null);
 		setPaymentMethod('CASH');
 		setCashReceivedStr('');
-		// storeNo не го ресетираме (да остане како што избрал user)
 	};
 
 	const handleAddByCode = async (codeValue?: string) => {
@@ -118,7 +104,6 @@ const SalesPage = () => {
 	const handleSubmitSale = async () => {
 		setBusy(true);
 		try {
-			// 1. Save to DB — throws on validation failure or DB error
 			const { receiptId } = await submitSale({
 				cart,
 				totals,
@@ -128,11 +113,9 @@ const SalesPage = () => {
 				onSuccess: resetSale,
 			});
 
-			// 2. Fiscal flow — decoupled; errors are shown as toasts, never block UX
 			void runFiscalSale({ receiptId, cart, totals, paymentMethod });
 		} catch (e: unknown) {
 			const msg = (e as Error)?.message ?? '';
-			// Validation errors already showed their own toast inside submitSale
 			if (msg !== 'empty-cart' && msg !== 'insufficient-cash') {
 				console.error(e);
 				toast.error('Грешка при зачувување на продажбата.');
@@ -197,7 +180,6 @@ const SalesPage = () => {
 							setScanError(null);
 							setScannerOpen(true);
 						}}
-						// ✅ НОВО: selector props
 						storeNo={storeNo}
 						onStoreNoChange={(v) => {
 							setStoreNo(v);

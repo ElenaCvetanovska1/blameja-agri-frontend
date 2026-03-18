@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase-client';
+import { isTokenValid, tokenStorage } from '../lib/api-client';
 import { AuthPage } from './AuthPage';
 
 type AuthGateProps = {
@@ -8,34 +7,24 @@ type AuthGateProps = {
 };
 
 export const AuthGate = ({ children }: AuthGateProps) => {
-	const [session, setSession] = useState<Session | null>(null);
+	const [authenticated, setAuthenticated] = useState(false);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		let mounted = true;
+		// Check if a valid (non-expired) access token is present in localStorage.
+		// Token refresh on expiry is handled transparently by the api-client on
+		// any API call that returns 401. No Supabase SDK needed here.
+		const valid = isTokenValid();
 
-		supabase.auth
-			.getSession()
-			.then(({ data }) => {
-				if (!mounted) return;
-				setSession(data.session);
-				setLoading(false);
-			})
-			.catch(() => {
-				if (!mounted) return;
-				setSession(null);
-				setLoading(false);
-			});
+		if (!valid) {
+			// Token missing or expired — clear stale tokens and show login
+			tokenStorage.clear();
+			setAuthenticated(false);
+		} else {
+			setAuthenticated(true);
+		}
 
-		const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-			setSession(nextSession);
-			setLoading(false);
-		});
-
-		return () => {
-			mounted = false;
-			data.subscription.unsubscribe();
-		};
+		setLoading(false);
 	}, []);
 
 	if (loading) {
@@ -57,7 +46,7 @@ export const AuthGate = ({ children }: AuthGateProps) => {
 		);
 	}
 
-	if (!session) {
+	if (!authenticated) {
 		return <AuthPage />;
 	}
 
