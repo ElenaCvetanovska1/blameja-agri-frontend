@@ -22,7 +22,8 @@ export type Row = {
 	category_id: string | null;
 	unit: string | null;
 	store_no: number | null;
-	categories?: { name: string | null }[] | null;};
+	categories?: { name: string | null }[] | null;
+};
 
 export const useProductChoices = ({ name, categoryId, limit = 10, storeNo }: Args) => {
 	return useQuery({

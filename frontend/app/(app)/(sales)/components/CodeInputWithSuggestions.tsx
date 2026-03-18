@@ -47,7 +47,10 @@ export const CodeInputWithSuggestions = (props: Props) => {
 	const inputRef = useRef<HTMLInputElement | null>(null);
 
 	return (
-		<div ref={wrapRef} className="relative">
+		<div
+			ref={wrapRef}
+			className="relative"
+		>
 			{/* ✅ во истиот rectangle, над пребарување */}
 			<div className="mb-2 flex items-center justify-between gap-3">
 				<label className="block text-xs font-medium text-slate-600">Баркод или PLU (или име)</label>
@@ -108,9 +111,7 @@ export const CodeInputWithSuggestions = (props: Props) => {
 					<div className="max-h-64 overflow-auto">
 						{suggestLoading && <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>}
 
-						{!suggestLoading && suggestions.length === 0 && (
-							<div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>
-						)}
+						{!suggestLoading && suggestions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
 
 						{suggestions.map((s) => {
 							const title = safeText(s.name) || '—';
@@ -135,8 +136,7 @@ export const CodeInputWithSuggestions = (props: Props) => {
 										<div className="min-w-0">
 											<div className="text-sm font-semibold text-slate-800 truncate">{title}</div>
 											<div className="text-[11px] text-slate-500">
-												PLU: <span className="font-medium">{pluText}</span> • Баркод:{' '}
-												<span className="font-medium">{barcodeText}</span>
+												PLU: <span className="font-medium">{pluText}</span> • Баркод: <span className="font-medium">{barcodeText}</span>
 											</div>
 										</div>
 

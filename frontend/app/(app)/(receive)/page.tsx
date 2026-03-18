@@ -88,8 +88,7 @@ const ReceivePage = () => {
 	const updateAddressMutation = useUpdateSupplierAddressMutation();
 	const receiveMutation = useReceiveMutation();
 
-	const isSubmitDisabled =
-		receiveMutation.isPending || categoriesQuery.isLoading || !!categoriesQuery.error || !form.isValid;
+	const isSubmitDisabled = receiveMutation.isPending || categoriesQuery.isLoading || !!categoriesQuery.error || !form.isValid;
 
 	const onPickProduct = (row: ProductChoiceRow) => {
 		setSelectedProductId(row.product_id);
@@ -222,47 +221,43 @@ const ReceivePage = () => {
 	return (
 		<div className="space-y-2">
 			<div className="flex items-start justify-between gap-3">
-	{/* LEFT SIDE */}
-	<div className="flex flex-col gap-2">
-		<div className="flex items-center gap-3">
-			<span className="text-xs font-semibold text-slate-600">
-				Продавница бр.
-			</span>
+				{/* LEFT SIDE */}
+				<div className="flex flex-col gap-2">
+					<div className="flex items-center gap-3">
+						<span className="text-xs font-semibold text-slate-600">Продавница бр.</span>
 
-			<select
-				value={storeNo}
-				onChange={(e) => setStoreNo(Number(e.target.value) as StoreNo)}
-				className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+						<select
+							value={storeNo}
+							onChange={(e) => setStoreNo(Number(e.target.value) as StoreNo)}
+							className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+						>
+							<option value={20}>20</option>
+							<option value={30}>30</option>
+						</select>
+					</div>
+				</div>
+
+				{/* RIGHT SIDE */}
+				<div className="flex flex-col items-end">
+					<button
+						type="button"
+						onClick={() => {
+							setScanError(null);
+							setScannerOpen(true);
+						}}
+						className="rounded-3xl bg-blamejaGreen px-4 py-2 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
+					>
+						Скенирај баркод
+					</button>
+
+					{scanError && <span className="mt-2 text-[10px] text-blamejaRed">{scanError}</span>}
+				</div>
+			</div>
+
+			<form
+				onSubmit={onSubmit}
+				className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6"
 			>
-				<option value={20}>20</option>
-				<option value={30}>30</option>
-			</select>
-		</div>
-
-	</div>
-
-	{/* RIGHT SIDE */}
-	<div className="flex flex-col items-end">
-		<button
-			type="button"
-			onClick={() => {
-				setScanError(null);
-				setScannerOpen(true);
-			}}
-			className="rounded-3xl bg-blamejaGreen px-4 py-2 text-md font-semibold text-white shadow-sm hover:bg-blamejaGreenDark"
-		>
-			Скенирај баркод
-		</button>
-
-		{scanError && (
-			<span className="mt-2 text-[10px] text-blamejaRed">
-				{scanError}
-			</span>
-		)}
-	</div>
-</div>
-
-			<form onSubmit={onSubmit} className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
 				{/* Документ */}
 				<div className="space-y-2">
 					<div className="flex items-center justify-between">
@@ -344,7 +339,10 @@ const ReceivePage = () => {
 						>
 							<option value="">{categoriesQuery.isLoading ? 'Се вчитува...' : 'Избери категорија'}</option>
 							{(categoriesQuery.data ?? []).map((c) => (
-								<option key={c.id} value={c.id}>
+								<option
+									key={c.id}
+									value={c.id}
+								>
 									{c.name}
 								</option>
 							))}

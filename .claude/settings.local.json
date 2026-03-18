@@ -3,7 +3,10 @@
     "allow": [
       "Bash(ls -la \"/c/Users/ecvetanovska/myElenaCVETANOVSKA/blameja-agri-frontend/app/\\(app\\)/\")",
       "Bash(ls -la \"/c/Users/ecvetanovska/myElenaCVETANOVSKA/blameja-agri-frontend/app/\\(app\\)/\\(receive\\)/hooks/\")",
-      "Bash(node -e \"const fs = require\\(''fs''\\); const content = fs.readFileSync\\(''app/\\(app\\)/\\(finance\\)/page.tsx''\\); const lines = content.toString\\(\\).split\\(''\\\\n''\\); lines.slice\\(368, 382\\).forEach\\(\\(l, i\\) => console.log\\(i+369, JSON.stringify\\(l.substring\\(0,100\\)\\)\\)\\);\")"
+      "Bash(node -e \"const fs = require\\(''fs''\\); const content = fs.readFileSync\\(''app/\\(app\\)/\\(finance\\)/page.tsx''\\); const lines = content.toString\\(\\).split\\(''\\\\n''\\); lines.slice\\(368, 382\\).forEach\\(\\(l, i\\) => console.log\\(i+369, JSON.stringify\\(l.substring\\(0,100\\)\\)\\)\\);\")",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p /c/Users/ecvetanovska/myElenaCVETANOVSKA/blameja-agri-frontend/backend)",
+      "Bash(dotnet new:*)"
     ]
   }
 }

@@ -58,10 +58,7 @@ export const useFiscalSaleFlow = () => {
 			status = await fiscalBridge.getStatus();
 		} catch (err) {
 			if (err instanceof FiscalBridgeOfflineError) {
-				toast.warning(
-					'Продажбата е зачувана, но фискалниот уред е офлајн. Ќе треба рачна фискализација.',
-					{ duration: 8000 },
-				);
+				toast.warning('Продажбата е зачувана, но фискалниот уред е офлајн. Ќе треба рачна фискализација.', { duration: 8000 });
 				await saveFiscalResult(receiptId, { fiscal_status: 'offline', fiscal_error: 'bridge offline' });
 				return;
 			}
