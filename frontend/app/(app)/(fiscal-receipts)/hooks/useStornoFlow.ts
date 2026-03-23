@@ -6,6 +6,7 @@ import {
 	fiscalBridge,
 	FiscalBridgeOfflineError,
 	truncateFiscalName,
+	toFiscalPaymentMode,
 } from 'app/lib/fiscal-bridge';
 
 export type StornoFlowItem = {
@@ -121,8 +122,7 @@ export const useStornoFlow = () => {
 			await fiscalBridge.subtotal({ print: 0, display: 1 }).catch(() => null);
 
 			// ── 6. Payment (refund) ───────────────────────────────────────────────
-			const paidMode = payment === 'CASH' ? 0 : 1;
-			const paymentRes = await fiscalBridge.payment({ paidMode, amount: total });
+			const paymentRes = await fiscalBridge.payment({ paidMode: toFiscalPaymentMode(payment), amount: total });
 
 			// ── 7. Close receipt ──────────────────────────────────────────────────
 			const closed = await fiscalBridge.closeReceipt();
