@@ -265,8 +265,8 @@ export function toFiscalTaxCode(taxPercent: number | null | undefined): 1 | 2 | 
 	}
 }
 
-/** Truncate product name to 36 chars (SY55 display limit). */
-export function truncateFiscalName(name: string, maxLen = 36): string {
+/** Truncate product name to 32 chars (SY55 PluName limit per Command 49h). */
+export function truncateFiscalName(name: string, maxLen = 32): string {
 	return name.length > maxLen ? name.slice(0, maxLen) : name;
 }
 
