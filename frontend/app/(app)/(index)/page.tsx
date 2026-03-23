@@ -1,82 +1,84 @@
 import { Link } from 'react-router';
 import { BLAMEJA_ROUTES } from 'app/routes';
 import {
-	FaShoppingCart, // продажба
-	FaTruckLoading, // прием
-	FaBoxes, // залиха
-	FaChartLine, // финансии
+	FaShoppingCart,
+	FaTruckLoading,
+	FaBoxes,
+	FaClipboardList,
 } from 'react-icons/fa';
 
 const cards = [
 	{
 		title: 'Продажба',
-		description: 'Продажба по баркод или шифра.',
+		sub: 'Баркод · Шифра · Каса',
 		to: BLAMEJA_ROUTES.sales,
-		color: 'bg-blamejaOrange',
+		bg: 'bg-blamejaOrange',
 		icon: FaShoppingCart,
 	},
 	{
 		title: 'Прием на стока',
-		description: 'Внеси нови артикли и зголеми залиха.',
+		sub: 'Артикли · Добавувачи · Залиха',
 		to: BLAMEJA_ROUTES.receive,
-		color: 'bg-blamejaGreenDark',
+		bg: 'bg-blamejaGreenDark',
 		icon: FaTruckLoading,
 	},
 	{
 		title: 'Залиха',
-		description: 'Преглед на лагер и движења по артикл.',
+		sub: 'Лагер · Движења · Цени',
 		to: BLAMEJA_ROUTES.stock,
-		color: 'bg-blamejaOrange',
+		bg: 'bg-blamejaGreen',
 		icon: FaBoxes,
 	},
 	{
-		title: 'Финансии',
-		description: 'Промет и основни извештаи.',
-		to: BLAMEJA_ROUTES.finance,
-		color: 'bg-blamejaGreen',
-		icon: FaChartLine,
+		title: 'Испратница',
+		sub: 'Документи',
+		to: BLAMEJA_ROUTES.dispatch,
+		bg: 'bg-slate-700',
+		icon: FaClipboardList,
 	},
 ] as const;
 
 const HomePage = () => {
 	return (
-		<div className="max-w-3xl mx-auto mt-8 px-4">
-			<div className="text-center mb-6">
-				<h1 className="mt-2 text-3xl md:text-4xl font-bold text-slate-800">Што сакате да направите?</h1>
-				<p className="mt-2 text-sm text-slate-500">Изберете модул за работа (продажба, прием, залиха, финансии…)</p>
-			</div>
+		<div className="pt-4 sm:pt-6 grid grid-cols-2 gap-3 sm:gap-4 h-[calc(100dvh-200px)]">
+			{cards.map((card) => {
+				const Icon = card.icon;
+				return (
+					<Link
+						key={card.to}
+						to={card.to}
+						className={`${card.bg} relative flex flex-col items-center justify-center gap-3
+							rounded-3xl text-white overflow-hidden h-full shadow-lg
+							active:scale-[0.97] hover:brightness-110
+							transition-all duration-150 ease-in-out
+							select-none touch-manipulation
+							p-4 sm:p-6`}
+					>
+						{/* Corner accent blob */}
+						<div className="absolute top-0 left-0 w-24 h-24 rounded-full bg-white/5 -translate-x-8 -translate-y-8 pointer-events-none" />
 
-			<div className="grid gap-4 md:gap-6">
-				{cards.map((card) => {
-					const Icon = card.icon;
-					return (
-						<Link
-							key={card.to}
-							to={card.to}
-							className="block rounded-2xl overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow border border-slate-200"
-						>
-							<div className="flex">
-								<div className={`${card.color} w-24 flex flex-col items-center justify-center text-white font-bold gap-1`}>
-									<Icon className="w-7 h-7 md:w-8 md:h-8" />
-								</div>
+						{/* Large faded background icon */}
+						<Icon className="absolute right-4 bottom-3 w-24 h-24 text-white/[0.07] pointer-events-none" />
 
-								<div className="flex-1 px-4 py-4">
-									<h2 className="text-xl font-semibold mb-1 text-slate-800">{card.title}</h2>
-									<p className="text-slate-600 text-sm">{card.description}</p>
+						{/* Icon badge */}
+						<div className="relative z-10 flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/15 shadow-inner ring-1 ring-white/20">
+							<Icon className="w-6 h-6 sm:w-8 sm:h-8" />
+						</div>
 
-									<div className="mt-3 inline-flex items-center gap-2 text-xs text-slate-500">
-										<span className="h-2 w-2 rounded-full bg-blamejaGreen" />
-										<span>Отвори модул</span>
-									</div>
-								</div>
-							</div>
-						</Link>
-					);
-				})}
-			</div>
-
-			<div className="mt-6 text-center text-xs text-slate-400">Совет: за побрза работа користете баркод скенер (USB) или камера за QR.</div>
+						{/* Title + subtitle */}
+						<div className="relative z-10 text-center">
+							<h2 className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight leading-tight">
+								{card.title}
+							</h2>
+							<p className="text-[11px] sm:text-sm text-white/65 mt-1 font-medium tracking-wide">
+								{card.sub}
+							</p>
+						</div>
+					</Link>
+				);
+			})}
 		</div>
 	);
 };
+
 export default HomePage;
