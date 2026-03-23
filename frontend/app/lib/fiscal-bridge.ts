@@ -245,12 +245,24 @@ export const fiscalBridge = {
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-/** Map DB tax_group (int2) → FiscalBridge TaxCode (1-4). Defaults to 1 (A). */
-export function toFiscalTaxCode(taxGroup: number | null | undefined): 1 | 2 | 3 | 4 {
-	if (taxGroup === 2) return 2;
-	if (taxGroup === 3) return 3;
-	if (taxGroup === 4) return 4;
-	return 1;
+/**
+ * Map DB tax_group business percentage → FiscalBridge TaxCode (1-4).
+ *   18 % → 1 (A)
+ *    5 % → 2 (Б)
+ *   10 % → 3 (В)
+ *    0 / null / undefined → 4 (Г, exempt)
+ * Throws on any other value to catch configuration mistakes early.
+ */
+export function toFiscalTaxCode(taxPercent: number | null | undefined): 1 | 2 | 3 | 4 {
+	switch (taxPercent) {
+		case 18: return 1;
+		case 5:  return 2;
+		case 10: return 3;
+		case 0:
+		case null:
+		case undefined: return 4;
+		default: throw new Error(`Непозната даночна стапка: ${taxPercent}`);
+	}
 }
 
 /** Truncate product name to 36 chars (SY55 display limit). */

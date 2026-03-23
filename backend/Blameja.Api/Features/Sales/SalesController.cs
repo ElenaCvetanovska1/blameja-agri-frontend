@@ -49,7 +49,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                 qty_on_hand,
                 category_name,
                 store_no,
-                tax_group
+                tax_group,
+                is_macedonian
             FROM product_stock
             WHERE store_no = @storeNo
               AND (
@@ -97,7 +98,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                 qty_on_hand,
                 category_name,
                 store_no,
-                tax_group
+                tax_group,
+                is_macedonian
             FROM product_stock
             WHERE store_no = @storeNo
               AND (

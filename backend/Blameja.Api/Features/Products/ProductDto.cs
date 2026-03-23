@@ -15,4 +15,5 @@ public sealed class ProductDto
     public string? category_name { get; init; }
     public int store_no { get; init; }
     public string? tax_group { get; init; }
+    public bool is_macedonian { get; init; }
 }

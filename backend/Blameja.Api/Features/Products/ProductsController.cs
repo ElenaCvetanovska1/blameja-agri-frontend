@@ -31,7 +31,8 @@ public sealed class ProductsController(DbConnectionFactory db) : ControllerBase
                 qty_on_hand,
                 category_name,
                 store_no,
-                tax_group
+                tax_group,
+                is_macedonian
             FROM product_stock
             WHERE
                 (@storeNo IS NULL OR store_no = @storeNo)

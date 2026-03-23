@@ -8,6 +8,7 @@ export type ProductStockRow = {
 	category_name: string | null;
 	store_no?: number | null;
 	tax_group?: number | null;
+	is_macedonian?: boolean | null;
 };
 
 export type CartItem = {
@@ -19,6 +20,7 @@ export type CartItem = {
 		selling_price: number;
 		category_name: string | null;
 		tax_group: number | null;
+		is_macedonian: boolean;
 	};
 	qty: number;
 	finalPriceStr: string;

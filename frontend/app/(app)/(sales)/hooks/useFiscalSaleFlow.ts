@@ -86,6 +86,7 @@ export const useFiscalSaleFlow = () => {
 					taxCode: toFiscalTaxCode(item.product.tax_group),
 					price: base,
 					quantity: item.qty,
+					isMacedonian: item.product.is_macedonian ? 1 : 0,
 					...(discountAmount !== undefined ? { discountType: 4, discountValue: discountAmount } : {}),
 				});
 			}

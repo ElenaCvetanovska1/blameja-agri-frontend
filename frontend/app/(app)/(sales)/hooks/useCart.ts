@@ -81,6 +81,7 @@ export const useCart = () => {
 			selling_price: num(row.selling_price),
 			category_name: row.category_name ?? null,
 			tax_group: row.tax_group ?? null,
+			is_macedonian: row.is_macedonian ?? false,
 		};
 
 		setCart((prev) => {

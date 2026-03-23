@@ -15,4 +15,5 @@ public sealed class ProductStockDto
     public string? CategoryName { get; init; }
     public int     StoreNo      { get; init; }
     public int?    TaxGroup     { get; init; }
+    public bool    IsMacedonian { get; init; }
 }
