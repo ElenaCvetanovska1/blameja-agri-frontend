@@ -15,6 +15,7 @@ export type FiscalReceiptRow = {
 	created_by: string | null;
 	fiscalized_at: string | null;
 	created_at: string;
+	original_fiscal_receipt_id: string | null;
 };
 
 export const useFiscalReceipts = (days = 30) => {

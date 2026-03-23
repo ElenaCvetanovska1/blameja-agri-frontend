@@ -17,6 +17,7 @@ public sealed class FiscalReceiptListDto
     public decimal  Total           { get; init; }
     public string?  ExternalDocNo   { get; init; }
     public string?  CreatedBy       { get; init; }
-    public DateTime? FiscalizedAt   { get; init; }
-    public DateTime  CreatedAt      { get; init; }
+    public DateTime? FiscalizedAt              { get; init; }
+    public DateTime  CreatedAt                 { get; init; }
+    public Guid?     OriginalFiscalReceiptId   { get; init; }
 }

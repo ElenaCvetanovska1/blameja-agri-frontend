@@ -17,12 +17,12 @@ const mkd = (n: number) => `${Number(n).toFixed(2)} ден.`;
 
 const StatusBadge = ({ status }: { status: string | null }) => {
 	const map: Record<string, string> = {
-		ok:      'bg-green-100 text-green-800',
+		success: 'bg-green-100 text-green-800',
 		failed:  'bg-red-100 text-red-800',
 		offline: 'bg-orange-100 text-orange-800',
 	};
 	const cls = map[status ?? ''] ?? 'bg-slate-100 text-slate-600';
-	const label = status === 'ok' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : status ?? '—';
+	const label = status === 'success' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : status ?? '—';
 	return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>{label}</span>;
 };
 
@@ -110,7 +110,7 @@ export default function FiscalReceiptsPage() {
 							className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 						>
 							<option value="">Сите статуси</option>
-							<option value="ok">Успешно</option>
+							<option value="success">Успешно</option>
 							<option value="failed">Неуспешно</option>
 							<option value="offline">Офлајн</option>
 						</select>

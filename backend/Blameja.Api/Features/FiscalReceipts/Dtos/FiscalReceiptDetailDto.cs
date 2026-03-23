@@ -22,6 +22,7 @@ public sealed class FiscalReceiptDetailDto
     public string?  ExternalDocNo   { get; init; }
     public string?  CreatedBy       { get; init; }
     public string?  BridgeResponse  { get; init; }
-    public DateTime? FiscalizedAt   { get; init; }
-    public DateTime  CreatedAt      { get; init; }
+    public DateTime? FiscalizedAt              { get; init; }
+    public DateTime  CreatedAt                 { get; init; }
+    public Guid?     OriginalFiscalReceiptId   { get; init; }
 }

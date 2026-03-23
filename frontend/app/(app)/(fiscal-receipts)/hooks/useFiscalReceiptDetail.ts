@@ -20,6 +20,7 @@ export type FiscalReceiptDetail = {
 	bridge_response: string | null;
 	fiscalized_at: string | null;
 	created_at: string;
+	original_fiscal_receipt_id: string | null;
 };
 
 export type FiscalReceiptItem = {
@@ -41,6 +42,9 @@ export type FiscalReceiptItem = {
 	unit: string | null;
 	barcode: string | null;
 	created_at: string;
+	original_fiscal_receipt_item_id: string | null;
+	/** Remaining returnable quantity (original qty minus already-storno'd). */
+	remaining_qty: number;
 };
 
 export type FiscalReceiptDetailResponse = {

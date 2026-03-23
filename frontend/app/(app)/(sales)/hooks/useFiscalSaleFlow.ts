@@ -21,7 +21,7 @@ const saveFiscalResult = async (
 	receiptId: string,
 	patch: {
 		fiscal_slip_no?: number | null;
-		fiscal_status: 'ok' | 'failed' | 'offline';
+		fiscal_status: 'success' | 'failed' | 'offline';
 		fiscal_error?: string | null;
 	},
 ) => {
@@ -108,7 +108,7 @@ export const useFiscalSaleFlow = () => {
 			// 8 ─ Persist slip number to backend ──────────────────────────────────
 			await saveFiscalResult(receiptId, {
 				fiscal_slip_no: slipNo,
-				fiscal_status: 'ok',
+				fiscal_status: 'success',
 			});
 
 			toast.success(`Фискален сметки #${slipNo ?? '—'} испечатен.`, { duration: 4000 });

@@ -24,5 +24,6 @@ export default [
 		route('dispatch', '(app)/(dispatch)/page.tsx'),
 		route('fiscal-receipts', '(app)/(fiscal-receipts)/page.tsx'),
 		route('fiscal-receipts/:id', '(app)/(fiscal-receipts)/detail.tsx'),
+		route('fiscal-receipts/:id/storno', '(app)/(fiscal-receipts)/storno.tsx'),
 	]),
 ] satisfies RouteConfigEntry[];

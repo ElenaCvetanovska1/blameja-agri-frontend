@@ -22,6 +22,12 @@ public sealed class FiscalReceiptItemDto
     public decimal? TaxPercent       { get; init; }
     public bool     IsMacedonian     { get; init; }
     public string?  Unit             { get; init; }
-    public string?  Barcode          { get; init; }
-    public DateTime CreatedAt        { get; init; }
+    public string?  Barcode                        { get; init; }
+    public DateTime CreatedAt                      { get; init; }
+    public Guid?    OriginalFiscalReceiptItemId    { get; init; }
+    /// <summary>
+    /// Remaining returnable quantity = original quantity minus already-storno'd quantity.
+    /// Only meaningful for items on 'sale' receipts. Always 0 for storno items.
+    /// </summary>
+    public decimal  RemainingQty                   { get; init; }
 }

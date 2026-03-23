@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useFiscalReceiptDetail, type FiscalReceiptItem } from './hooks/useFiscalReceiptDetail';
+import { useFiscalReceipts } from './hooks/useFiscalReceipts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,12 +23,12 @@ const str = (v: unknown) => (v != null && v !== '' ? String(v) : '—');
 
 const StatusBadge = ({ status }: { status: string | null }) => {
 	const map: Record<string, string> = {
-		ok:      'bg-green-100 text-green-800',
+		success: 'bg-green-100 text-green-800',
 		failed:  'bg-red-100 text-red-800',
 		offline: 'bg-orange-100 text-orange-800',
 	};
 	const cls = map[status ?? ''] ?? 'bg-slate-100 text-slate-600';
-	const label = status === 'ok' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : status ?? '—';
+	const label = status === 'success' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : status ?? '—';
 	return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 };
 
@@ -116,6 +117,8 @@ export default function FiscalReceiptDetailPage() {
 	const [bridgeOpen, setBridgeOpen] = useState(false);
 
 	const query = useFiscalReceiptDetail(id);
+	// Load all receipts (last 365 days) to find storno receipts linked to this one
+	const allReceipts = useFiscalReceipts(365);
 
 	if (query.isLoading) {
 		return (
@@ -175,15 +178,13 @@ export default function FiscalReceiptDetailPage() {
 				<div className="flex items-center gap-2">
 					<TypeBadge type={receipt.receipt_type} />
 					<StatusBadge status={receipt.fiscal_status} />
-					{/* STORNO button placeholder — will be wired up in a future task */}
-					{receipt.receipt_type === 'sale' && receipt.fiscal_status === 'ok' && (
+					{receipt.receipt_type === 'sale' && receipt.fiscal_status === 'success' && (
 						<button
 							type="button"
-							disabled
-							title="Сторно ќе биде достапно во следна верзија"
-							className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed"
+							onClick={() => navigate(`/fiscal-receipts/${id}/storno`)}
+							className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors"
 						>
-							Сторно (наскоро)
+							Сторно
 						</button>
 					)}
 				</div>
@@ -272,6 +273,48 @@ export default function FiscalReceiptDetailPage() {
 					)}
 				</div>
 			)}
+			{/* Linked storno receipts */}
+			{(() => {
+				const linkedStornos = (allReceipts.data ?? []).filter(
+					(r) => r.original_fiscal_receipt_id === id,
+				);
+				if (linkedStornos.length === 0) return null;
+				return (
+					<div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+						<div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+							<h2 className="text-sm font-semibold text-slate-700">Поврзани сторно сметки</h2>
+							<span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+								{linkedStornos.length}
+							</span>
+						</div>
+						<div className="divide-y divide-slate-100">
+							{linkedStornos.map((s) => (
+								<button
+									key={s.id}
+									type="button"
+									onClick={() => navigate(`/fiscal-receipts/${s.id}`)}
+									className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-slate-50 transition-colors"
+								>
+									<div className="flex items-center gap-3">
+										<span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
+											Сторно
+										</span>
+										<span className="text-sm text-slate-700">
+											{s.fiscal_slip_no != null ? `#${s.fiscal_slip_no}` : s.id.slice(0, 8)}
+										</span>
+										<span className="text-xs text-slate-400">
+											{new Date(s.fiscalized_at ?? s.created_at).toLocaleString('mk-MK', { dateStyle: 'medium', timeStyle: 'short' })}
+										</span>
+									</div>
+									<span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
+										{Number(s.total).toFixed(2)} ден.
+									</span>
+								</button>
+							))}
+						</div>
+					</div>
+				);
+			})()}
 		</div>
 	);
 }
