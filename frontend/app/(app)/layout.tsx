@@ -88,6 +88,12 @@ const AppLayout = () => {
 							>
 								Испратница
 							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.fiscalReceipts}
+								className={navLinkClass}
+							>
+								Фискални сметки
+							</NavLink>
 						</nav>
 
 						{/* Desktop logout */}
@@ -163,6 +169,13 @@ const AppLayout = () => {
 								onClick={() => setMobileOpen(false)}
 							>
 								Испратница
+							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.fiscalReceipts}
+								className={navLinkClass}
+								onClick={() => setMobileOpen(false)}
+							>
+								Фискални сметки
 							</NavLink>
 
 							{/* Mobile logout */}
