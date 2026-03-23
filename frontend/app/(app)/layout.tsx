@@ -92,7 +92,7 @@ const AppLayout = () => {
 								to={BLAMEJA_ROUTES.fiscalReceipts}
 								className={navLinkClass}
 							>
-								Фискални сметки
+								Сторно
 							</NavLink>
 						</nav>
 
@@ -175,7 +175,7 @@ const AppLayout = () => {
 								className={navLinkClass}
 								onClick={() => setMobileOpen(false)}
 							>
-								Фискални сметки
+								Сторно
 							</NavLink>
 
 							{/* Mobile logout */}
