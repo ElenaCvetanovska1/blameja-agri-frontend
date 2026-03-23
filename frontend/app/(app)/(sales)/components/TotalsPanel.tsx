@@ -105,26 +105,6 @@ export const TotalsPanel = ({
 				)}
 			</div>
 
-			{/* Note */}
-			<div>
-				<label
-					className="block text-xs font-medium text-slate-600"
-					htmlFor="totals-note"
-				>
-					Забелешка (опционално)
-				</label>
-				<textarea
-					id="totals-note"
-					value={note}
-					onChange={(e) => onNoteChange(e.target.value)}
-					rows={3}
-					placeholder="Пр. напомена, кој земал, за која намена…"
-					className="w-full rounded-lg border border-slate-200 px-3 py-1 text-sm outline-none
-							focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-					disabled={busy}
-				/>
-			</div>
-
 			{/* Totals */}
 			<div className="rounded-xl bg-slate-50 border border-slate-200 p-2">
 				<div className="flex items-center justify-between text-sm">
