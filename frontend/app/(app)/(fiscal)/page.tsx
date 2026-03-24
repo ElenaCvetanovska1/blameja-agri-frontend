@@ -626,7 +626,7 @@ const FiscalPage = () => {
 		<div className="space-y-5 pb-6">
 			{/* Header */}
 			<div>
-				<h1 className="text-2xl font-bold text-slate-900">Фискала</h1>
+				<h1 className="text-2xl font-bold text-slate-900">Фискална</h1>
 				<p className="mt-1 text-xs text-slate-500">
 					Извештаи · Готово влезно/излезно · Синхронизација на часовник · Меморија · Артикли
 				</p>

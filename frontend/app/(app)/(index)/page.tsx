@@ -51,7 +51,7 @@ const bottomCards = [
 		icon: FaFileInvoiceDollar,
 	},
 	{
-		title: 'Фискала',
+		title: 'Фискална',
 		sub: 'Извештаи · Готово · Уред',
 		to: BLAMEJA_ROUTES.fiscal,
 		bg: 'bg-indigo-700',
