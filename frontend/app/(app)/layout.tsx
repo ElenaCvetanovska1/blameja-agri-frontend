@@ -94,6 +94,12 @@ const AppLayout = () => {
 							>
 								Сторно
 							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.fiscal}
+								className={navLinkClass}
+							>
+								Фискална
+							</NavLink>
 						</nav>
 
 						{/* Desktop logout */}
@@ -176,6 +182,12 @@ const AppLayout = () => {
 								onClick={() => setMobileOpen(false)}
 							>
 								Сторно
+							</NavLink>
+							<NavLink
+								to={BLAMEJA_ROUTES.fiscal}
+								className={navLinkClass}
+							>
+								Фискална
 							</NavLink>
 
 							{/* Mobile logout */}
