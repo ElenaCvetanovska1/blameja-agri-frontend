@@ -3,8 +3,6 @@
 import { useMemo, useState } from 'react';
 import { useDailySales } from './hooks/useDailySales';
 import { useTopProducts } from './hooks/useTopProducts';
-import { useFiscalReports } from './hooks/useFiscalReports';
-import { useCashOperation } from './hooks/useCashOperation';
 
 // ✅ IMPORTANT: rename helper so it doesn't conflict with { toISO } from buildRange()
 const toIsoString = (d: Date) => d.toISOString();
@@ -76,11 +74,6 @@ const minBy = <T,>(arr: T[], get: (t: T) => number) => {
 
 const FinancePage = () => {
 	const [daysBack, setDaysBack] = useState<7 | 14 | 30>(14);
-	const [zConfirm, setZConfirm] = useState(false);
-	const [cashAmountStr, setCashAmountStr] = useState('');
-	const { printX, xBusy, printZ, zBusy } = useFiscalReports();
-	const { cashIn, cashOut, busy: cashBusy } = useCashOperation();
-
 	const { fromISO, toISO } = useMemo(() => buildRange(daysBack), [daysBack]);
 
 	const dailyQuery = useDailySales(fromISO, toISO);
@@ -383,114 +376,7 @@ const FinancePage = () => {
 				</div>
 			</div>
 
-			{/* CASH IN / CASH OUT */}
-			<div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
-				<div className="text-sm font-semibold text-slate-900">Готово влезно / излезно</div>
-				<div className="mt-1 text-xs text-slate-500">Регистрирај влез или излез на пари во фискалниот уред.</div>
-
-				<div className="mt-4 flex flex-wrap items-end gap-3">
-					<div className="flex flex-col gap-1">
-						<label
-							className="text-xs font-medium text-slate-600"
-							htmlFor="finance-cash-amount"
-						>
-							Износ (ден.)
-						</label>
-						<input
-							id="finance-cash-amount"
-							type="number"
-							min="0.01"
-							step="0.01"
-							placeholder="0.00"
-							value={cashAmountStr}
-							onChange={(e) => setCashAmountStr(e.target.value)}
-							disabled={cashBusy}
-							className="w-40 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blamejaGreen disabled:opacity-50"
-						/>
-					</div>
-
-					<button
-						type="button"
-						disabled={cashBusy}
-						onClick={async () => {
-							const amount = Number.parseFloat(cashAmountStr);
-							if (!Number.isFinite(amount) || amount <= 0) return;
-							const ok = await cashIn(amount);
-							if (ok) setCashAmountStr('');
-						}}
-						className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 transition"
-					>
-						{cashBusy ? 'Обработка...' : 'Готово влезно'}
-					</button>
-
-					<button
-						type="button"
-						disabled={cashBusy}
-						onClick={async () => {
-							const amount = Number.parseFloat(cashAmountStr);
-							if (!Number.isFinite(amount) || amount <= 0) return;
-							const ok = await cashOut(amount);
-							if (ok) setCashAmountStr('');
-						}}
-						className="rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50 transition"
-					>
-						{cashBusy ? 'Обработка...' : 'Готово излезно'}
-					</button>
-				</div>
 			</div>
-
-			{/* FISCAL REPORTS */}
-			<div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
-				<div className="text-sm font-semibold text-slate-900">Фискални извештаи</div>
-				<div className="mt-1 text-xs text-slate-500">
-					X извештај = дневен преглед без затворање. Z извештај = затворање на ден (неповратно).
-				</div>
-
-				<div className="mt-4 flex flex-wrap items-center gap-3">
-					<button
-						type="button"
-						onClick={() => void printX()}
-						disabled={xBusy || zBusy}
-						className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 transition"
-					>
-						{xBusy ? 'Печатење...' : 'X извештај'}
-					</button>
-
-					{!zConfirm ? (
-						<button
-							type="button"
-							onClick={() => setZConfirm(true)}
-							disabled={xBusy || zBusy}
-							className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50 transition"
-						>
-							Z извештај (затвори ден)
-						</button>
-					) : (
-						<div className="flex items-center gap-2">
-							<span className="text-xs font-semibold text-red-600">Сигурен? Ова е неповратно.</span>
-							<button
-								type="button"
-								onClick={async () => {
-									setZConfirm(false);
-									await printZ();
-								}}
-								disabled={zBusy}
-								className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition"
-							>
-								{zBusy ? 'Печатење...' : 'Потврди Z'}
-							</button>
-							<button
-								type="button"
-								onClick={() => setZConfirm(false)}
-								className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
-							>
-								Откажи
-							</button>
-						</div>
-					)}
-				</div>
-			</div>
-		</div>
 	);
 };
 

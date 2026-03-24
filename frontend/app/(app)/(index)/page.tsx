@@ -6,6 +6,7 @@ import {
 	FaBoxes,
 	FaClipboardList,
 	FaFileInvoiceDollar,
+	FaCashRegister,
 } from 'react-icons/fa';
 
 // ─── Row 1: three main actions ────────────────────────────────────────────────
@@ -33,7 +34,7 @@ const topCards = [
 	},
 ] as const;
 
-// ─── Row 2: two secondary actions ────────────────────────────────────────────
+// ─── Row 2: three secondary actions ──────────────────────────────────────────
 const bottomCards = [
 	{
 		title: 'Испратница',
@@ -48,6 +49,13 @@ const bottomCards = [
 		to: BLAMEJA_ROUTES.fiscalReceipts,
 		bg: 'bg-red-700',
 		icon: FaFileInvoiceDollar,
+	},
+	{
+		title: 'Фискала',
+		sub: 'Извештаи · Готово · Уред',
+		to: BLAMEJA_ROUTES.fiscal,
+		bg: 'bg-indigo-700',
+		icon: FaCashRegister,
 	},
 ] as const;
 
@@ -106,8 +114,8 @@ const HomePage = () => (
 			{topCards.map((card) => <NavCard key={card.to} card={card} />)}
 		</div>
 
-		{/* Row 2 — two cards, shorter */}
-		<div className="grid grid-cols-2 gap-3 sm:gap-4 flex-[2]">
+		{/* Row 2 — three cards, shorter */}
+		<div className="grid grid-cols-3 gap-3 sm:gap-4 flex-[2]">
 			{bottomCards.map((card) => <NavCard key={card.to} card={card} />)}
 		</div>
 	</div>

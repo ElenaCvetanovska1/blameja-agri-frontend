@@ -9,6 +9,7 @@ export const BLAMEJA_ROUTES = {
 	finance: '/finance',
 	qr: '/qr',
 	settings: '/settings',
+	fiscal: '/fiscal',
 	dispatch: '/dispatch',
 	fiscalReceipts: '/fiscal-receipts',
 } as const;
@@ -21,6 +22,7 @@ export default [
 		route('receive', '(app)/(receive)/page.tsx'),
 		route('stock', '(app)/(stock)/page.tsx'),
 		route('finance', '(app)/(finance)/page.tsx'),
+		route('fiscal', '(app)/(fiscal)/page.tsx'),
 		route('dispatch', '(app)/(dispatch)/page.tsx'),
 		route('fiscal-receipts', '(app)/(fiscal-receipts)/page.tsx'),
 		route('fiscal-receipts/:id', '(app)/(fiscal-receipts)/detail.tsx'),

@@ -121,12 +121,86 @@ export type ReportResponse = {
 	Message?: string;
 };
 
-export type FiscalItem = {
+/** Full item record returned by Command 107h (GET /items/all) */
+export type ItemDetail = {
 	Plu: number;
+	TaxGr: number;
+	Dep: number;
+	Group: number;
+	PriceType: number;
+	Price: string;       // decimal serialised as string by the device
+	Turnover: string;
+	SoldQty: string;
+	StockQty: string;
+	Bar1?: string | null;
+	Bar2?: string | null;
+	Bar3?: string | null;
+	Bar4?: string | null;
 	Name: string;
-	Price: number;
-	TaxCode: number;
-	Quantity?: number;
+};
+
+export type FiscalItemsResponse = {
+	ErrorStatus: ErrorStatus;
+	Items: ItemDetail[];
+	Message?: string;
+};
+
+// ─── Datetime (61h / 62h) ─────────────────────────────────────────────────────
+
+export type SetDateTimeRequest = {
+	/** Format: "DD-MM-YY hh:mm:ss" — optionally append " DST" for summer time */
+	dateTime: string;
+};
+
+export type SetDateTimeResponse = {
+	ErrorStatus: ErrorStatus;
+	Message?: string;
+};
+
+export type DateTimeResponse = {
+	ErrorStatus: ErrorStatus;
+	/** Format: "DD-MM-YY hh:mm:ss [DST]" */
+	DateTime?: string;
+	Message?: string;
+};
+
+// ─── Last fiscal entry (64h) ──────────────────────────────────────────────────
+
+export type LastEntryResponse = {
+	ErrorStatus: ErrorStatus;
+	NRep?: string;
+	SumA?: string;
+	SumB?: string;
+	SumC?: string;
+	SumD?: string;
+	/** Format: "DD-MM-YY" */
+	Date?: string;
+	Message?: string;
+};
+
+// ─── Memory reports (94h / 95h) ───────────────────────────────────────────────
+
+export type MemoryReportByDateRequest = {
+	/** 0 = short, 1 = detailed */
+	type: 0 | 1;
+	/** DD-MM-YY. Default: date of fiscalisation */
+	start?: string;
+	/** DD-MM-YY. Default: current date */
+	end?: string;
+};
+
+export type MemoryReportByZRequest = {
+	/** 0 = short, 1 = detailed */
+	type: 0 | 1;
+	/** First Z-report number. Default: 1 */
+	first?: number;
+	/** Last Z-report number. Default: last Z */
+	last?: number;
+};
+
+export type MemoryReportResponse = {
+	ErrorStatus: ErrorStatus;
+	Message?: string;
 };
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
@@ -240,7 +314,47 @@ export const fiscalBridge = {
 	},
 
 	/** GET /items/all — list all programmed fiscal items */
-	getAllItems: () => fiscalFetch<FiscalItem[]>('/items/all'),
+	getAllItems: async (): Promise<ItemDetail[]> => {
+		const res = await fiscalFetch<FiscalItemsResponse>('/items/all');
+		assertPassed(res.ErrorStatus, res.Message);
+		return res.Items;
+	},
+
+	/** GET /datetime — read current fiscal device date/time (62h) */
+	getDateTime: () => fiscalFetch<DateTimeResponse>('/datetime'),
+
+	/** POST /datetime/set — set fiscal device date/time (61h) */
+	setDateTime: async (req: SetDateTimeRequest): Promise<SetDateTimeResponse> => {
+		const res = await fiscalFetch<SetDateTimeResponse>('/datetime/set', {
+			method: 'POST',
+			body: JSON.stringify(req),
+		});
+		assertPassed(res.ErrorStatus, res.Message);
+		return res;
+	},
+
+	/** GET /lastentry — last fiscal entry info (64h). type 0-7, default 0 */
+	getLastEntry: (type = 0) => fiscalFetch<LastEntryResponse>(`/lastentry?type=${type}`),
+
+	/** POST /memory/report/date — fiscal memory report by date range (94h) */
+	memoryReportByDate: async (req: MemoryReportByDateRequest): Promise<MemoryReportResponse> => {
+		const res = await fiscalFetch<MemoryReportResponse>('/memory/report/date', {
+			method: 'POST',
+			body: JSON.stringify(req),
+		});
+		assertPassed(res.ErrorStatus, res.Message);
+		return res;
+	},
+
+	/** POST /memory/report/znumber — fiscal memory report by Z-report range (95h) */
+	memoryReportByZ: async (req: MemoryReportByZRequest): Promise<MemoryReportResponse> => {
+		const res = await fiscalFetch<MemoryReportResponse>('/memory/report/znumber', {
+			method: 'POST',
+			body: JSON.stringify(req),
+		});
+		assertPassed(res.ErrorStatus, res.Message);
+		return res;
+	},
 };
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
