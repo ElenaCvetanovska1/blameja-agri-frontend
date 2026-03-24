@@ -2,7 +2,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Blameja.Api.Features.Auth.Dtos;
+using Blameja.Api.Infrastructure.Database;
 using Blameja.Api.Middleware;
+using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +17,7 @@ namespace Blameja.Api.Features.Auth;
 /// </summary>
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IHttpClientFactory httpClientFactory) : ControllerBase
+public sealed class AuthController(IHttpClientFactory httpClientFactory, DbConnectionFactory db) : ControllerBase
 {
     // ── Login ──────────────────────────────────────────────────────────────
     /// <summary>
@@ -91,6 +93,27 @@ public sealed class AuthController(IHttpClientFactory httpClientFactory) : Contr
             parsed.RefreshToken ?? string.Empty,
             parsed.ExpiresIn,
             parsed.TokenType ?? "bearer"));
+    }
+
+    // ── Me ─────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// GET /api/auth/me
+    /// Returns the role of the currently authenticated user from public.profiles.
+    /// </summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var userId = User.FindFirst("sub")?.Value;
+        if (userId is null) return Unauthorized();
+
+        using var conn = db.CreateConnection();
+        var role = await conn.QuerySingleOrDefaultAsync<string>(
+            "SELECT role FROM public.profiles WHERE id = @userId::uuid",
+            new { userId });
+
+        if (role is null) return NotFound();
+        return Ok(new { role });
     }
 
     // ── Logout ─────────────────────────────────────────────────────────────

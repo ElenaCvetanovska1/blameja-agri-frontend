@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router';
 import { BLAMEJA_ROUTES } from 'app/routes';
 import { api, tokenStorage } from 'app/lib/api-client';
+import { useRole } from 'app/lib/useRole';
 
 const AppLayout = () => {
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const { role } = useRole();
 
 	const linkBase = 'px-3 py-1 rounded-full text-sm transition-colors whitespace-nowrap';
 
@@ -76,12 +78,14 @@ const AppLayout = () => {
 							>
 								Залиха
 							</NavLink>
-							<NavLink
-								to={BLAMEJA_ROUTES.finance}
-								className={navLinkClass}
-							>
-								Финансии
-							</NavLink>
+							{role === 'admin' && (
+								<NavLink
+									to={BLAMEJA_ROUTES.finance}
+									className={navLinkClass}
+								>
+									Финансии
+								</NavLink>
+							)}
 							<NavLink
 								to={BLAMEJA_ROUTES.dispatch}
 								className={navLinkClass}
@@ -162,13 +166,15 @@ const AppLayout = () => {
 							>
 								Залиха
 							</NavLink>
-							<NavLink
-								to={BLAMEJA_ROUTES.finance}
-								className={navLinkClass}
-								onClick={() => setMobileOpen(false)}
-							>
-								Финансии
-							</NavLink>
+							{role === 'admin' && (
+								<NavLink
+									to={BLAMEJA_ROUTES.finance}
+									className={navLinkClass}
+									onClick={() => setMobileOpen(false)}
+								>
+									Финансии
+								</NavLink>
+							)}
 							<NavLink
 								to={BLAMEJA_ROUTES.dispatch}
 								className={navLinkClass}

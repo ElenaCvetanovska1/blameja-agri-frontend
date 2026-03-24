@@ -46,6 +46,7 @@ builder.Services
     {
         options.MetadataAddress      = $"{supabaseUrl}/auth/v1/.well-known/openid-configuration";
         options.RequireHttpsMetadata = true;
+        options.MapInboundClaims     = false; // keep "sub" as "sub", not mapped to ClaimTypes.NameIdentifier
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,

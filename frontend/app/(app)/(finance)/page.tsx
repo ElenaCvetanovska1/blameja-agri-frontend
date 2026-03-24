@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useDailySales } from './hooks/useDailySales';
 import { useTopProducts } from './hooks/useTopProducts';
+import { useRole } from 'app/lib/useRole';
 
 // ✅ IMPORTANT: rename helper so it doesn't conflict with { toISO } from buildRange()
 const toIsoString = (d: Date) => d.toISOString();
@@ -73,6 +75,15 @@ const minBy = <T,>(arr: T[], get: (t: T) => number) => {
 };
 
 const FinancePage = () => {
+	const navigate = useNavigate();
+	const { role, loading: roleLoading } = useRole();
+
+	useEffect(() => {
+		if (!roleLoading && role !== 'admin') {
+			navigate('/', { replace: true });
+		}
+	}, [role, roleLoading, navigate]);
+
 	const [daysBack, setDaysBack] = useState<7 | 14 | 30>(14);
 	const { fromISO, toISO } = useMemo(() => buildRange(daysBack), [daysBack]);
 
