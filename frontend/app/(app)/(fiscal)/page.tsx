@@ -85,36 +85,6 @@ const ReportsTab = () => {
 
 	return (
 		<div className="space-y-5">
-			{/* X / Z reports */}
-			<Section
-				title="X и Z Извештаи"
-				sub="X = дневен преглед без затворање. Z = затворање на ден (неповратно)."
-			>
-				<div className="flex flex-wrap items-center gap-3">
-					<Btn onClick={() => void printX()} disabled={xBusy || zBusy}>
-						{xBusy ? 'Печатење...' : 'X извештај'}
-					</Btn>
-
-					{!zConfirm ? (
-						<Btn onClick={() => setZConfirm(true)} disabled={xBusy || zBusy} variant="danger">
-							Z извештај (затвори ден)
-						</Btn>
-					) : (
-						<div className="flex items-center gap-2">
-							<span className="text-xs font-semibold text-red-600">Сигурен? Ова е неповратно.</span>
-							<Btn
-								onClick={async () => { setZConfirm(false); await printZ(); }}
-								disabled={zBusy}
-								variant="danger"
-							>
-								{zBusy ? 'Печатење...' : 'Потврди Z'}
-							</Btn>
-							<Btn onClick={() => setZConfirm(false)}>Откажи</Btn>
-						</div>
-					)}
-				</div>
-			</Section>
-
 			{/* Cash in / Cash out */}
 			<Section
 				title="Готово влезно / излезно"
@@ -159,6 +129,36 @@ const ReportsTab = () => {
 					>
 						{cashBusy ? 'Обработка...' : 'Готово излезно'}
 					</Btn>
+				</div>
+			</Section>
+
+			{/* X / Z reports */}
+			<Section
+				title="X и Z Извештаи"
+				sub="X = дневен преглед без затворање. Z = затворање на ден (неповратно)."
+			>
+				<div className="flex flex-wrap items-center gap-3">
+					<Btn onClick={() => void printX()} disabled={xBusy || zBusy}>
+						{xBusy ? 'Печатење...' : 'X извештај'}
+					</Btn>
+
+					{!zConfirm ? (
+						<Btn onClick={() => setZConfirm(true)} disabled={xBusy || zBusy} variant="danger">
+							Z извештај (затвори ден)
+						</Btn>
+					) : (
+						<div className="flex items-center gap-2">
+							<span className="text-xs font-semibold text-red-600">Сигурен? Ова е неповратно.</span>
+							<Btn
+								onClick={async () => { setZConfirm(false); await printZ(); }}
+								disabled={zBusy}
+								variant="danger"
+							>
+								{zBusy ? 'Печатење...' : 'Потврди Z'}
+							</Btn>
+							<Btn onClick={() => setZConfirm(false)}>Откажи</Btn>
+						</div>
+					)}
 				</div>
 			</Section>
 		</div>
@@ -373,7 +373,7 @@ const MemoryTab = () => {
 
 			{/* By Z-report number */}
 			<Section
-				title="Извештај по З-број (95h)"
+				title="Извештај по Z-број (95h)"
 				sub="Печати фискална меморија за опсег на Z-извештаи."
 			>
 				<div className="flex flex-wrap items-end gap-3">
