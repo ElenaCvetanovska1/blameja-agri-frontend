@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFiscalReports } from '~/(app)/(fiscal-receipts)/hooks/useFiscalReports';
-import { useCashOperation } from '~/(app)/(fiscal-receipts)/hooks/useCashOperation';
+import { useFiscalReports } from '../(fiscal-receipts)/hooks/useFiscalReports';
+import { useCashOperation } from '../(fiscal-receipts)/hooks/useCashOperation';
 import { useDatetimeSync } from './hooks/useDatetimeSync';
 import { useLastEntry, LAST_ENTRY_TYPES } from './hooks/useLastEntry';
 import { useMemoryReport } from './hooks/useMemoryReport';
