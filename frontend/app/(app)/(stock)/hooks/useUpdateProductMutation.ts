@@ -45,16 +45,16 @@ export const useUpdateProductMutation = () => {
 			const price = Number(payload.selling_price);
 			if (!Number.isFinite(price) || price < 0) throw new Error('Продажна цена мора да е број >= 0.');
 
-			const plu     = cleanPlu(payload.plu ?? '');
+			const plu = cleanPlu(payload.plu ?? '');
 			const barcode = cleanOptional(payload.barcode ?? '');
-			const unit    = normalizeUnit(payload.unit);
+			const unit = normalizeUnit(payload.unit);
 
 			await api.put(`/api/products/${payload.productId}`, {
 				name,
 				plu,
 				barcode,
 				selling_price: price,
-				category_id:   payload.category_id ?? null,
+				category_id: payload.category_id ?? null,
 				unit,
 			});
 		},

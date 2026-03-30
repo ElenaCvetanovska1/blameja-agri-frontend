@@ -36,13 +36,13 @@ export const useProductDetails = (productId: string | null, enabled: boolean) =>
 			}>(`/api/stock/${productId}`);
 
 			return {
-				id:            data.id,
-				name:          data.name,
-				barcode:       data.barcode,
-				plu:           data.plu,
+				id: data.id,
+				name: data.name,
+				barcode: data.barcode,
+				plu: data.plu,
 				selling_price: Number(data.selling_price ?? 0),
-				category_id:   data.category_id,
-				unit:          normalizeUnit(data.unit),
+				category_id: data.category_id,
+				unit: normalizeUnit(data.unit),
 			} as ProductDetails;
 		},
 	});

@@ -22,13 +22,15 @@ export const useTopProducts = (fromISO: string, toISO: string, limit = 8) => {
 				`/api/finance/top-products?from=${encodeURIComponent(fromISO)}&to=${encodeURIComponent(toISO)}&limit=${limit}`,
 			);
 
-			return (rows ?? []).map((r): TopProductRow => ({
-				product_id: r.product_id,
-				plu:        r.plu ?? null,
-				name:       r.name,
-				qty:        num(r.qty),
-				revenue:    num(r.revenue),
-			}));
+			return (rows ?? []).map(
+				(r): TopProductRow => ({
+					product_id: r.product_id,
+					plu: r.plu ?? null,
+					name: r.name,
+					qty: num(r.qty),
+					revenue: num(r.revenue),
+				}),
+			);
 		},
 	});
 };

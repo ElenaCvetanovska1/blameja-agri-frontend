@@ -29,7 +29,7 @@ export const useRole = () => {
 			return res.json() as Promise<{ role: Role }>;
 		},
 		staleTime: Infinity, // role never changes mid-session — cache forever
-		retry: 2,            // retry up to 2 times on error (exponential backoff)
+		retry: 2, // retry up to 2 times on error (exponential backoff)
 	});
 
 	return {

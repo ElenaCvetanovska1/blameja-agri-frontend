@@ -26,9 +26,9 @@ const saveFiscalResult = async (
 	},
 ) => {
 	await api.patch(`/api/sales/${receiptId}/fiscal`, {
-		fiscal_slip_no:  patch.fiscal_slip_no ?? null,
-		fiscal_status:   patch.fiscal_status,
-		fiscal_error:    patch.fiscal_error ?? null,
+		fiscal_slip_no: patch.fiscal_slip_no ?? null,
+		fiscal_status: patch.fiscal_status,
+		fiscal_error: patch.fiscal_error ?? null,
 		fiscal_synced_at: new Date().toISOString(),
 	});
 };

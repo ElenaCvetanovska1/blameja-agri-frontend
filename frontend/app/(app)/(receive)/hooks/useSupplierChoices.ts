@@ -19,19 +19,19 @@ const fetchSuppliers = (q: string, limit: number) =>
 
 export const useSupplierChoices = ({ q, limit = 12, openAll = false }: Args) => {
 	const debounced = useDebouncedValue(q, 220);
-	const term      = debounced.trim();
+	const term = debounced.trim();
 
 	const browseQuery = useQuery({
 		queryKey: ['suppliers', 'browse', limit],
-		queryFn:  () => fetchSuppliers('', limit),
-		enabled:  openAll,
+		queryFn: () => fetchSuppliers('', limit),
+		enabled: openAll,
 		staleTime: 60_000,
 	});
 
 	const searchQuery = useQuery({
 		queryKey: ['suppliers', 'search', term, limit],
-		queryFn:  () => fetchSuppliers(term, limit),
-		enabled:  !openAll && term.length >= 1,
+		queryFn: () => fetchSuppliers(term, limit),
+		enabled: !openAll && term.length >= 1,
 		staleTime: 60_000,
 	});
 

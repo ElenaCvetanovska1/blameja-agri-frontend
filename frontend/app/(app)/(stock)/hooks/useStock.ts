@@ -22,16 +22,14 @@ export const useStock = (search: string) => {
 		queryKey: ['stock', search],
 		queryFn: async () => {
 			const q = search.trim();
-			const path = q.length > 0
-				? `/api/stock?q=${encodeURIComponent(q)}`
-				: '/api/stock';
+			const path = q.length > 0 ? `/api/stock?q=${encodeURIComponent(q)}` : '/api/stock';
 
 			const rows = await api.get<StockRow[]>(path);
 
 			return (rows ?? []).map((r) => ({
 				...r,
 				selling_price: normalizeNumber(r.selling_price),
-				qty_on_hand:   normalizeNumber(r.qty_on_hand),
+				qty_on_hand: normalizeNumber(r.qty_on_hand),
 			}));
 		},
 	});

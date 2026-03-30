@@ -3,8 +3,7 @@
 import { FiEdit3, FiTrash2, FiAlertTriangle, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import type { StockRow } from '../hooks/useStock';
 
-const fmtQty = (n: number) =>
-	Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0';
+const fmtQty = (n: number) => (Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$/, '') : '0');
 
 const num = (v: unknown) => {
 	const n = typeof v === 'number' ? v : Number(v);
@@ -14,11 +13,7 @@ const num = (v: unknown) => {
 /* ─── Category badge ─── */
 function CategoryBadge({ name }: { name: string | null }) {
 	if (!name) return <span className="text-slate-400">—</span>;
-	return (
-		<span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-			{name}
-		</span>
-	);
+	return <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{name}</span>;
 }
 
 /* ─── Stock status badge ─── */
@@ -81,7 +76,10 @@ export function StockTable({
 					<tbody>
 						{isLoading && (
 							<tr>
-								<td colSpan={7} className="py-12 text-center text-slate-500">
+								<td
+									colSpan={7}
+									className="py-12 text-center text-slate-500"
+								>
 									<div className="flex flex-col items-center gap-2">
 										<div className="animate-spin rounded-full h-6 w-6 border-2 border-blamejaGreen border-t-transparent" />
 										<span className="text-sm">Се вчитува залиха...</span>
@@ -92,7 +90,10 @@ export function StockTable({
 
 						{isError && (
 							<tr>
-								<td colSpan={7} className="py-10 text-center text-red-600 text-sm">
+								<td
+									colSpan={7}
+									className="py-10 text-center text-red-600 text-sm"
+								>
 									<FiAlertTriangle className="inline w-4 h-4 mr-1.5" />
 									Грешка при вчитување: {errorText ?? 'unknown'}
 								</td>
@@ -101,7 +102,10 @@ export function StockTable({
 
 						{!isLoading && !isError && rows.length === 0 && (
 							<tr>
-								<td colSpan={7} className="py-12 text-center text-slate-400 text-sm">
+								<td
+									colSpan={7}
+									className="py-12 text-center text-slate-400 text-sm"
+								>
 									Нема резултати за пребарувањето/филтерите.
 								</td>
 							</tr>
@@ -123,9 +127,7 @@ export function StockTable({
 										</span>
 									</td>
 
-									<td className="text-slate-500 font-mono text-xs">
-										{r.barcode ?? '—'}
-									</td>
+									<td className="text-slate-500 font-mono text-xs">{r.barcode ?? '—'}</td>
 
 									<td>
 										<span className="font-semibold text-slate-800">{r.name ?? '—'}</span>

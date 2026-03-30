@@ -84,112 +84,107 @@
    CUSTOM COMPONENT CLASSES
 ───────────────────────────────────────────── */
 @layer components {
+	/* Sidebar */
+	.sidebar-nav {
+		background: linear-gradient(170deg, #238f40 0%, #1a7835 22%, #145e29 50%, #0f4b20 75%, #0a3a18 100%);
+		box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.14);
+	}
 
-/* Sidebar */
-.sidebar-nav {
-	background: linear-gradient(
-		170deg,
-		#238f40 0%,
-		#1a7835 22%,
-		#145e29 50%,
-		#0f4b20 75%,
-		#0a3a18 100%
-	);
-	box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.14);
-}
+	.sidebar-texture {
+		background-image: repeating-linear-gradient(
+			-50deg,
+			rgba(255, 255, 255, 0) 0px,
+			rgba(255, 255, 255, 0) 5px,
+			rgba(255, 255, 255, 0.018) 5px,
+			rgba(255, 255, 255, 0.018) 6px
+		);
+	}
 
-.sidebar-texture {
-	background-image: repeating-linear-gradient(
-		-50deg,
-		rgba(255, 255, 255, 0) 0px,
-		rgba(255, 255, 255, 0) 5px,
-		rgba(255, 255, 255, 0.018) 5px,
-		rgba(255, 255, 255, 0.018) 6px
-	);
-}
-
-/* ─────────────────────────────────────────────
+	/* ─────────────────────────────────────────────
    SHARED CARD VARIANTS
 ───────────────────────────────────────────── */
-.card {
-	@apply rounded-2xl bg-white border border-slate-100;
-	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 8px 0 rgba(0, 0, 0, 0.04);
-}
+	.card {
+		@apply rounded-2xl bg-white border border-slate-100;
+		box-shadow:
+			0 1px 3px 0 rgba(0, 0, 0, 0.06),
+			0 1px 8px 0 rgba(0, 0, 0, 0.04);
+	}
 
-.card-panel {
-	@apply rounded-2xl bg-white border border-slate-100;
-	box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.07), 0 8px 24px 0 rgba(0, 0, 0, 0.05);
-}
+	.card-panel {
+		@apply rounded-2xl bg-white border border-slate-100;
+		box-shadow:
+			0 2px 8px 0 rgba(0, 0, 0, 0.07),
+			0 8px 24px 0 rgba(0, 0, 0, 0.05);
+	}
 
-/* ─────────────────────────────────────────────
+	/* ─────────────────────────────────────────────
    KEYBOARD SHORTCUT BADGES
 ───────────────────────────────────────────── */
-.kbd {
-	@apply inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-bold
+	.kbd {
+		@apply inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-bold
 		   border border-slate-300 bg-slate-100 text-slate-500 leading-none tracking-wide;
-}
+	}
 
-/* ─────────────────────────────────────────────
+	/* ─────────────────────────────────────────────
    FORM INPUTS
 ───────────────────────────────────────────── */
-.form-input {
-	@apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+	.form-input {
+		@apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
 		   outline-none transition-colors
 		   focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/20;
-}
+	}
 
-.form-label {
-	@apply block text-xs font-semibold text-slate-600 mb-1.5;
-}
+	.form-label {
+		@apply block text-xs font-semibold text-slate-600 mb-1.5;
+	}
 
-/* ─────────────────────────────────────────────
+	/* ─────────────────────────────────────────────
    STATUS BADGES
 ───────────────────────────────────────────── */
-.badge-ok {
-	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+	.badge-ok {
+		@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
 		   bg-successSoft text-success border border-emerald-100;
-}
+	}
 
-.badge-low {
-	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+	.badge-low {
+		@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
 		   bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100;
-}
+	}
 
-.badge-zero {
-	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+	.badge-zero {
+		@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
 		   bg-dangerSoft text-danger border border-red-100;
-}
+	}
 
-/* ─────────────────────────────────────────────
+	/* ─────────────────────────────────────────────
    TABLE
 ───────────────────────────────────────────── */
-.data-table thead th {
-	@apply px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide
+	.data-table thead th {
+		@apply px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide
 		   text-slate-500 border-b border-slate-100;
-}
+	}
 
-.data-table thead th.col-right {
-	@apply text-right;
-}
+	.data-table thead th.col-right {
+		@apply text-right;
+	}
 
-.data-table tbody td {
-	@apply px-3 py-3 border-b border-slate-50 text-sm text-slate-700;
-}
+	.data-table tbody td {
+		@apply px-3 py-3 border-b border-slate-50 text-sm text-slate-700;
+	}
 
-.data-table tbody tr:last-child td {
-	@apply border-b-0;
-}
+	.data-table tbody tr:last-child td {
+		@apply border-b-0;
+	}
 
-.data-table tbody tr:hover td {
-	@apply bg-slate-50/70 transition-colors;
-}
+	.data-table tbody tr:hover td {
+		@apply bg-slate-50/70 transition-colors;
+	}
 
-.row-low td {
-	@apply bg-amber-50/50;
-}
+	.row-low td {
+		@apply bg-amber-50/50;
+	}
 
-.row-zero td {
-	@apply bg-red-50/30;
-}
-
+	.row-zero td {
+		@apply bg-red-50/30;
+	}
 } /* end @layer components */

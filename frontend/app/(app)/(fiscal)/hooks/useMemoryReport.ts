@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import {
-	fiscalBridge,
-	FiscalBridgeOfflineError,
-	type MemoryReportByDateRequest,
-	type MemoryReportByZRequest,
-} from 'app/lib/fiscal-bridge';
+import { fiscalBridge, FiscalBridgeOfflineError, type MemoryReportByDateRequest, type MemoryReportByZRequest } from 'app/lib/fiscal-bridge';
 
 export const useMemoryReport = () => {
 	const [dateBusy, setDateBusy] = useState(false);

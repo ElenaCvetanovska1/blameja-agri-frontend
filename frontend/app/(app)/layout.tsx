@@ -77,7 +77,6 @@ const AppLayout = () => {
 
 	return (
 		<div className="flex bg-slate-100 min-h-screen lg:h-screen lg:overflow-hidden">
-
 			{/* ═══════════════════════════════════════
 			    SIDEBAR — desktop only, fixed
 			═══════════════════════════════════════ */}
@@ -111,7 +110,9 @@ const AppLayout = () => {
 								src="/logo.png"
 								alt="Blameja logo"
 								className="h-11 w-11 object-contain"
-								onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+								onError={(e) => {
+									(e.currentTarget as HTMLImageElement).style.display = 'none';
+								}}
 							/>
 						</div>
 						<div>
@@ -125,9 +126,7 @@ const AppLayout = () => {
 				{/* ── Navigation ── */}
 				<nav className="relative z-10 flex-1 px-3 pb-2 overflow-y-auto space-y-4">
 					{NAV_GROUPS.map((group) => {
-						const visibleItems = group.items.filter(
-							(item) => !item.adminOnly || role === 'admin',
-						);
+						const visibleItems = group.items.filter((item) => !item.adminOnly || role === 'admin');
 						if (visibleItems.length === 0) return null;
 						return (
 							<div key={group.label}>
@@ -162,9 +161,7 @@ const AppLayout = () => {
 						<FiLogOut className="w-[15px] h-[15px] shrink-0" />
 						<span>Одјава</span>
 					</button>
-					<div className="px-3 mt-1.5 text-[9px] text-white/20 select-none tracking-wide">
-						© {new Date().getFullYear()} Blameja
-					</div>
+					<div className="px-3 mt-1.5 text-[9px] text-white/20 select-none tracking-wide">© {new Date().getFullYear()} Blameja</div>
 				</div>
 			</aside>
 
@@ -182,7 +179,9 @@ const AppLayout = () => {
 								src="/logo.png"
 								alt="Blameja"
 								className="h-8 w-8 object-contain"
-								onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+								onError={(e) => {
+									(e.currentTarget as HTMLImageElement).style.display = 'none';
+								}}
 							/>
 						</div>
 						<span className="text-white font-bold text-base tracking-wide">Blameja</span>
@@ -206,15 +205,11 @@ const AppLayout = () => {
 						<div className="sidebar-texture absolute inset-0 pointer-events-none" />
 						<nav className="relative z-10 pt-3 space-y-4">
 							{NAV_GROUPS.map((group) => {
-								const visibleItems = group.items.filter(
-									(item) => !item.adminOnly || role === 'admin',
-								);
+								const visibleItems = group.items.filter((item) => !item.adminOnly || role === 'admin');
 								if (visibleItems.length === 0) return null;
 								return (
 									<div key={group.label}>
-										<div className="px-3 mb-1 text-[9px] font-extrabold uppercase tracking-[.18em] text-white/30">
-											{group.label}
-										</div>
+										<div className="px-3 mb-1 text-[9px] font-extrabold uppercase tracking-[.18em] text-white/30">{group.label}</div>
 										{visibleItems.map((item) => (
 											<NavLink
 												key={item.to}

@@ -24,11 +24,11 @@ export function useFiscalStatus(): FiscalStatusResult {
 				return;
 			}
 			const w: string[] = [];
-			if (res.EndOfPaper)         w.push('Нема хартија');
-			if (res.EjNearlyFull)       w.push('Журнал скоро полн');
-			if (res.EjFull)             w.push('Журнал полн');
-			if (res.FiscalMemoryFull)   w.push('Фискална меморија полна');
-			if (res.LessThan50Reports)  w.push('Помалку од 50 Z-извештаи');
+			if (res.EndOfPaper) w.push('Нема хартија');
+			if (res.EjNearlyFull) w.push('Журнал скоро полн');
+			if (res.EjFull) w.push('Журнал полн');
+			if (res.FiscalMemoryFull) w.push('Фискална меморија полна');
+			if (res.LessThan50Reports) w.push('Помалку од 50 Z-извештаи');
 
 			setWarnings(w);
 			setStatus(w.length > 0 ? 'warning' : 'online');

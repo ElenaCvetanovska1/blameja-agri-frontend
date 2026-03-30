@@ -67,9 +67,7 @@ export const SupplierInputWithSuggestions = ({
 			<label
 				htmlFor={id}
 				className="mb-1 block text-sm font-medium text-slate-800"
-			>
-				
-			</label>
+			></label>
 
 			<div className="relative">
 				<input

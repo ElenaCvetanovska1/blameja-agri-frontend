@@ -2,12 +2,7 @@
 
 import { api } from 'app/lib/api-client';
 import { toast } from 'sonner';
-import {
-	fiscalBridge,
-	FiscalBridgeOfflineError,
-	truncateFiscalName,
-	toFiscalPaymentMode,
-} from 'app/lib/fiscal-bridge';
+import { fiscalBridge, FiscalBridgeOfflineError, truncateFiscalName, toFiscalPaymentMode } from 'app/lib/fiscal-bridge';
 
 export type StornoFlowItem = {
 	/** ID of the original fiscal_receipt_items row */
@@ -65,10 +60,7 @@ export const useStornoFlow = () => {
 				store_no: storeNo,
 				created_by: createdBy,
 			};
-			const result = await api.post<{ id: string }>(
-				`/api/fiscal-receipts/${originalReceiptId}/storno`,
-				body,
-			);
+			const result = await api.post<{ id: string }>(`/api/fiscal-receipts/${originalReceiptId}/storno`, body);
 			return { stornoReceiptId: result.id, fiscalSlipNo };
 		};
 

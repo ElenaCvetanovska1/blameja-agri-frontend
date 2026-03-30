@@ -16,8 +16,6 @@ const parseQty = (raw: string) => {
 	return Number.isFinite(num) ? num : Number.NaN;
 };
 
-
-
 export const useAdjustStockMutation = () => {
 	const queryClient = useQueryClient();
 
@@ -37,13 +35,13 @@ export const useAdjustStockMutation = () => {
 			if (!reason) throw new Error('Внеси причина (кратко).');
 
 			// userId is resolved server-side from JWT — no longer sent from client
-		await api.post('/api/stock/adjust', {
-			product_id: payload.productId,
-			target_qty: target,
-			current_qty: current,
-			reason,
-			unit_cost: payload.unitCost ?? 0,
-			unit_price: payload.unitPrice ?? 0,
+			await api.post('/api/stock/adjust', {
+				product_id: payload.productId,
+				target_qty: target,
+				current_qty: current,
+				reason,
+				unit_cost: payload.unitCost ?? 0,
+				unit_price: payload.unitPrice ?? 0,
 			});
 		},
 		onSuccess: async () => {

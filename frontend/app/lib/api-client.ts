@@ -6,16 +6,16 @@
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:5132';
 
-const TOKEN_KEY   = 'blameja_access_token';
+const TOKEN_KEY = 'blameja_access_token';
 const REFRESH_KEY = 'blameja_refresh_token';
 
 // ── Token storage ──────────────────────────────────────────────────────────
 
 export const tokenStorage = {
-	getAccessToken:  ()           => localStorage.getItem(TOKEN_KEY),
-	getRefreshToken: ()           => localStorage.getItem(REFRESH_KEY),
+	getAccessToken: () => localStorage.getItem(TOKEN_KEY),
+	getRefreshToken: () => localStorage.getItem(REFRESH_KEY),
 	setTokens: (access: string, refresh: string) => {
-		localStorage.setItem(TOKEN_KEY,   access);
+		localStorage.setItem(TOKEN_KEY, access);
 		localStorage.setItem(REFRESH_KEY, refresh);
 	},
 	clear: () => {
@@ -130,10 +130,10 @@ export const api = new ApiClient();
 // ── Auth helpers ───────────────────────────────────────────────────────────
 
 export type LoginResponse = {
-	access_token:  string;
+	access_token: string;
 	refresh_token: string;
-	expires_in:    number;
-	token_type:    string;
+	expires_in: number;
+	token_type: string;
 };
 
 /** Decode JWT payload without verification (for expiry check only). */

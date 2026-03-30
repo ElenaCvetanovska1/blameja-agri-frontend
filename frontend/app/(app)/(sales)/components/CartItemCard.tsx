@@ -2,14 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { CartItem } from '../types';
-import {
-	clampFinalToBase,
-	discountPercentFromBaseFinal,
-	discountPerUnitFromBaseFinal,
-	num,
-	priceNum,
-	round2,
-} from '../utils';
+import { clampFinalToBase, discountPercentFromBaseFinal, discountPerUnitFromBaseFinal, num, priceNum, round2 } from '../utils';
 
 type Props = {
 	item: CartItem;
@@ -21,15 +14,7 @@ type Props = {
 	onFinalPriceBlur: () => void;
 };
 
-export const CartItemCard = ({
-	item,
-	busy,
-	autoFocusQty,
-	onRemove,
-	onQtyChange,
-	onFinalPriceChange,
-	onFinalPriceBlur,
-}: Props) => {
+export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, onFinalPriceChange, onFinalPriceBlur }: Props) => {
 	const qtyRef = useRef<HTMLInputElement | null>(null);
 
 	useEffect(() => {
@@ -59,9 +44,7 @@ export const CartItemCard = ({
 			{/* LINE 1: title + remove */}
 			<div className="flex items-start justify-between gap-2">
 				<div className="min-w-0">
-					<div className="truncate text-sm font-semibold text-slate-800">
-						{item.product.name}
-					</div>
+					<div className="truncate text-sm font-semibold text-slate-800">{item.product.name}</div>
 					<div className="truncate text-[11px] text-slate-500">
 						PLU: <span className="font-medium">{item.product.plu ?? '—'}</span>
 						{item.product.barcode ? (
@@ -117,26 +100,13 @@ export const CartItemCard = ({
 
 						<div className="flex items-center gap-4 text-[11px]">
 							<div className="text-slate-500">
-								Фиксна:{' '}
-								<span className="font-semibold text-slate-700">
-									{base.toFixed(2)}
-								</span>
+								Фиксна: <span className="font-semibold text-slate-700">{base.toFixed(2)}</span>
 							</div>
 
 							<div className="text-slate-500">
 								Попуст:{' '}
-								<span
-									className={
-										disc > 0
-											? 'font-semibold text-emerald-700'
-											: 'font-semibold text-slate-700'
-									}
-								>
-									{disc.toFixed(2)}
-								</span>{' '}
-								<span className={disc > 0 ? 'text-emerald-600/80' : 'text-slate-400'}>
-									({discPct.toFixed(1)}%)
-								</span>
+								<span className={disc > 0 ? 'font-semibold text-emerald-700' : 'font-semibold text-slate-700'}>{disc.toFixed(2)}</span>{' '}
+								<span className={disc > 0 ? 'text-emerald-600/80' : 'text-slate-400'}>({discPct.toFixed(1)}%)</span>
 							</div>
 						</div>
 					</div>

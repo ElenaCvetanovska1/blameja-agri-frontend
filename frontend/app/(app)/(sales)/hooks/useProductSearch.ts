@@ -9,9 +9,7 @@ const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promis
 	const t0 = term.trim();
 	if (t0.length < 1) return [];
 
-	const rows = await api.get<ProductStockRow[]>(
-		`/api/sales/products/search?q=${encodeURIComponent(t0)}&storeNo=${storeNo}&limit=${limit}`,
-	);
+	const rows = await api.get<ProductStockRow[]>(`/api/sales/products/search?q=${encodeURIComponent(t0)}&storeNo=${storeNo}&limit=${limit}`);
 
 	return (rows ?? []).sort((a, b) => num(b.qty_on_hand) - num(a.qty_on_hand));
 };

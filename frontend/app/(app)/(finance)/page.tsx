@@ -386,8 +386,7 @@ const FinancePage = () => {
 					<div>• „Best day" е ден со највисок total — ако често е ист ден во недела, можеме да додадеме „best weekday" анализа.</div>
 				</div>
 			</div>
-
-			</div>
+		</div>
 	);
 };
 

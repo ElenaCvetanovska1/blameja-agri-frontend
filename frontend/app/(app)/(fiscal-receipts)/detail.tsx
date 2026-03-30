@@ -24,22 +24,22 @@ const str = (v: unknown) => (v != null && v !== '' ? String(v) : '—');
 const StatusBadge = ({ status }: { status: string | null }) => {
 	const map: Record<string, string> = {
 		success: 'bg-green-100 text-green-800',
-		failed:  'bg-red-100 text-red-800',
+		failed: 'bg-red-100 text-red-800',
 		offline: 'bg-orange-100 text-orange-800',
 	};
 	const cls = map[status ?? ''] ?? 'bg-slate-100 text-slate-600';
-	const label = status === 'success' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : status ?? '—';
+	const label = status === 'success' ? 'Успешно' : status === 'failed' ? 'Неуспешно' : status === 'offline' ? 'Офлајн' : (status ?? '—');
 	return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 };
 
 const TypeBadge = ({ type }: { type: string | null }) => {
 	const map: Record<string, string> = {
-		sale:   'bg-blue-100 text-blue-800',
+		sale: 'bg-blue-100 text-blue-800',
 		storno: 'bg-red-100 text-red-800',
 		refund: 'bg-purple-100 text-purple-800',
 	};
 	const cls = map[type ?? ''] ?? 'bg-slate-100 text-slate-600';
-	const label = type === 'sale' ? 'Продажба' : type === 'storno' ? 'Сторно' : type === 'refund' ? 'Поврат' : type ?? '—';
+	const label = type === 'sale' ? 'Продажба' : type === 'storno' ? 'Сторно' : type === 'refund' ? 'Поврат' : (type ?? '—');
 	return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 };
 
@@ -72,8 +72,14 @@ const ItemsTable = ({ items }: { items: FiscalReceiptItem[] }) => (
 			</thead>
 			<tbody className="divide-y divide-slate-100">
 				{items.map((item) => (
-					<tr key={item.id} className="hover:bg-slate-50 transition-colors">
-						<td className="px-3 py-2.5 font-medium text-slate-800 max-w-[200px] truncate" title={item.product_name ?? ''}>
+					<tr
+						key={item.id}
+						className="hover:bg-slate-50 transition-colors"
+					>
+						<td
+							className="px-3 py-2.5 font-medium text-slate-800 max-w-[200px] truncate"
+							title={item.product_name ?? ''}
+						>
 							{item.product_name ?? '—'}
 						</td>
 						<td className="px-3 py-2.5 text-right text-slate-700">{item.quantity}</td>
@@ -85,9 +91,7 @@ const ItemsTable = ({ items }: { items: FiscalReceiptItem[] }) => (
 								<span className="text-slate-400">—</span>
 							)}
 						</td>
-						<td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap text-slate-800">
-							{mkd(item.line_total)}
-						</td>
+						<td className="px-3 py-2.5 text-right font-semibold whitespace-nowrap text-slate-800">{mkd(item.line_total)}</td>
 						<td className="px-3 py-2.5 text-center text-slate-600">
 							{item.tax_percent != null ? `${item.tax_percent}%` : item.tax_group != null ? `гр.${item.tax_group}` : '—'}
 						</td>
@@ -121,17 +125,17 @@ export default function FiscalReceiptDetailPage() {
 	const allReceipts = useFiscalReceipts(365);
 
 	if (query.isLoading) {
-		return (
-			<div className="flex items-center justify-center py-20 text-sm text-slate-500">
-				Се вчитува фискална сметка...
-			</div>
-		);
+		return <div className="flex items-center justify-center py-20 text-sm text-slate-500">Се вчитува фискална сметка...</div>;
 	}
 
 	if (query.isError) {
 		return (
 			<div className="space-y-4">
-				<button type="button" onClick={() => navigate('/fiscal-receipts')} className="text-sm text-blamejaGreen hover:underline">
+				<button
+					type="button"
+					onClick={() => navigate('/fiscal-receipts')}
+					className="text-sm text-blamejaGreen hover:underline"
+				>
 					← Назад кон листата
 				</button>
 				<div className="rounded-2xl bg-red-50 border border-red-200 p-6 text-sm text-red-700">
@@ -144,7 +148,11 @@ export default function FiscalReceiptDetailPage() {
 	if (!query.data) {
 		return (
 			<div className="space-y-4">
-				<button type="button" onClick={() => navigate('/fiscal-receipts')} className="text-sm text-blamejaGreen hover:underline">
+				<button
+					type="button"
+					onClick={() => navigate('/fiscal-receipts')}
+					className="text-sm text-blamejaGreen hover:underline"
+				>
 					← Назад кон листата
 				</button>
 				<div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-sm text-slate-500 text-center">
@@ -195,8 +203,12 @@ export default function FiscalReceiptDetailPage() {
 				<h2 className="mb-4 text-sm font-semibold text-slate-700">Општи информации</h2>
 				<div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
 					<InfoRow label="Фискален бр.">{receipt.fiscal_slip_no ?? <span className="text-slate-400">—</span>}</InfoRow>
-					<InfoRow label="Тип"><TypeBadge type={receipt.receipt_type} /></InfoRow>
-					<InfoRow label="Статус"><StatusBadge status={receipt.fiscal_status} /></InfoRow>
+					<InfoRow label="Тип">
+						<TypeBadge type={receipt.receipt_type} />
+					</InfoRow>
+					<InfoRow label="Статус">
+						<StatusBadge status={receipt.fiscal_status} />
+					</InfoRow>
 					<InfoRow label="Плаќање">
 						{receipt.payment === 'CASH' ? 'Готово' : receipt.payment === 'CARD' ? 'Картичка' : str(receipt.payment)}
 					</InfoRow>
@@ -208,12 +220,8 @@ export default function FiscalReceiptDetailPage() {
 					<InfoRow label="Готово дадено">{mkd(receipt.cash_received)}</InfoRow>
 					<InfoRow label="Платено">{mkd(receipt.paid_amount)}</InfoRow>
 					<InfoRow label="Кусур">{mkd(receipt.change_amount)}</InfoRow>
-					{receipt.subtotal != null && (
-						<InfoRow label="Меѓузбир">{mkd(receipt.subtotal)}</InfoRow>
-					)}
-					{receipt.external_doc_no && (
-						<InfoRow label="Надворешен документ">{receipt.external_doc_no}</InfoRow>
-					)}
+					{receipt.subtotal != null && <InfoRow label="Меѓузбир">{mkd(receipt.subtotal)}</InfoRow>}
+					{receipt.external_doc_no && <InfoRow label="Надворешен документ">{receipt.external_doc_no}</InfoRow>}
 					{receipt.sales_receipt_id && (
 						<InfoRow label="Апл. сметка (ID)">
 							<span className="font-mono text-xs text-slate-600 break-all">{receipt.sales_receipt_id}</span>
@@ -233,16 +241,10 @@ export default function FiscalReceiptDetailPage() {
 			<div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
 				<div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
 					<h2 className="text-sm font-semibold text-slate-700">
-						Ставки{' '}
-						<span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-							{items.length}
-						</span>
+						Ставки <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{items.length}</span>
 					</h2>
 					<span className="text-xs text-slate-500">
-						Вкупно:{' '}
-						<b className="text-slate-800">
-							{mkd(items.reduce((s, i) => s + Number(i.line_total), 0))}
-						</b>
+						Вкупно: <b className="text-slate-800">{mkd(items.reduce((s, i) => s + Number(i.line_total), 0))}</b>
 					</span>
 				</div>
 
@@ -275,17 +277,13 @@ export default function FiscalReceiptDetailPage() {
 			)}
 			{/* Linked storno receipts */}
 			{(() => {
-				const linkedStornos = (allReceipts.data ?? []).filter(
-					(r) => r.original_fiscal_receipt_id === id,
-				);
+				const linkedStornos = (allReceipts.data ?? []).filter((r) => r.original_fiscal_receipt_id === id);
 				if (linkedStornos.length === 0) return null;
 				return (
 					<div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
 						<div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
 							<h2 className="text-sm font-semibold text-slate-700">Поврзани сторно сметки</h2>
-							<span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-								{linkedStornos.length}
-							</span>
+							<span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{linkedStornos.length}</span>
 						</div>
 						<div className="divide-y divide-slate-100">
 							{linkedStornos.map((s) => (
@@ -296,19 +294,13 @@ export default function FiscalReceiptDetailPage() {
 									className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-slate-50 transition-colors"
 								>
 									<div className="flex items-center gap-3">
-										<span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
-											Сторно
-										</span>
-										<span className="text-sm text-slate-700">
-											{s.fiscal_slip_no != null ? `#${s.fiscal_slip_no}` : s.id.slice(0, 8)}
-										</span>
+										<span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">Сторно</span>
+										<span className="text-sm text-slate-700">{s.fiscal_slip_no != null ? `#${s.fiscal_slip_no}` : s.id.slice(0, 8)}</span>
 										<span className="text-xs text-slate-400">
 											{new Date(s.fiscalized_at ?? s.created_at).toLocaleString('mk-MK', { dateStyle: 'medium', timeStyle: 'short' })}
 										</span>
 									</div>
-									<span className="text-sm font-semibold text-slate-800 whitespace-nowrap">
-										{Number(s.total).toFixed(2)} ден.
-									</span>
+									<span className="text-sm font-semibold text-slate-800 whitespace-nowrap">{Number(s.total).toFixed(2)} ден.</span>
 								</button>
 							))}
 						</div>

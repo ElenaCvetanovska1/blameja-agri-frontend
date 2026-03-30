@@ -152,7 +152,7 @@ export type ItemDetail = {
 	Dep: number;
 	Group: number;
 	PriceType: number;
-	Price: string;       // decimal serialised as string by the device
+	Price: string; // decimal serialised as string by the device
 	Turnover: string;
 	SoldQty: string;
 	StockQty: string;
@@ -393,13 +393,18 @@ export const fiscalBridge = {
  */
 export function toFiscalTaxCode(taxPercent: number | null | undefined): 1 | 2 | 3 | 4 {
 	switch (taxPercent) {
-		case 18: return 1;
-		case 5:  return 2;
-		case 10: return 3;
+		case 18:
+			return 1;
+		case 5:
+			return 2;
+		case 10:
+			return 3;
 		case 0:
 		case null:
-		case undefined: return 4;
-		default: throw new Error(`Непозната даночна стапка: ${taxPercent}`);
+		case undefined:
+			return 4;
+		default:
+			throw new Error(`Непозната даночна стапка: ${taxPercent}`);
 	}
 }
 

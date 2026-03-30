@@ -34,16 +34,16 @@ export const useDispatchSubmit = () => {
 		}
 
 		const data = await api.post<DispatchResult>('/api/dispatch', {
-			doc_no:  docNo,
+			doc_no: docNo,
 			doc_date: docDate,
-			total:   round2(total),
-			note:    note?.trim() || null,
-			items:   rows.map((r) => ({
-				product_id:    r.productId,
-				qty:           num(r.kolicina),
-				cena:          num(r.cena),
+			total: round2(total),
+			note: note?.trim() || null,
+			items: rows.map((r) => ({
+				product_id: r.productId,
+				qty: num(r.kolicina),
+				cena: num(r.cena),
 				prodazna_cena: num(r.prodaznaCena),
-				naziv:         r.naziv,
+				naziv: r.naziv,
 			})),
 		});
 

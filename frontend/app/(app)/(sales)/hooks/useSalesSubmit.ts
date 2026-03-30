@@ -57,18 +57,18 @@ export const useSalesSubmit = () => {
 
 			return {
 				product_id: item.product.id,
-				qty:        item.qty,
+				qty: item.qty,
 				base_price: base,
-				price:      final,
-				discount:   discountPerUnit,
+				price: final,
+				discount: discountPerUnit,
 			};
 		});
 
 		const data = await api.post<SaleResponse>('/api/sales', {
-			payment:       paymentMethod,
-			total:         totals.total,
+			payment: paymentMethod,
+			total: totals.total,
 			cash_received: cashReceived,
-			note:          note?.trim() || null,
+			note: note?.trim() || null,
 			items,
 		});
 

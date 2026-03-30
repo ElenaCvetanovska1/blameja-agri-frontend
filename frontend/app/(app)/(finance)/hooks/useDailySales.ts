@@ -20,11 +20,13 @@ export const useDailySales = (fromISO: string, toISO: string) => {
 				`/api/finance/daily-sales?from=${encodeURIComponent(fromISO)}&to=${encodeURIComponent(toISO)}`,
 			);
 
-			return (rows ?? []).map((r): DailySalesRow => ({
-				day:            r.day,
-				receipts_count: Math.trunc(num(r.receipts_count)),
-				total:          num(r.total),
-			}));
+			return (rows ?? []).map(
+				(r): DailySalesRow => ({
+					day: r.day,
+					receipts_count: Math.trunc(num(r.receipts_count)),
+					total: num(r.total),
+				}),
+			);
 		},
 	});
 };

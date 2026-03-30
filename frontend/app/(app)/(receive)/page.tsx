@@ -4,16 +4,7 @@ import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from 'app/lib/api-client';
-import {
-	FiPackage,
-	FiFileText,
-	FiCamera,
-	FiRotateCcw,
-	FiSave,
-	FiTag,
-	FiBarChart2,
-	FiHash,
-} from 'react-icons/fi';
+import { FiPackage, FiFileText, FiCamera, FiRotateCcw, FiSave, FiTag, FiBarChart2, FiHash } from 'react-icons/fi';
 
 import { useReceiveMutation, type ReceivePayload } from './hooks/useReceiveMutation';
 import { useCategoryOptions } from './hooks/useCategoryOptions';
@@ -32,15 +23,7 @@ import type { ProductChoiceRow, TaxGroup, Unit, StoreNo } from './types';
 type SupplierGetOrCreateRow = { id: string; name: string; address: string | null };
 
 /* ─── Section header ─── */
-function SectionHeader({
-	icon: Icon,
-	title,
-	hint,
-}: {
-	icon: React.ElementType;
-	title: string;
-	hint?: string;
-}) {
+function SectionHeader({ icon: Icon, title, hint }: { icon: React.ElementType; title: string; hint?: string }) {
 	return (
 		<div className="flex items-center justify-between mb-4">
 			<div className="flex items-center gap-2">
@@ -55,20 +38,13 @@ function SectionHeader({
 }
 
 /* ─── Field wrapper ─── */
-function Field({
-	label,
-	htmlFor,
-	required,
-	children,
-}: {
-	label: string;
-	htmlFor?: string;
-	required?: boolean;
-	children: React.ReactNode;
-}) {
+function Field({ label, htmlFor, required, children }: { label: string; htmlFor?: string; required?: boolean; children: React.ReactNode }) {
 	return (
 		<div>
-			<label className="form-label" htmlFor={htmlFor}>
+			<label
+				className="form-label"
+				htmlFor={htmlFor}
+			>
 				{label}
 				{required && <span className="text-red-500 ml-0.5">*</span>}
 			</label>
@@ -78,13 +54,7 @@ function Field({
 }
 
 /* ─── Tax Group buttons ─── */
-function TaxGroupButtons({
-	value,
-	onChange,
-}: {
-	value: TaxGroup;
-	onChange: (v: TaxGroup) => void;
-}) {
+function TaxGroupButtons({ value, onChange }: { value: TaxGroup; onChange: (v: TaxGroup) => void }) {
 	return (
 		<div className="flex gap-2 mt-1.5">
 			{(['5', '10', '18'] as const).map((v) => (
@@ -93,9 +63,10 @@ function TaxGroupButtons({
 					type="button"
 					onClick={() => onChange(v)}
 					className={`flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all
-						${value === v
-							? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
-							: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+						${
+							value === v
+								? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
+								: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 						}`}
 				>
 					{v}%
@@ -129,10 +100,7 @@ const ReceivePage = () => {
 		[categoriesQuery.data, form.categoryId],
 	);
 
-	const isKpk = useMemo(
-		() => (selectedCategory?.code ?? '').toLowerCase() === KPK_CODE,
-		[selectedCategory],
-	);
+	const isKpk = useMemo(() => (selectedCategory?.code ?? '').toLowerCase() === KPK_CODE, [selectedCategory]);
 
 	const choicesQuery = useProductChoices({ name: form.name, categoryId: form.categoryId, storeNo, limit: 10 });
 
@@ -207,7 +175,10 @@ const ReceivePage = () => {
 			updateAddressMutation.mutate(
 				{ supplierId, address: addr },
 				{
-					onSuccess: () => { setSelectedSupplierHadAddress(true); resolve(); },
+					onSuccess: () => {
+						setSelectedSupplierHadAddress(true);
+						resolve();
+					},
 					onError: (err) => reject(err),
 				},
 			);
@@ -256,7 +227,6 @@ const ReceivePage = () => {
 
 	return (
 		<div className="flex flex-col h-full min-h-0 gap-3">
-
 			{/* ══════════════════════════════════════
 			    PAGE HEADER — shrink-0
 			══════════════════════════════════════ */}
@@ -286,7 +256,10 @@ const ReceivePage = () => {
 
 					<button
 						type="button"
-						onClick={() => { setScanError(null); setScannerOpen(true); }}
+						onClick={() => {
+							setScanError(null);
+							setScannerOpen(true);
+						}}
 						className="flex items-center gap-2 h-9 px-3 rounded-lg bg-blamejaGreen text-white text-sm font-semibold hover:bg-blamejaGreenDark transition-colors"
 					>
 						<FiCamera className="w-4 h-4" />
@@ -300,18 +273,25 @@ const ReceivePage = () => {
 			    Left: Document + Product + Actions (scrolls)
 			    Right: Prices panel (fixed width, visible)
 			══════════════════════════════════════ */}
-			<form onSubmit={onSubmit} className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:overflow-hidden">
-
+			<form
+				onSubmit={onSubmit}
+				className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:overflow-hidden"
+			>
 				{/* ── LEFT COLUMN ── */}
 				<div className="flex-1 lg:min-h-0 lg:overflow-y-auto space-y-4 pb-2">
-
 					{/* CARD 1: Document & Supplier */}
 					<div className="card px-5 py-4">
-						<SectionHeader icon={FiFileText} title="Документ и добавувач" />
+						<SectionHeader
+							icon={FiFileText}
+							title="Документ и добавувач"
+						/>
 
 						<div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
 							<div className="sm:col-span-3">
-								<Field label="Број на фактура" htmlFor="receive-invoice-no">
+								<Field
+									label="Број на фактура"
+									htmlFor="receive-invoice-no"
+								>
 									<input
 										id="receive-invoice-no"
 										value={invoiceNo}
@@ -323,7 +303,10 @@ const ReceivePage = () => {
 							</div>
 
 							<div className="sm:col-span-2">
-								<Field label="Датум" htmlFor="receive-invoice-date">
+								<Field
+									label="Датум"
+									htmlFor="receive-invoice-date"
+								>
 									<input
 										id="receive-invoice-date"
 										type="date"
@@ -354,7 +337,10 @@ const ReceivePage = () => {
 							</div>
 
 							<div className="sm:col-span-3">
-								<Field label="Адреса (опц.)" htmlFor="receive-supplier-address">
+								<Field
+									label="Адреса (опц.)"
+									htmlFor="receive-supplier-address"
+								>
 									<input
 										id="receive-supplier-address"
 										value={supplierAddress}
@@ -378,10 +364,17 @@ const ReceivePage = () => {
 
 					{/* CARD 2: Product Entry */}
 					<div className="card px-5 py-4">
-						<SectionHeader icon={FiPackage} title="Производ" hint="Пребарај или внеси рачно" />
+						<SectionHeader
+							icon={FiPackage}
+							title="Производ"
+							hint="Пребарај или внеси рачно"
+						/>
 
 						<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-							<Field label="Категорија" htmlFor="receive-category">
+							<Field
+								label="Категорија"
+								htmlFor="receive-category"
+							>
 								<select
 									id="receive-category"
 									value={form.categoryId}
@@ -392,20 +385,24 @@ const ReceivePage = () => {
 									disabled={categoriesQuery.isLoading || !!categoriesQuery.error}
 									className="form-input"
 								>
-									<option value="">
-										{categoriesQuery.isLoading ? 'Се вчитува...' : 'Избери категорија'}
-									</option>
+									<option value="">{categoriesQuery.isLoading ? 'Се вчитува...' : 'Избери категорија'}</option>
 									{(categoriesQuery.data ?? []).map((c) => (
-										<option key={c.id} value={c.id}>{c.name}</option>
+										<option
+											key={c.id}
+											value={c.id}
+										>
+											{c.name}
+										</option>
 									))}
 								</select>
-								{categoriesQuery.error && (
-									<p className="mt-1 text-xs text-red-600">Грешка при вчитување категории.</p>
-								)}
+								{categoriesQuery.error && <p className="mt-1 text-xs text-red-600">Грешка при вчитување категории.</p>}
 							</Field>
 
 							{isKpk && (
-								<Field label="Фискална шифра (фиксно)" htmlFor="receive-fiscal-plu">
+								<Field
+									label="Фискална шифра (фиксно)"
+									htmlFor="receive-fiscal-plu"
+								>
 									<input
 										id="receive-fiscal-plu"
 										value={String(KPK_FISCAL_PLU)}
@@ -417,18 +414,16 @@ const ReceivePage = () => {
 						</div>
 
 						<div className="mb-4">
-							<div className="form-label">Назив на производ <span className="text-red-500">*</span></div>
+							<div className="form-label">
+								Назив на производ <span className="text-red-500">*</span>
+							</div>
 							<ProductNameWithSuggestions
 								value={form.name}
 								onChange={(v) => {
 									form.setName(v);
 									setSelectedProductId(null);
 								}}
-								placeholder={
-									form.categoryId
-										? 'Почни да куцаш (во избрана категорија)…'
-										: 'Почни да куцаш (ќе се пополни категорија)…'
-								}
+								placeholder={form.categoryId ? 'Почни да куцаш (во избрана категорија)…' : 'Почни да куцаш (ќе се пополни категорија)…'}
 								loading={choicesQuery.isFetching}
 								suggestions={normalizedChoices}
 								onPick={onPickProduct}
@@ -437,7 +432,11 @@ const ReceivePage = () => {
 
 						<div className="grid grid-cols-2 sm:grid-cols-12 gap-4">
 							<div className="sm:col-span-2">
-								<Field label="PLU" htmlFor="receive-plu" required>
+								<Field
+									label="PLU"
+									htmlFor="receive-plu"
+									required
+								>
 									<input
 										id="receive-plu"
 										value={form.plu}
@@ -453,7 +452,10 @@ const ReceivePage = () => {
 							</div>
 
 							<div className="sm:col-span-3">
-								<Field label="Баркод (опц.)" htmlFor="receive-barcode">
+								<Field
+									label="Баркод (опц.)"
+									htmlFor="receive-barcode"
+								>
 									<div className="relative">
 										<FiHash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
 										<input
@@ -475,11 +477,20 @@ const ReceivePage = () => {
 									<FiBarChart2 className="w-3.5 h-3.5" />
 									ДДВ <span className="text-red-500">*</span>
 								</div>
-								<TaxGroupButtons value={form.taxGroup} onChange={(v) => { form.setTaxGroup(v); setSelectedProductId(null); }} />
+								<TaxGroupButtons
+									value={form.taxGroup}
+									onChange={(v) => {
+										form.setTaxGroup(v);
+										setSelectedProductId(null);
+									}}
+								/>
 							</div>
 
 							<div className="sm:col-span-2">
-								<Field label="Ед. мерка" htmlFor="receive-unit">
+								<Field
+									label="Ед. мерка"
+									htmlFor="receive-unit"
+								>
 									<select
 										id="receive-unit"
 										value={form.unit ?? 'пар'}
@@ -497,7 +508,11 @@ const ReceivePage = () => {
 							</div>
 
 							<div className="sm:col-span-2">
-								<Field label="Количина" htmlFor="receive-qty" required>
+								<Field
+									label="Количина"
+									htmlFor="receive-qty"
+									required
+								>
 									<input
 										id="receive-qty"
 										value={form.qty}
@@ -531,9 +546,10 @@ const ReceivePage = () => {
 								type="submit"
 								disabled={isSubmitDisabled}
 								className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all
-									${isSubmitDisabled
-										? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-										: 'bg-blamejaGreen text-white hover:bg-blamejaGreenDark shadow-md shadow-emerald-900/15 active:scale-[.99]'
+									${
+										isSubmitDisabled
+											? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+											: 'bg-blamejaGreen text-white hover:bg-blamejaGreenDark shadow-md shadow-emerald-900/15 active:scale-[.99]'
 									}`}
 							>
 								{receiveMutation.isPending ? (
@@ -555,16 +571,28 @@ const ReceivePage = () => {
 				{/* ── RIGHT COLUMN: Prices ── */}
 				<div className="lg:w-[300px] xl:w-[320px] shrink-0">
 					<div className="card px-5 py-4 lg:h-full">
-						<SectionHeader icon={FiTag} title="Цени" />
+						<SectionHeader
+							icon={FiTag}
+							title="Цени"
+						/>
 
 						<div className="space-y-4">
-							<Field label="Набавна цена (ден.)" htmlFor="receive-unit-cost" required>
+							<Field
+								label="Набавна цена (ден.)"
+								htmlFor="receive-unit-cost"
+								required
+							>
 								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">ден.</span>
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
+										ден.
+									</span>
 									<input
 										id="receive-unit-cost"
 										value={form.unitCost}
-										onChange={(e) => { form.setUnitCost(e.target.value); setSelectedProductId(null); }}
+										onChange={(e) => {
+											form.setUnitCost(e.target.value);
+											setSelectedProductId(null);
+										}}
 										className="form-input pl-12"
 										inputMode="decimal"
 										placeholder="0.00"
@@ -572,13 +600,22 @@ const ReceivePage = () => {
 								</div>
 							</Field>
 
-							<Field label="Продажна цена (ден.)" htmlFor="receive-selling-price" required>
+							<Field
+								label="Продажна цена (ден.)"
+								htmlFor="receive-selling-price"
+								required
+							>
 								<div className="relative">
-									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">ден.</span>
+									<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
+										ден.
+									</span>
 									<input
 										id="receive-selling-price"
 										value={form.sellingPrice}
-										onChange={(e) => { form.setSellingPrice(e.target.value); setSelectedProductId(null); }}
+										onChange={(e) => {
+											form.setSellingPrice(e.target.value);
+											setSelectedProductId(null);
+										}}
 										className="form-input pl-12"
 										inputMode="decimal"
 										placeholder="0.00"
@@ -588,28 +625,35 @@ const ReceivePage = () => {
 						</div>
 
 						{/* Margin indicator */}
-						{form.unitCost && form.sellingPrice && (() => {
-							const cost = parseFloat(form.unitCost);
-							const sell = parseFloat(form.sellingPrice);
-							if (cost > 0 && sell > 0) {
-								const margin = ((sell - cost) / sell * 100).toFixed(1);
-								const marginNum = parseFloat(margin);
-								return (
-									<div className={`mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold
-										${marginNum < 0 ? 'bg-red-50 text-red-600 border border-red-100' :
-										  marginNum < 10 ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-										  'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}
-									>
-										<span>Маргина:</span>
-										<span className="text-sm font-bold">{margin}%</span>
-										<div className="mt-0.5 text-slate-400 font-normal">
-											{cost.toFixed(2)} → {sell.toFixed(2)} ден.
+						{form.unitCost &&
+							form.sellingPrice &&
+							(() => {
+								const cost = parseFloat(form.unitCost);
+								const sell = parseFloat(form.sellingPrice);
+								if (cost > 0 && sell > 0) {
+									const margin = (((sell - cost) / sell) * 100).toFixed(1);
+									const marginNum = parseFloat(margin);
+									return (
+										<div
+											className={`mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold
+										${
+											marginNum < 0
+												? 'bg-red-50 text-red-600 border border-red-100'
+												: marginNum < 10
+													? 'bg-amber-50 text-amber-700 border border-amber-100'
+													: 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+										}`}
+										>
+											<span>Маргина:</span>
+											<span className="text-sm font-bold">{margin}%</span>
+											<div className="mt-0.5 text-slate-400 font-normal">
+												{cost.toFixed(2)} → {sell.toFixed(2)} ден.
+											</div>
 										</div>
-									</div>
-								);
-							}
-							return null;
-						})()}
+									);
+								}
+								return null;
+							})()}
 					</div>
 				</div>
 			</form>

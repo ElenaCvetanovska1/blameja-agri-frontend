@@ -75,7 +75,10 @@ const SelectionTable = ({
 									className="h-4 w-4 rounded border-slate-300 text-blamejaGreen accent-blamejaGreen"
 								/>
 							</td>
-							<td className="px-3 py-2.5 font-medium text-slate-800 max-w-[200px] truncate" title={item.product_name ?? ''}>
+							<td
+								className="px-3 py-2.5 font-medium text-slate-800 max-w-[200px] truncate"
+								title={item.product_name ?? ''}
+							>
 								{item.product_name ?? '—'}
 							</td>
 							<td className="px-3 py-2.5 text-right whitespace-nowrap">{mkd(item.unit_price)}</td>
@@ -121,7 +124,10 @@ const ReviewTable = ({ lines }: { lines: Array<{ name: string | null; qty: numbe
 		</thead>
 		<tbody className="divide-y divide-slate-100">
 			{lines.map((line, i) => (
-				<tr key={i} className="hover:bg-slate-50">
+				<tr
+					key={i}
+					className="hover:bg-slate-50"
+				>
 					<td className="px-3 py-2 font-medium text-slate-800">{line.name ?? '—'}</td>
 					<td className="px-3 py-2 text-right text-slate-700">{line.qty}</td>
 					<td className="px-3 py-2 text-right whitespace-nowrap">{mkd(line.unitPrice)}</td>
@@ -147,22 +153,20 @@ export default function StornoPage() {
 	// ── Loading / Error / Not-found guards ────────────────────────────────────
 
 	if (query.isLoading) {
-		return (
-			<div className="flex items-center justify-center py-20 text-sm text-slate-500">
-				Се вчитува фискална сметка...
-			</div>
-		);
+		return <div className="flex items-center justify-center py-20 text-sm text-slate-500">Се вчитува фискална сметка...</div>;
 	}
 
 	if (query.isError || !query.data) {
 		return (
 			<div className="space-y-4">
-				<button type="button" onClick={() => navigate(`/fiscal-receipts/${id}`)} className="text-sm text-blamejaGreen hover:underline">
+				<button
+					type="button"
+					onClick={() => navigate(`/fiscal-receipts/${id}`)}
+					className="text-sm text-blamejaGreen hover:underline"
+				>
 					← Назад
 				</button>
-				<div className="rounded-2xl bg-red-50 border border-red-200 p-6 text-sm text-red-700">
-					Грешка при вчитување на фискална сметка.
-				</div>
+				<div className="rounded-2xl bg-red-50 border border-red-200 p-6 text-sm text-red-700">Грешка при вчитување на фискална сметка.</div>
 			</div>
 		);
 	}
@@ -174,7 +178,11 @@ export default function StornoPage() {
 	if (receipt.receipt_type !== 'sale' || receipt.fiscal_status !== 'success') {
 		return (
 			<div className="space-y-4">
-				<button type="button" onClick={() => navigate(`/fiscal-receipts/${id}`)} className="text-sm text-blamejaGreen hover:underline">
+				<button
+					type="button"
+					onClick={() => navigate(`/fiscal-receipts/${id}`)}
+					className="text-sm text-blamejaGreen hover:underline"
+				>
 					← Назад
 				</button>
 				<div className="rounded-2xl bg-orange-50 border border-orange-200 p-6 text-sm text-orange-700">
@@ -189,7 +197,11 @@ export default function StornoPage() {
 	if (eligibleItems.length === 0 && step === 'select') {
 		return (
 			<div className="space-y-4">
-				<button type="button" onClick={() => navigate(`/fiscal-receipts/${id}`)} className="text-sm text-blamejaGreen hover:underline">
+				<button
+					type="button"
+					onClick={() => navigate(`/fiscal-receipts/${id}`)}
+					className="text-sm text-blamejaGreen hover:underline"
+				>
 					← Назад
 				</button>
 				<div className="rounded-2xl bg-slate-50 border border-slate-200 p-6 text-sm text-slate-500 text-center">
@@ -296,9 +308,7 @@ export default function StornoPage() {
 					← Назад
 				</button>
 				<div>
-					<h1 className="text-xl font-bold text-slate-800">
-						Сторно на сметка #{receipt.fiscal_slip_no ?? id?.slice(0, 8)}
-					</h1>
+					<h1 className="text-xl font-bold text-slate-800">Сторно на сметка #{receipt.fiscal_slip_no ?? id?.slice(0, 8)}</h1>
 					<p className="text-xs text-slate-500 mt-0.5">
 						{step === 'select' && 'Изберете ставки и количини за враќање'}
 						{step === 'review' && 'Прегледајте го сторното пред потврда'}
@@ -311,20 +321,26 @@ export default function StornoPage() {
 			{step === 'select' && (
 				<>
 					<SectionCard title="Изберете ставки за враќање">
-						<SelectionTable items={items} selection={selection} onChange={handleSelectionChange} />
+						<SelectionTable
+							items={items}
+							selection={selection}
+							onChange={handleSelectionChange}
+						/>
 					</SectionCard>
 
 					{selectedLines.length > 0 && (
 						<div className="flex items-center justify-between rounded-2xl bg-orange-50 border border-orange-200 px-5 py-4">
 							<span className="text-sm font-medium text-orange-800">
-								Вкупно за враќање:{' '}
-								<b className="text-lg">{mkd(stornoTotal)}</b>
+								Вкупно за враќање: <b className="text-lg">{mkd(stornoTotal)}</b>
 							</span>
 							<button
 								type="button"
 								onClick={() => {
 									const err = validationError();
-									if (err) { setError(err); return; }
+									if (err) {
+										setError(err);
+										return;
+									}
 									setError(null);
 									setStep('review');
 								}}
@@ -335,11 +351,7 @@ export default function StornoPage() {
 						</div>
 					)}
 
-					{error && (
-						<div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-3 text-sm text-red-700">
-							{error}
-						</div>
-					)}
+					{error && <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-3 text-sm text-red-700">{error}</div>}
 				</>
 			)}
 
@@ -370,11 +382,7 @@ export default function StornoPage() {
 						<p>Со потврда ќе се испечати физички сторно фискален сметка на уредот. Проверете дека количините се точни.</p>
 					</div>
 
-					{error && (
-						<div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-3 text-sm text-red-700">
-							{error}
-						</div>
-					)}
+					{error && <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-3 text-sm text-red-700">{error}</div>}
 
 					<div className="flex items-center gap-3 justify-end">
 						<button

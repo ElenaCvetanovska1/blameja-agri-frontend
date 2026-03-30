@@ -17,9 +17,7 @@ export const useStockLookup = () => {
 			const trimmed = code.trim();
 			if (!trimmed) throw new Error('Внеси PLU или баркод.');
 
-			const result = await api.get<StockLookupRow | null>(
-				`/api/receive/stock/lookup?code=${encodeURIComponent(trimmed)}`,
-			);
+			const result = await api.get<StockLookupRow | null>(`/api/receive/stock/lookup?code=${encodeURIComponent(trimmed)}`);
 
 			return result ?? null;
 		},

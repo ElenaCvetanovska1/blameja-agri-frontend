@@ -20,12 +20,12 @@ type StockRow = {
 // ─── Comparison types ─────────────────────────────────────────────────────────
 
 export type CompareStatus =
-	| 'match'           // PLU, name (first 32 chars) and price all match
-	| 'name_mismatch'   // PLU matches but name differs
-	| 'price_mismatch'  // PLU matches but price differs
-	| 'both_mismatch'   // PLU matches but name and price both differ
-	| 'fiscal_only'     // in fiscal device but no DB product has this PLU
-	| 'db_only';        // DB product has PLU but no fiscal item at that PLU
+	| 'match' // PLU, name (first 32 chars) and price all match
+	| 'name_mismatch' // PLU matches but name differs
+	| 'price_mismatch' // PLU matches but price differs
+	| 'both_mismatch' // PLU matches but name and price both differ
+	| 'fiscal_only' // in fiscal device but no DB product has this PLU
+	| 'db_only'; // DB product has PLU but no fiscal item at that PLU
 
 export type ComparedItem = {
 	plu: number;
@@ -62,10 +62,7 @@ function compareItems(fiscal: ItemDetail[], db: StockRow[]): ComparedItem[] {
 		const nameOk = fi.Name.toLowerCase() === dbName32.toLowerCase();
 		const priceOk = Math.abs(fiscalPrice - (db.selling_price ?? 0)) < PRICE_TOLERANCE;
 		const status: CompareStatus =
-			nameOk && priceOk ? 'match'
-			: !nameOk && !priceOk ? 'both_mismatch'
-			: !nameOk ? 'name_mismatch'
-			: 'price_mismatch';
+			nameOk && priceOk ? 'match' : !nameOk && !priceOk ? 'both_mismatch' : !nameOk ? 'name_mismatch' : 'price_mismatch';
 		results.push({ plu, fiscalItem: fi, dbProduct: db, status });
 	}
 
@@ -96,13 +93,16 @@ export const useFiscalItemsQuery = () => {
 		return compareItems(fiscalQuery.data, dbQuery.data);
 	}, [fiscalQuery.data, dbQuery.data]);
 
-	const stats = useMemo(() => ({
-		total: comparison.length,
-		matches: comparison.filter((c) => c.status === 'match').length,
-		mismatches: comparison.filter((c) => c.status !== 'match' && c.status !== 'fiscal_only' && c.status !== 'db_only').length,
-		fiscalOnly: comparison.filter((c) => c.status === 'fiscal_only').length,
-		dbOnly: comparison.filter((c) => c.status === 'db_only').length,
-	}), [comparison]);
+	const stats = useMemo(
+		() => ({
+			total: comparison.length,
+			matches: comparison.filter((c) => c.status === 'match').length,
+			mismatches: comparison.filter((c) => c.status !== 'match' && c.status !== 'fiscal_only' && c.status !== 'db_only').length,
+			fiscalOnly: comparison.filter((c) => c.status === 'fiscal_only').length,
+			dbOnly: comparison.filter((c) => c.status === 'db_only').length,
+		}),
+		[comparison],
+	);
 
 	return {
 		fiscalItems: fiscalQuery.data ?? [],

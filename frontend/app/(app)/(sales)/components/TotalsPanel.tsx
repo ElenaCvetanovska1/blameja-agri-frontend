@@ -35,24 +35,15 @@ export const TotalsPanel = ({
 }: Props) => {
 	const cashNum = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 	const change = Math.max(0, cashNum - totals.total);
-	const notEnoughCash =
-		paymentMethod === 'CASH' &&
-		cashReceivedStr.trim().length > 0 &&
-		cashNum < totals.total;
+	const notEnoughCash = paymentMethod === 'CASH' && cashReceivedStr.trim().length > 0 && cashNum < totals.total;
 
-	const submitDisabled =
-		busy ||
-		cartEmpty ||
-		(paymentMethod === 'CASH' && cashNum < totals.total);
+	const submitDisabled = busy || cartEmpty || (paymentMethod === 'CASH' && cashNum < totals.total);
 
 	return (
 		<div className="flex flex-col gap-4">
-
 			{/* ─── Payment Method ─── */}
 			<div>
-				<div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-					Начин на плаќање
-				</div>
+				<div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Начин на плаќање</div>
 				<div className="grid grid-cols-2 gap-2">
 					<button
 						type="button"
@@ -60,9 +51,10 @@ export const TotalsPanel = ({
 						disabled={busy}
 						className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold
 							transition-all disabled:opacity-60
-							${paymentMethod === 'CASH'
-								? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
-								: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+							${
+								paymentMethod === 'CASH'
+									? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
+									: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 							}`}
 					>
 						<FiDollarSign className="w-4 h-4" />
@@ -74,9 +66,10 @@ export const TotalsPanel = ({
 						disabled={busy}
 						className={`flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-semibold
 							transition-all disabled:opacity-60
-							${paymentMethod === 'CARD'
-								? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
-								: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+							${
+								paymentMethod === 'CARD'
+									? 'border-blamejaGreen bg-blamejaGreen text-white shadow-sm'
+									: 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
 							}`}
 					>
 						<FiCreditCard className="w-4 h-4" />
@@ -106,7 +99,8 @@ export const TotalsPanel = ({
 						disabled={busy}
 					/>
 
-					<div className={`mt-2 flex items-center justify-between text-sm rounded-lg px-3 py-2
+					<div
+						className={`mt-2 flex items-center justify-between text-sm rounded-lg px-3 py-2
 						${notEnoughCash ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'}`}
 					>
 						<span className={notEnoughCash ? 'text-red-600 font-medium' : 'text-slate-500'}>
@@ -135,13 +129,19 @@ export const TotalsPanel = ({
 				)}
 				<div className="px-4 py-3 flex items-center justify-between">
 					<span className="text-base font-bold text-slate-700">Вкупно за плаќање</span>
-					<span className="text-2xl font-extrabold text-slate-900 tabular-nums">{totals.total.toFixed(2)}<span className="text-base font-semibold text-slate-500 ml-1">ден.</span></span>
+					<span className="text-2xl font-extrabold text-slate-900 tabular-nums">
+						{totals.total.toFixed(2)}
+						<span className="text-base font-semibold text-slate-500 ml-1">ден.</span>
+					</span>
 				</div>
 			</div>
 
 			{/* ─── Note ─── */}
 			<div>
-				<label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5" htmlFor="sales-note">
+				<label
+					className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5"
+					htmlFor="sales-note"
+				>
 					Забелешка (опц.)
 				</label>
 				<input
@@ -156,27 +156,31 @@ export const TotalsPanel = ({
 			</div>
 
 			{/* ─── Fiscal warnings ─── */}
-		{fiscalWarnings.length > 0 && (
-			<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1">
-				{fiscalWarnings.map((w) => (
-					<div key={w} className="flex items-center gap-2 text-xs font-semibold text-amber-800">
-						<span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-						{w}
-					</div>
-				))}
-			</div>
-		)}
+			{fiscalWarnings.length > 0 && (
+				<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1">
+					{fiscalWarnings.map((w) => (
+						<div
+							key={w}
+							className="flex items-center gap-2 text-xs font-semibold text-amber-800"
+						>
+							<span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+							{w}
+						</div>
+					))}
+				</div>
+			)}
 
-		{/* ─── Submit CTA ─── */}
+			{/* ─── Submit CTA ─── */}
 			<button
 				type="button"
 				onClick={onSubmit}
 				disabled={submitDisabled}
 				className={`w-full flex items-center justify-center gap-2.5 rounded-xl px-4 py-3.5 text-base font-bold
 					transition-all
-					${submitDisabled
-						? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-						: 'bg-blamejaGreen text-white hover:bg-blamejaGreenDark shadow-lg shadow-emerald-900/20 hover:shadow-md active:scale-[.99]'
+					${
+						submitDisabled
+							? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+							: 'bg-blamejaGreen text-white hover:bg-blamejaGreenDark shadow-lg shadow-emerald-900/20 hover:shadow-md active:scale-[.99]'
 					}`}
 			>
 				{busy ? (

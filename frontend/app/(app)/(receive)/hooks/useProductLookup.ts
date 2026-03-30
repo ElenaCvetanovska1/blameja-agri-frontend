@@ -27,9 +27,7 @@ export const useProductLookup = () => {
 			const trimmed = code.trim();
 			if (!trimmed) throw new Error('Внеси баркод или PLU.');
 
-			const data = await api.get<ProductLookup | null>(
-				`/api/receive/products/lookup?code=${encodeURIComponent(trimmed)}`,
-			);
+			const data = await api.get<ProductLookup | null>(`/api/receive/products/lookup?code=${encodeURIComponent(trimmed)}`);
 
 			if (!data) return null;
 

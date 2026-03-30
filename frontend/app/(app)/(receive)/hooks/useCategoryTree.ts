@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from 'app/lib/api-client';
 
-type Category    = { id: string; code: string; name: string };
+type Category = { id: string; code: string; name: string };
 type Subcategory = { id: string; category_id: string; code: string; name: string };
 
 export type CategoryNode = Category & { subcategories: Subcategory[] };

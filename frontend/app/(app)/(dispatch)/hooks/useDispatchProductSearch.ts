@@ -31,9 +31,7 @@ export const useDispatchProductSearch = ({ term, limit = 8 }: UseDispatchProduct
 
 		debounceRef.current = window.setTimeout(async () => {
 			try {
-				const rows = await api.get<ProductSuggestion[]>(
-					`/api/dispatch/products/search?q=${encodeURIComponent(t)}&limit=${limit}`,
-				);
+				const rows = await api.get<ProductSuggestion[]>(`/api/dispatch/products/search?q=${encodeURIComponent(t)}&limit=${limit}`);
 				setSuggestions(rows ?? []);
 				setOpen((rows?.length ?? 0) > 0);
 			} catch (e) {

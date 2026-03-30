@@ -26,9 +26,9 @@ type Tab = 'reports' | 'device' | 'memory' | 'items';
 
 const TABS: { id: Tab; label: string }[] = [
 	{ id: 'reports', label: 'Извештаи' },
-	{ id: 'device',  label: 'Уред' },
-	{ id: 'memory',  label: 'Меморија' },
-	{ id: 'items',   label: 'Артикли' },
+	{ id: 'device', label: 'Уред' },
+	{ id: 'memory', label: 'Меморија' },
+	{ id: 'items', label: 'Артикли' },
 ];
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
@@ -55,10 +55,10 @@ const Btn = ({
 	children: React.ReactNode;
 }) => {
 	const cls = {
-		default:  'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
-		primary:  'border border-blamejaGreen bg-blamejaGreen text-white hover:brightness-110',
-		danger:   'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100',
-		success:  'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+		default: 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100',
+		primary: 'border border-blamejaGreen bg-blamejaGreen text-white hover:brightness-110',
+		danger: 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100',
+		success: 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
 	}[variant];
 	return (
 		<button
@@ -92,7 +92,10 @@ const ReportsTab = () => {
 			>
 				<div className="flex flex-wrap items-end gap-3">
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600" htmlFor="fiscal-cash-amount">
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="fiscal-cash-amount"
+						>
 							Износ (ден.)
 						</label>
 						<input
@@ -138,19 +141,29 @@ const ReportsTab = () => {
 				sub="X = дневен преглед без затворање. Z = затворање на ден (неповратно)."
 			>
 				<div className="flex flex-wrap items-center gap-3">
-					<Btn onClick={() => void printX()} disabled={xBusy || zBusy}>
+					<Btn
+						onClick={() => void printX()}
+						disabled={xBusy || zBusy}
+					>
 						{xBusy ? 'Печатење...' : 'X извештај'}
 					</Btn>
 
 					{!zConfirm ? (
-						<Btn onClick={() => setZConfirm(true)} disabled={xBusy || zBusy} variant="danger">
+						<Btn
+							onClick={() => setZConfirm(true)}
+							disabled={xBusy || zBusy}
+							variant="danger"
+						>
 							Z извештај (затвори ден)
 						</Btn>
 					) : (
 						<div className="flex items-center gap-2">
 							<span className="text-xs font-semibold text-red-600">Сигурен? Ова е неповратно.</span>
 							<Btn
-								onClick={async () => { setZConfirm(false); await printZ(); }}
+								onClick={async () => {
+									setZConfirm(false);
+									await printZ();
+								}}
 								disabled={zBusy}
 								variant="danger"
 							>
@@ -173,7 +186,9 @@ const DeviceTab = () => {
 	const [entryType, setEntryType] = useState(0);
 
 	// Auto-read datetime on first render
-	useEffect(() => { void readDateTime(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+	useEffect(() => {
+		void readDateTime();
+	}, []); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const drift = absDrift(driftSeconds);
 	const driftHigh = drift !== null && drift > 60;
@@ -181,9 +196,9 @@ const DeviceTab = () => {
 
 	const sumRows: { label: string; value: string | undefined }[] = [
 		{ label: 'А (18%)', value: entry?.SumA },
-		{ label: 'Б (5%)',  value: entry?.SumB },
+		{ label: 'Б (5%)', value: entry?.SumB },
 		{ label: 'В (10%)', value: entry?.SumC },
-		{ label: 'Г (0%)',  value: entry?.SumD },
+		{ label: 'Г (0%)', value: entry?.SumD },
 	];
 
 	return (
@@ -196,9 +211,7 @@ const DeviceTab = () => {
 				<div className="grid gap-3 sm:grid-cols-2 mb-4">
 					<div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
 						<div className="text-[11px] text-slate-500 mb-1">Фискален уред</div>
-						<div className="text-base font-semibold text-slate-900">
-							{readBusy ? 'Читање...' : (deviceTimeStr ?? '—')}
-						</div>
+						<div className="text-base font-semibold text-slate-900">{readBusy ? 'Читање...' : (deviceTimeStr ?? '—')}</div>
 					</div>
 					<div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
 						<div className="text-[11px] text-slate-500 mb-1">Системски часовник</div>
@@ -207,18 +220,25 @@ const DeviceTab = () => {
 				</div>
 
 				{drift !== null && (
-					<div className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${driftHigh ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-						{driftHigh
-							? `Разлика: ${drift}s — Се препорачува синхронизација.`
-							: `Разлика: ${drift}s — Во ред.`}
+					<div
+						className={`mb-4 rounded-lg px-3 py-2 text-sm font-medium ${driftHigh ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}
+					>
+						{driftHigh ? `Разлика: ${drift}s — Се препорачува синхронизација.` : `Разлика: ${drift}s — Во ред.`}
 					</div>
 				)}
 
 				<div className="flex flex-wrap gap-3">
-					<Btn onClick={() => void readDateTime()} disabled={readBusy || syncBusy}>
+					<Btn
+						onClick={() => void readDateTime()}
+						disabled={readBusy || syncBusy}
+					>
 						{readBusy ? 'Читање...' : 'Прочитај'}
 					</Btn>
-					<Btn onClick={() => void syncNow()} disabled={readBusy || syncBusy} variant="primary">
+					<Btn
+						onClick={() => void syncNow()}
+						disabled={readBusy || syncBusy}
+						variant="primary"
+					>
 						{syncBusy ? 'Синхронизирање...' : 'Синхронизирај со системот'}
 					</Btn>
 				</div>
@@ -231,7 +251,10 @@ const DeviceTab = () => {
 			>
 				<div className="flex flex-wrap items-end gap-3 mb-4">
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600" htmlFor="last-entry-type">
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="last-entry-type"
+						>
 							Тип на податоци
 						</label>
 						<select
@@ -242,11 +265,19 @@ const DeviceTab = () => {
 							className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blamejaGreen disabled:opacity-50 min-w-[280px]"
 						>
 							{LAST_ENTRY_TYPES.map((t) => (
-								<option key={t.value} value={t.value}>{t.label}</option>
+								<option
+									key={t.value}
+									value={t.value}
+								>
+									{t.label}
+								</option>
 							))}
 						</select>
 					</div>
-					<Btn onClick={() => void fetchEntry(entryType)} disabled={entryBusy}>
+					<Btn
+						onClick={() => void fetchEntry(entryType)}
+						disabled={entryBusy}
+					>
 						{entryBusy ? 'Читање...' : 'Прочитај'}
 					</Btn>
 				</div>
@@ -270,7 +301,10 @@ const DeviceTab = () => {
 									<td className="px-3 py-2 font-semibold text-slate-900">{entry.Date ?? '—'}</td>
 								</tr>
 								{sumRows.map((r) => (
-									<tr key={r.label} className="border-b border-slate-100">
+									<tr
+										key={r.label}
+										className="border-b border-slate-100"
+									>
 										<td className="px-3 py-2 text-slate-500 text-xs">ДДВ {r.label}</td>
 										<td className="px-3 py-2 font-semibold text-slate-900">{r.value ?? '—'}</td>
 									</tr>
@@ -355,20 +389,20 @@ const MemoryTab = () => {
 					</div>
 
 					<Btn
-						onClick={() => void printByDate({
-							type: dateType,
-							start: startDate || undefined,
-							end: endDate || undefined,
-						})}
+						onClick={() =>
+							void printByDate({
+								type: dateType,
+								start: startDate || undefined,
+								end: endDate || undefined,
+							})
+						}
 						disabled={dateBusy}
 						variant="primary"
 					>
 						{dateBusy ? 'Печатење...' : 'Печати'}
 					</Btn>
 				</div>
-				<p className="mt-3 text-[11px] text-slate-400">
-					Ако оставиш празни полиња: почеток = датум на фискализација, крај = денес.
-				</p>
+				<p className="mt-3 text-[11px] text-slate-400">Ако оставиш празни полиња: почеток = датум на фискализација, крај = денес.</p>
 			</Section>
 
 			{/* By Z-report number */}
@@ -417,20 +451,20 @@ const MemoryTab = () => {
 					</div>
 
 					<Btn
-						onClick={() => void printByZ({
-							type: zType,
-							first: zFirst ? Number(zFirst) : undefined,
-							last: zLast ? Number(zLast) : undefined,
-						})}
+						onClick={() =>
+							void printByZ({
+								type: zType,
+								first: zFirst ? Number(zFirst) : undefined,
+								last: zLast ? Number(zLast) : undefined,
+							})
+						}
 						disabled={zBusy}
 						variant="primary"
 					>
 						{zBusy ? 'Печатење...' : 'Печати'}
 					</Btn>
 				</div>
-				<p className="mt-3 text-[11px] text-slate-400">
-					Ако оставиш празни полиња: прв = 1, последен = последниот Z-извештај.
-				</p>
+				<p className="mt-3 text-[11px] text-slate-400">Ако оставиш празни полиња: прв = 1, последен = последниот Z-извештај.</p>
 			</Section>
 		</div>
 	);
@@ -439,12 +473,12 @@ const MemoryTab = () => {
 // ─── Tab: Артикли ─────────────────────────────────────────────────────────────
 
 const STATUS_META: Record<CompareStatus, { label: string; color: string; dot: string }> = {
-	match:          { label: 'Се совпаѓа',       color: 'text-emerald-700 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
-	name_mismatch:  { label: 'Различно Име',      color: 'text-amber-700 bg-amber-50 border-amber-200',       dot: 'bg-amber-400'   },
-	price_mismatch: { label: 'Различна Цена',     color: 'text-amber-700 bg-amber-50 border-amber-200',       dot: 'bg-amber-400'   },
-	both_mismatch:  { label: 'Различно Ime+Цена', color: 'text-orange-700 bg-orange-50 border-orange-200',    dot: 'bg-orange-500'  },
-	fiscal_only:    { label: 'Само во каса',      color: 'text-slate-600 bg-slate-50 border-slate-200',       dot: 'bg-slate-400'   },
-	db_only:        { label: 'Само во база',      color: 'text-red-700 bg-red-50 border-red-200',             dot: 'bg-red-500'     },
+	match: { label: 'Се совпаѓа', color: 'text-emerald-700 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' },
+	name_mismatch: { label: 'Различно Име', color: 'text-amber-700 bg-amber-50 border-amber-200', dot: 'bg-amber-400' },
+	price_mismatch: { label: 'Различна Цена', color: 'text-amber-700 bg-amber-50 border-amber-200', dot: 'bg-amber-400' },
+	both_mismatch: { label: 'Различно Ime+Цена', color: 'text-orange-700 bg-orange-50 border-orange-200', dot: 'bg-orange-500' },
+	fiscal_only: { label: 'Само во каса', color: 'text-slate-600 bg-slate-50 border-slate-200', dot: 'bg-slate-400' },
+	db_only: { label: 'Само во база', color: 'text-red-700 bg-red-50 border-red-200', dot: 'bg-red-500' },
 };
 
 const ItemsTab = () => {
@@ -461,8 +495,14 @@ const ItemsTab = () => {
 		return (
 			<div className="rounded-2xl border border-red-200 bg-red-50 p-5">
 				<div className="text-sm font-semibold text-red-700 mb-1">Грешка при вчитување</div>
-				<div className="text-xs text-red-600">{fiscalError instanceof Error ? fiscalError.message : 'Провери дали фискалниот уред е поврзан.'}</div>
-				<button type="button" onClick={() => void refetch()} className="mt-3 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition">
+				<div className="text-xs text-red-600">
+					{fiscalError instanceof Error ? fiscalError.message : 'Провери дали фискалниот уред е поврзан.'}
+				</div>
+				<button
+					type="button"
+					onClick={() => void refetch()}
+					className="mt-3 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition"
+				>
 					Обиди се повторно
 				</button>
 			</div>
@@ -492,7 +532,10 @@ const ItemsTab = () => {
 					{ label: 'Само во каса', value: stats.fiscalOnly, color: 'text-slate-600' },
 					{ label: 'Само во база', value: stats.dbOnly, color: 'text-red-700' },
 				].map((s) => (
-					<div key={s.label} className="rounded-xl border border-slate-100 bg-white shadow-sm p-3 text-center">
+					<div
+						key={s.label}
+						className="rounded-xl border border-slate-100 bg-white shadow-sm p-3 text-center"
+					>
 						<div className="text-[11px] text-slate-500">{s.label}</div>
 						<div className={`text-2xl font-bold mt-1 ${s.color}`}>{s.value}</div>
 					</div>
@@ -549,7 +592,10 @@ const ItemsTab = () => {
 						<tbody>
 							{visible.length === 0 && (
 								<tr>
-									<td colSpan={6} className="px-3 py-8 text-center text-slate-400">
+									<td
+										colSpan={6}
+										className="px-3 py-8 text-center text-slate-400"
+									>
 										Нема резултати за избраниот филтер.
 									</td>
 								</tr>
@@ -557,13 +603,18 @@ const ItemsTab = () => {
 							{visible.map((row) => {
 								const m = STATUS_META[row.status];
 								const taxLabel = row.fiscalItem
-									? ['', 'А 18%', 'Б 5%', 'В 10%', 'Г 0%'][row.fiscalItem.TaxGr] ?? String(row.fiscalItem.TaxGr)
+									? (['', 'А 18%', 'Б 5%', 'В 10%', 'Г 0%'][row.fiscalItem.TaxGr] ?? String(row.fiscalItem.TaxGr))
 									: '—';
 								return (
-									<tr key={row.plu} className="border-t border-slate-100 hover:bg-slate-50/50 transition">
+									<tr
+										key={row.plu}
+										className="border-t border-slate-100 hover:bg-slate-50/50 transition"
+									>
 										<td className="px-3 py-3 font-mono font-semibold text-slate-900">{row.plu}</td>
 										<td className="px-3 py-3">
-											<span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold border ${m.color}`}>
+											<span
+												className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold border ${m.color}`}
+											>
 												<span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
 												{m.label}
 											</span>
@@ -584,9 +635,7 @@ const ItemsTab = () => {
 											{row.dbProduct ? (
 												<div>
 													<div className="font-medium text-slate-900">{row.dbProduct.name ?? '—'}</div>
-													<div className="text-[11px] text-slate-500 mt-0.5">
-														{money(row.dbProduct.selling_price)} ден.
-													</div>
+													<div className="text-[11px] text-slate-500 mt-0.5">{money(row.dbProduct.selling_price)} ден.</div>
 												</div>
 											) : (
 												<span className="text-slate-400 text-xs italic">нема PLU во база</span>
@@ -595,9 +644,7 @@ const ItemsTab = () => {
 										<td className="px-3 py-3 text-right text-slate-700 text-xs">
 											{row.fiscalItem ? `${money(row.fiscalItem.Turnover)} ден.` : '—'}
 										</td>
-										<td className="px-3 py-3 text-right text-slate-700 text-xs">
-											{row.fiscalItem?.SoldQty ?? '—'}
-										</td>
+										<td className="px-3 py-3 text-right text-slate-700 text-xs">{row.fiscalItem?.SoldQty ?? '—'}</td>
 									</tr>
 								);
 							})}
@@ -608,9 +655,15 @@ const ItemsTab = () => {
 
 			{/* Help note */}
 			<div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-500 space-y-1">
-				<div><strong>Само во каса</strong> — Артикл програмиран во касата, но нема соодветен PLU во базата.</div>
-				<div><strong>Само во база</strong> — Производот во базата има PLU, но тој PLU не е програмиран во касата.</div>
-				<div><strong>Несовпаѓање</strong> — PLU се наоѓа и во касата и во базата, но Ime или Цена се разликуваат.</div>
+				<div>
+					<strong>Само во каса</strong> — Артикл програмиран во касата, но нема соодветен PLU во базата.
+				</div>
+				<div>
+					<strong>Само во база</strong> — Производот во базата има PLU, но тој PLU не е програмиран во касата.
+				</div>
+				<div>
+					<strong>Несовпаѓање</strong> — PLU се наоѓа и во касата и во базата, но Ime или Цена се разликуваат.
+				</div>
 				<div className="pt-1 text-slate-400">Артиклите може да се програмираат рачно директно на касата (Програмирање → Артикл).</div>
 			</div>
 		</div>
@@ -627,9 +680,7 @@ const FiscalPage = () => {
 			{/* Header — shrink-0 */}
 			<div className="shrink-0">
 				<h1 className="text-xl font-bold text-slate-900">Фискална</h1>
-				<p className="mt-0.5 text-xs text-slate-500">
-					Извештаи · Готово влезно/излезно · Синхронизација · Меморија · Артикли
-				</p>
+				<p className="mt-0.5 text-xs text-slate-500">Извештаи · Готово влезно/излезно · Синхронизација · Меморија · Артикли</p>
 			</div>
 
 			{/* Tabs — shrink-0 */}
@@ -641,9 +692,7 @@ const FiscalPage = () => {
 						onClick={() => setTab(t.id)}
 						className={[
 							'rounded-lg px-4 py-2 text-sm font-semibold transition',
-							tab === t.id
-								? 'bg-white text-slate-900 shadow-sm'
-								: 'text-slate-600 hover:text-slate-900',
+							tab === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900',
 						].join(' ')}
 					>
 						{t.label}
@@ -654,9 +703,9 @@ const FiscalPage = () => {
 			{/* Content — flex-1, internal scroll */}
 			<div className="flex-1 overflow-y-auto min-h-0 pb-2">
 				{tab === 'reports' && <ReportsTab />}
-				{tab === 'device'  && <DeviceTab />}
-				{tab === 'memory'  && <MemoryTab />}
-				{tab === 'items'   && <ItemsTab />}
+				{tab === 'device' && <DeviceTab />}
+				{tab === 'memory' && <MemoryTab />}
+				{tab === 'items' && <ItemsTab />}
 			</div>
 		</div>
 	);
