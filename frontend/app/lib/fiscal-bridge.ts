@@ -29,8 +29,30 @@ export type ErrorStatus = 'P' | 'F' | 'D' | 'R';
 
 export type DeviceStatusResponse = {
 	IsConnected: boolean;
-	Status: string;
-	Model?: string;
+	StatusBytes?: string;
+	// Byte 0
+	GeneralError?: boolean;
+	InvalidCommand?: boolean;
+	SyntaxError?: boolean;
+	// Byte 1
+	CommandNotPermitted?: boolean;
+	Overflow?: boolean;
+	// Byte 2
+	NonfiscalReceiptOpen?: boolean;
+	EjNearlyFull?: boolean;
+	FiscalReceiptOpen?: boolean;
+	EjFull?: boolean;
+	EndOfPaper?: boolean;
+	// Byte 4
+	FiscalMemoryFull?: boolean;
+	LessThan50Reports?: boolean;
+	SerialNumberSet?: boolean;
+	TaxNumberSet?: boolean;
+	ErrorWritingFm?: boolean;
+	// Byte 5
+	VatSet?: boolean;
+	EcrFiscalized?: boolean;
+	FmFormatted?: boolean;
 };
 
 export type TransactionStatusResponse = {
@@ -76,7 +98,8 @@ export type SubtotalRequest = {
 
 export type SubtotalResponse = {
 	ErrorStatus: ErrorStatus;
-	Amount?: number;
+	/** Running total of the receipt (string from device) */
+	Subtotal?: string;
 	Message?: string;
 };
 
@@ -88,7 +111,8 @@ export type PaymentRequest = {
 
 export type PaymentResponse = {
 	ErrorStatus: ErrorStatus;
-	Change?: number;
+	/** Remaining amount when D (partial), or change when R (overpaid) */
+	Amount?: string;
 	Message?: string;
 };
 
