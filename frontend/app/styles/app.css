@@ -2,6 +2,7 @@
 @plugin "@tailwindcss/typography";
 
 :root {
+	/* ─── Breakpoints ─── */
 	--breakpoint-xs: 425px;
 	--breakpoint-sm: 640px;
 	--breakpoint-md: 768px;
@@ -9,23 +10,34 @@
 	--breakpoint-xl: 1280px;
 	--breakpoint-2xl: 1536px;
 
+	/* ─── Base neutrals ─── */
 	--background: oklch(0.985 0 0);
 	--foreground: oklch(0.145 0 0);
 	--border: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
 
-	/* Blameja brand */
+	/* ─── Blameja brand greens ─── */
 	--blameja-green: #2aa24f;
 	--blameja-green-dark: #1e7a3b;
 	--blameja-green-soft: #e8f6ee;
 
-	--blameja-orange: #f59e0b;
+	/* ─── Primary blue (strong CTAs) ─── */
+	--primary-blue: #1d6fb5;
+	--primary-blue-dark: #155a96;
+	--primary-blue-soft: #e8f1fb;
 
+	/* ─── Amber / warnings ─── */
+	--blameja-orange: #f59e0b;
 	--blameja-orange-dark: #b45309;
 	--blameja-orange-soft: #fff3e0;
 
+	/* ─── Status ─── */
 	--danger: #e53935;
+	--danger-soft: #fef2f2;
 	--warning: #f6b318;
+	--warning-soft: #fffbeb;
+	--success: #16a34a;
+	--success-soft: #f0fdf4;
 }
 
 @theme inline {
@@ -34,17 +46,28 @@
 	--color-border: var(--border);
 	--color-ring: var(--ring);
 
-	/* IMPORTANT: овие имиња прават класи bg-blamejaGreen, text-blamejaOrange, итн. */
+	/* Brand */
 	--color-blamejaGreen: var(--blameja-green);
 	--color-blamejaGreenDark: var(--blameja-green-dark);
 	--color-blamejaGreenSoft: var(--blameja-green-soft);
 
+	/* Primary blue */
+	--color-primaryBlue: var(--primary-blue);
+	--color-primaryBlueDark: var(--primary-blue-dark);
+	--color-primaryBlueSoft: var(--primary-blue-soft);
+
+	/* Amber */
 	--color-blamejaOrange: var(--blameja-orange);
 	--color-blamejaOrangeDark: var(--blameja-orange-dark);
 	--color-blamejaOrangeSoft: var(--blameja-orange-soft);
 
+	/* Status */
 	--color-danger: var(--danger);
+	--color-dangerSoft: var(--danger-soft);
 	--color-warning: var(--warning);
+	--color-warningSoft: var(--warning-soft);
+	--color-success: var(--success);
+	--color-successSoft: var(--success-soft);
 }
 
 @layer base {
@@ -56,3 +79,117 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+/* ─────────────────────────────────────────────
+   CUSTOM COMPONENT CLASSES
+───────────────────────────────────────────── */
+@layer components {
+
+/* Sidebar */
+.sidebar-nav {
+	background: linear-gradient(
+		170deg,
+		#238f40 0%,
+		#1a7835 22%,
+		#145e29 50%,
+		#0f4b20 75%,
+		#0a3a18 100%
+	);
+	box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.14);
+}
+
+.sidebar-texture {
+	background-image: repeating-linear-gradient(
+		-50deg,
+		rgba(255, 255, 255, 0) 0px,
+		rgba(255, 255, 255, 0) 5px,
+		rgba(255, 255, 255, 0.018) 5px,
+		rgba(255, 255, 255, 0.018) 6px
+	);
+}
+
+/* ─────────────────────────────────────────────
+   SHARED CARD VARIANTS
+───────────────────────────────────────────── */
+.card {
+	@apply rounded-2xl bg-white border border-slate-100;
+	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 8px 0 rgba(0, 0, 0, 0.04);
+}
+
+.card-panel {
+	@apply rounded-2xl bg-white border border-slate-100;
+	box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.07), 0 8px 24px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ─────────────────────────────────────────────
+   KEYBOARD SHORTCUT BADGES
+───────────────────────────────────────────── */
+.kbd {
+	@apply inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-bold
+		   border border-slate-300 bg-slate-100 text-slate-500 leading-none tracking-wide;
+}
+
+/* ─────────────────────────────────────────────
+   FORM INPUTS
+───────────────────────────────────────────── */
+.form-input {
+	@apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm
+		   outline-none transition-colors
+		   focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/20;
+}
+
+.form-label {
+	@apply block text-xs font-semibold text-slate-600 mb-1.5;
+}
+
+/* ─────────────────────────────────────────────
+   STATUS BADGES
+───────────────────────────────────────────── */
+.badge-ok {
+	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+		   bg-successSoft text-success border border-emerald-100;
+}
+
+.badge-low {
+	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+		   bg-blamejaOrangeSoft text-blamejaOrangeDark border border-amber-100;
+}
+
+.badge-zero {
+	@apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold
+		   bg-dangerSoft text-danger border border-red-100;
+}
+
+/* ─────────────────────────────────────────────
+   TABLE
+───────────────────────────────────────────── */
+.data-table thead th {
+	@apply px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide
+		   text-slate-500 border-b border-slate-100;
+}
+
+.data-table thead th.col-right {
+	@apply text-right;
+}
+
+.data-table tbody td {
+	@apply px-3 py-3 border-b border-slate-50 text-sm text-slate-700;
+}
+
+.data-table tbody tr:last-child td {
+	@apply border-b-0;
+}
+
+.data-table tbody tr:hover td {
+	@apply bg-slate-50/70 transition-colors;
+}
+
+.row-low td {
+	@apply bg-amber-50/50;
+}
+
+.row-zero td {
+	@apply bg-red-50/30;
+}
+
+} /* end @layer components */

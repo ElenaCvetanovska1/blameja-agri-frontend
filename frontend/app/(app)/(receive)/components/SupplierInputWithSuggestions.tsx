@@ -30,7 +30,6 @@ export const SupplierInputWithSuggestions = ({
 	onOpenAll,
 	onCloseAll,
 	placeholder = 'Кликни за листа или почни да куцаш…',
-	label = 'Добавувач',
 	hint,
 }: Props) => {
 	const id = useId();
@@ -69,7 +68,7 @@ export const SupplierInputWithSuggestions = ({
 				htmlFor={id}
 				className="mb-1 block text-sm font-medium text-slate-800"
 			>
-				{label}
+				
 			</label>
 
 			<div className="relative">

@@ -623,17 +623,17 @@ const FiscalPage = () => {
 	const [tab, setTab] = useState<Tab>('reports');
 
 	return (
-		<div className="space-y-5 pb-6">
-			{/* Header */}
-			<div>
-				<h1 className="text-2xl font-bold text-slate-900">Фискална</h1>
-				<p className="mt-1 text-xs text-slate-500">
-					Извештаи · Готово влезно/излезно · Синхронизација на часовник · Меморија · Артикли
+		<div className="flex flex-col h-full min-h-0 gap-4">
+			{/* Header — shrink-0 */}
+			<div className="shrink-0">
+				<h1 className="text-xl font-bold text-slate-900">Фискална</h1>
+				<p className="mt-0.5 text-xs text-slate-500">
+					Извештаи · Готово влезно/излезно · Синхронизација · Меморија · Артикли
 				</p>
 			</div>
 
-			{/* Tabs */}
-			<div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-full sm:w-fit">
+			{/* Tabs — shrink-0 */}
+			<div className="flex gap-1 rounded-xl bg-slate-100 p-1 w-full sm:w-fit shrink-0">
 				{TABS.map((t) => (
 					<button
 						key={t.id}
@@ -651,11 +651,13 @@ const FiscalPage = () => {
 				))}
 			</div>
 
-			{/* Content */}
-			{tab === 'reports' && <ReportsTab />}
-			{tab === 'device'  && <DeviceTab />}
-			{tab === 'memory'  && <MemoryTab />}
-			{tab === 'items'   && <ItemsTab />}
+			{/* Content — flex-1, internal scroll */}
+			<div className="flex-1 overflow-y-auto min-h-0 pb-2">
+				{tab === 'reports' && <ReportsTab />}
+				{tab === 'device'  && <DeviceTab />}
+				{tab === 'memory'  && <MemoryTab />}
+				{tab === 'items'   && <ItemsTab />}
+			</div>
 		</div>
 	);
 };
