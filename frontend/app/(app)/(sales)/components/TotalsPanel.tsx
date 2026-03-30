@@ -17,6 +17,7 @@ type Props = {
 	cashReceivedStr: string;
 	onCashReceivedStrChange: (v: string) => void;
 	onSubmit: () => void;
+	fiscalWarnings?: string[];
 };
 
 export const TotalsPanel = ({
@@ -30,6 +31,7 @@ export const TotalsPanel = ({
 	onPaymentMethodChange,
 	cashReceivedStr,
 	onCashReceivedStrChange,
+	fiscalWarnings = [],
 }: Props) => {
 	const cashNum = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 	const change = Math.max(0, cashNum - totals.total);
@@ -153,7 +155,19 @@ export const TotalsPanel = ({
 				/>
 			</div>
 
-			{/* ─── Submit CTA ─── */}
+			{/* ─── Fiscal warnings ─── */}
+		{fiscalWarnings.length > 0 && (
+			<div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 space-y-1">
+				{fiscalWarnings.map((w) => (
+					<div key={w} className="flex items-center gap-2 text-xs font-semibold text-amber-800">
+						<span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+						{w}
+					</div>
+				))}
+			</div>
+		)}
+
+		{/* ─── Submit CTA ─── */}
 			<button
 				type="button"
 				onClick={onSubmit}

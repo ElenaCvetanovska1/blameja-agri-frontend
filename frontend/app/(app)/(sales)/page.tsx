@@ -12,7 +12,9 @@ import {
 	FiClock,
 	FiPlus,
 	FiZap,
+	FiRefreshCw,
 } from 'react-icons/fi';
+import { fiscalBridge } from 'app/lib/fiscal-bridge';
 
 import type { ProductStockRow } from './types';
 import { num } from './utils';
@@ -21,6 +23,7 @@ import { useProductSearch } from './hooks/useProductSearch';
 import { useCart } from './hooks/useCart';
 import { useSalesSubmit } from './hooks/useSalesSubmit';
 import { useFiscalSaleFlow } from './hooks/useFiscalSaleFlow';
+import { useFiscalStatus } from './hooks/useFiscalStatus';
 import { CartItemCard } from './components/CartItemCard';
 import { ScannerModal } from './components/ScannerModal';
 import { TotalsPanel } from './components/TotalsPanel';
@@ -93,6 +96,7 @@ const SalesPage = () => {
 	const { cart, totals, resetCart, removeItem, changeQty, addToCartFromRow, patchFinalPrice, clampFinalPriceOnBlur } = useCart();
 	const { submitSale } = useSalesSubmit();
 	const { runFiscalSale } = useFiscalSaleFlow();
+	const { status: fiscalStatus, warnings: fiscalWarnings, refresh: refreshFiscalStatus } = useFiscalStatus();
 	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code, storeNo);
 
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
@@ -140,6 +144,21 @@ const SalesPage = () => {
 		setBusy(true);
 		try {
 			const { receiptId } = await submitSale({ cart, totals, note, paymentMethod, cashReceivedStr, onSuccess: resetSale });
+
+			// Fresh status check right before fiscal action
+			try {
+				const deviceStatus = await fiscalBridge.getStatus();
+				refreshFiscalStatus(); // sync UI badge with the fresh result
+				if (!deviceStatus.IsConnected) {
+					toast.error('Продажбата е зачувана, но фискалната каса е офлајн — receipтот не е испечатен.');
+					return;
+				}
+			} catch {
+				refreshFiscalStatus();
+				toast.error('Продажбата е зачувана, но FiscalBridge не е достапен — receipтот не е испечатен.');
+				return;
+			}
+
 			void runFiscalSale({ receiptId, cart, totals, paymentMethod });
 		} catch (e: unknown) {
 			const msg = (e as Error)?.message ?? '';
@@ -276,6 +295,35 @@ const SalesPage = () => {
 						<span className="text-slate-300 mx-0.5">·</span>
 						<span className="kbd">F9</span><span>Зачувај</span>
 					</div>
+
+					{/* Fiscal device status badge + manual refresh */}
+					<div className="hidden sm:flex items-center gap-1 shrink-0">
+						<div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border
+							${fiscalStatus === 'online'  ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+							  fiscalStatus === 'warning' ? 'bg-amber-50  border-amber-200  text-amber-700'  :
+							  fiscalStatus === 'offline' ? 'bg-red-50    border-red-200    text-red-700'    :
+							                              'bg-slate-50  border-slate-200  text-slate-500'  }`}
+						>
+							<span className={`h-2 w-2 rounded-full
+								${fiscalStatus === 'online'  ? 'bg-emerald-500' :
+								  fiscalStatus === 'warning' ? 'bg-amber-500'  :
+								  fiscalStatus === 'offline' ? 'bg-red-500'    :
+								                              'bg-slate-400 animate-pulse'}`}
+							/>
+							{fiscalStatus === 'online'  ? 'Фискална поврзана' :
+							 fiscalStatus === 'warning' ? 'Фискална — предупредување' :
+							 fiscalStatus === 'offline' ? 'Фискална офлајн' :
+							                             'Фискална проверка...'}
+						</div>
+						<button
+							type="button"
+							onClick={() => refreshFiscalStatus()}
+							title="Провери статус на фискална каса"
+							className="h-6 w-6 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+						>
+							<FiRefreshCw className="w-3 h-3" />
+						</button>
+					</div>
 				</div>
 			</div>
 
@@ -408,6 +456,7 @@ const SalesPage = () => {
 								onPaymentMethodChange={setPaymentMethod}
 								cashReceivedStr={cashReceivedStr}
 								onCashReceivedStrChange={setCashReceivedStr}
+								fiscalWarnings={fiscalWarnings}
 							/>
 						</div>
 					</div>
