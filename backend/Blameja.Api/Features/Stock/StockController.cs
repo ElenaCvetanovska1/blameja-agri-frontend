@@ -197,10 +197,16 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
 
         using var conn = db.CreateConnection();
 
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+
         const string currentQtySql = """
             SELECT qty_on_hand FROM product_stock WHERE product_id = @productId;
             """;
-        var currentQty = await conn.ExecuteScalarAsync<decimal?>(currentQtySql, new { productId = request.ProductId });
+        var currentQty = await conn.ExecuteScalarAsync<decimal?>(
+            currentQtySql,
+            new { productId = request.ProductId },
+            tx);
         if (currentQty is null)
             throw new ApiException("Производот не е пронајден.", StatusCodes.Status404NotFound);
 
@@ -234,7 +240,7 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
 
       
 
-        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { reason, userId });
+        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { reason, userId }, tx);
 
         await conn.ExecuteAsync(itemSql, new
         {
@@ -244,7 +250,9 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
             direction,
             unitCost   = request.UnitCost,
             unitPrice  = request.UnitPrice,
-        });
+        }, tx);
+
+        tx.Commit();
 
         return NoContent();
     }

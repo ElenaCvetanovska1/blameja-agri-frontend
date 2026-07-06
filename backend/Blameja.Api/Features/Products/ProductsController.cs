@@ -1,11 +1,13 @@
 using Blameja.Api.Infrastructure.Database;
 using Dapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Blameja.Api.Features.Products;
 
 [ApiController]
 [Route("api/products")]
+[Authorize]
 public sealed class ProductsController(DbConnectionFactory db) : ControllerBase
 {
     /// <summary>
@@ -21,6 +23,8 @@ public sealed class ProductsController(DbConnectionFactory db) : ControllerBase
         [FromQuery] string? search,
         [FromQuery] int limit = 100)
     {
+        limit = Math.Clamp(limit, 1, 500);
+
         const string sql = """
             SELECT
                 product_id,

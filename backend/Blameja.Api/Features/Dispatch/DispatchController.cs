@@ -31,6 +31,8 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return Ok(Array.Empty<DispatchProductDto>());
 
+        limit = Math.Clamp(limit, 1, 50);
+
         var term     = q.Trim();
         var pluExact = term.All(char.IsDigit) ? term : null;
 
@@ -110,6 +112,9 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
         using var conn = db.CreateConnection();
 
         // ── 1. Insert sales_receipts (DISPATCH) ────────────────────────────
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+
         const string receiptSql = """
             INSERT INTO sales_receipts (doc_type, external_doc_no, total, payment, cash_received)
             VALUES ('DISPATCH', @docNo, @total, NULL, NULL)
@@ -120,7 +125,7 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
         {
             docNo = request.DocNo,
             total = Math.Round(request.Total, 2),
-        });
+        }, tx);
 
         // ── 2. Insert sales_items ──────────────────────────────────────────
         const string itemSql = """
@@ -141,7 +146,7 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
                 basePrice  = item.Cena,
                 finalPrice,
                 discount,
-            });
+            }, tx);
         }
 
         // ── 3. Insert stock_movements OUT ──────────────────────────────────
@@ -155,7 +160,7 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
             RETURNING id;
             """;
 
-        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { note });
+        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { note }, tx);
 
         // ── 4. Insert stock_movement_items ─────────────────────────────────
         const string movItemSql = """
@@ -172,8 +177,10 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
                 productId  = item.ProductId,
                 qty        = item.Qty,
                 unitPrice  = finalPrice,
-            });
+            }, tx);
         }
+
+        tx.Commit();
 
         return Ok(new DispatchReceiptDto { Id = receipt.Id, ReceiptNo = receipt.ReceiptNo });
     }

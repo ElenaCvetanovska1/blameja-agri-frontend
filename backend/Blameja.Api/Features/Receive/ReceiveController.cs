@@ -31,6 +31,8 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return Ok(Array.Empty<ReceiveProductChoiceDto>());
 
+        limit = Math.Clamp(limit, 1, 50);
+
         var catId = string.IsNullOrWhiteSpace(categoryId) ? null : categoryId;
 
         // Parse categoryId to Guid (nullable)
@@ -178,6 +180,9 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         using var conn = db.CreateConnection();
 
         // ── Lookup existing product by PLU or barcode ──────────────────────
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+
         const string lookupSql = """
             SELECT id, plu, barcode
             FROM products
@@ -187,7 +192,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             """;
 
         var existing = await conn.QuerySingleOrDefaultAsync<(Guid Id, string? Plu, string? Barcode)>(
-            lookupSql, new { plu, barcode });
+            lookupSql, new { plu, barcode }, tx);
 
         Guid productId;
 
@@ -208,7 +213,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             {
                 plu, barcode, name, description,
                 sellingPrice, taxGroup, categoryId, unit, storeNo,
-            });
+            }, tx);
         }
         else
         {
@@ -248,7 +253,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             {
                 productId, categoryId, taxGroup, plu, name, unit, storeNo,
                 barcode, description, sellingPrice,
-            });
+            }, tx);
         }
 
         // ── Insert stock_movements IN ──────────────────────────────────────
@@ -263,7 +268,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             note,
             userId   = userId,
             supplierId = supplierId,
-        });
+        }, tx);
 
         // ── Insert stock_movement_items ────────────────────────────────────
         const string itemSql = """
@@ -278,7 +283,9 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             qty,
             unitCost,
             unitPrice = sellingPrice,
-        });
+        }, tx);
+
+        tx.Commit();
 
         return Ok(new ReceiveResult(productId, movementId));
     }

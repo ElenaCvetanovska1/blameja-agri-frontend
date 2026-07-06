@@ -31,6 +31,8 @@ public sealed class SuppliersController(DbConnectionFactory db) : ControllerBase
     {
         // Delegates to the same PostgreSQL function that Supabase RPC called.
         // suppliers_search(_q text, _limit int) returns table(id, name, address)
+        limit = Math.Clamp(limit, 1, 100);
+
         const string sql = "SELECT * FROM suppliers_search(@q, @limit);";
 
         using var conn = db.CreateConnection();

@@ -36,6 +36,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return Ok(Array.Empty<ProductStockDto>());
 
+        limit = Math.Clamp(limit, 1, 50);
+
         // If the query is all-digits, also attempt an exact PLU match
         var pluExact = q.Trim() is { } t && t.Length > 0 && t.All(char.IsDigit) ? t : null;
 
@@ -136,6 +138,9 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         if (request.Total <= 0)
             throw new ApiException("Вкупниот износ мора да биде > 0.");
 
+        if (request.Payment is not ("CASH" or "CARD"))
+            throw new ApiException("Invalid payment method.");
+
         if (request.Payment == "CASH")
         {
             var cash = request.CashReceived ?? 0;
@@ -147,6 +152,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         using var conn = db.CreateConnection();
 
         // ── Stock level check (warning only — sale is allowed to go negative) ─
+        conn.Open();
+
         var stockWarnings = new List<string>();
         foreach (var item in request.Items)
         {
@@ -177,6 +184,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                     $"Недоволно готово. Вкупно: {request.Total:F2} / Дава: {cash:F2}.");
         }
 
+        using var tx = conn.BeginTransaction();
+
         const string receiptSql = """
             INSERT INTO sales_receipts (payment, total, cash_received)
             VALUES (@payment::payment_method, @total, @cashReceived)
@@ -188,7 +197,7 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
             payment      = request.Payment,
             total        = request.Total,
             cashReceived = request.CashReceived,
-        });
+        }, tx);
 
         // ── 2. Insert sales_items (bulk) ───────────────────────────────────
         const string itemSql = """
@@ -206,7 +215,7 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                 item.BasePrice,
                 item.Price,
                 item.Discount,
-            });
+            }, tx);
         }
 
         // ── 3. Insert stock_movements (OUT) ────────────────────────────────
@@ -220,7 +229,7 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
             RETURNING id;
             """;
 
-        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { note });
+        var movementId = await conn.ExecuteScalarAsync<Guid>(movSql, new { note }, tx);
 
         // ── 4. Insert stock_movement_items (bulk) ──────────────────────────
         const string movItemSql = """
@@ -236,8 +245,10 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                 item.ProductId,
                 item.Qty,
                 unitPrice = item.Price,
-            });
+            }, tx);
         }
+
+        tx.Commit();
 
         var dto = new SaleReceiptDto
         {

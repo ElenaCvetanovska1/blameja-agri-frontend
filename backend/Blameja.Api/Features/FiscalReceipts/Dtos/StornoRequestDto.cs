@@ -15,7 +15,7 @@ public sealed class StornoRequestDto
     /// <summary>Fiscal slip number returned by FiscalBridge after closeReceipt.</summary>
     public int?    FiscalSlipNo    { get; init; }
 
-    /// <summary>Fiscal execution result: "success" | "failed" | "offline" | "partial" | "pending".</summary>
+    /// <summary>Fiscal execution result: "success" | "failed" | "partial" | "pending".</summary>
     public string  FiscalStatus    { get; init; } = "success";
 
     public string? FiscalError     { get; init; }

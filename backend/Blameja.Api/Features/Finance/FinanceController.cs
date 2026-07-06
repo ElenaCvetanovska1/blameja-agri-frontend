@@ -55,6 +55,8 @@ public sealed class FinanceController(DbConnectionFactory db) : ControllerBase
         [FromQuery] int    limit = 8,
         CancellationToken  ct   = default)
     {
+        limit = Math.Clamp(limit, 1, 100);
+
         const string sql = """
             SELECT
                 product_id,

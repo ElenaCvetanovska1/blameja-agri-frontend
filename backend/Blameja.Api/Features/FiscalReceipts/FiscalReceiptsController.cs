@@ -21,6 +21,8 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
         [FromQuery] int days = 30,
         CancellationToken ct = default)
     {
+        days = Math.Clamp(days, 1, 365);
+
         const string sql = """
             SELECT
                 id,
@@ -139,6 +141,12 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
         [FromBody] StornoRequestDto req,
         CancellationToken ct = default)
     {
+        if (req.FiscalStatus is not ("success" or "failed" or "partial" or "pending"))
+            return BadRequest(new { message = "Invalid fiscal status." });
+
+        if (req.Payment is not ("CASH" or "CARD"))
+            return BadRequest(new { message = "Invalid payment method." });
+
         if (req.Items is null || req.Items.Count == 0)
             return BadRequest(new { message = "Мора да се изберат ставки за сторно." });
 
@@ -208,6 +216,10 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
         }
 
         // ── 4. Persist storno receipt + items in a transaction ─────────────
+        var currentUserId = User.FindFirst("sub")?.Value;
+        var stornoTotal = req.Items.Sum(reqItem =>
+            originalItems[reqItem.OriginalItemId].UnitPrice * reqItem.Quantity);
+
         using var tx = conn.BeginTransaction();
         try
         {
@@ -234,9 +246,9 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
                     req.FiscalStatus,
                     req.FiscalError,
                     StoreNo       = req.StoreNo ?? original.StoreNo,
-                    req.Payment,
-                    req.Total,
-                    CreatedBy     = req.CreatedBy ?? original.CreatedBy,
+                    Payment       = req.Payment,
+                    Total         = stornoTotal,
+                    CreatedBy     = currentUserId ?? original.CreatedBy,
                     req.BridgeResponse,
                     FiscalizedAt  = req.FiscalStatus == "success" ? now : (DateTime?)null,
                     CreatedAt     = now,
