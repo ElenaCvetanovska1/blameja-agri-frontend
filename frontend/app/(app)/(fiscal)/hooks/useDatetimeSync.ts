@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { fiscalBridge, FiscalBridgeOfflineError } from 'app/lib/fiscal-bridge';
 
@@ -35,7 +35,7 @@ export const useDatetimeSync = (): DatetimeSyncState => {
 	const [readBusy, setReadBusy] = useState(false);
 	const [syncBusy, setSyncBusy] = useState(false);
 
-	const readDateTime = async () => {
+	const readDateTime = useCallback(async () => {
 		setReadBusy(true);
 		try {
 			const res = await fiscalBridge.getDateTime();
@@ -60,9 +60,9 @@ export const useDatetimeSync = (): DatetimeSyncState => {
 		} finally {
 			setReadBusy(false);
 		}
-	};
+	}, []);
 
-	const syncNow = async () => {
+	const syncNow = useCallback(async () => {
 		setSyncBusy(true);
 		try {
 			const now = new Date();
@@ -80,7 +80,7 @@ export const useDatetimeSync = (): DatetimeSyncState => {
 		} finally {
 			setSyncBusy(false);
 		}
-	};
+	}, [readDateTime]);
 
 	return { deviceTimeStr, deviceTime, driftSeconds, readBusy, syncBusy, readDateTime, syncNow };
 };

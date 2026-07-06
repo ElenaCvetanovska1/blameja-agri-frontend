@@ -13,6 +13,11 @@ type Props = {
 	onRemove: (id: string) => void;
 };
 
+const DISPATCH_UNITS = new Set(['', 'Ð¿Ð°Ñ€', 'ÐºÐ³', 'Ð¼']);
+
+const toDispatchUnit = (value: string): DispatchRowVM['edinMer'] =>
+	DISPATCH_UNITS.has(value) ? (value as DispatchRowVM['edinMer']) : '';
+
 export const DispatchTable = ({ rows, onUpdate, onRemove }: Props) => {
 	const cellInputCls = 'w-full rounded-md border border-slate-200 px-2 py-1 text-sm';
 
@@ -122,7 +127,7 @@ const DispatchRow = ({
 				<select
 					className={cellInputCls}
 					value={r.edinMer || ''}
-					onChange={(e) => onUpdate(r.id, { edinMer: e.target.value })}
+					onChange={(e) => onUpdate(r.id, { edinMer: toDispatchUnit(e.target.value) })}
 				>
 					<option value="">—</option>
 					<option value="пар">пар</option>

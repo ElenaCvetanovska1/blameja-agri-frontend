@@ -628,11 +628,11 @@ const ReceivePage = () => {
 						{form.unitCost &&
 							form.sellingPrice &&
 							(() => {
-								const cost = parseFloat(form.unitCost);
-								const sell = parseFloat(form.sellingPrice);
+								const cost = Number.parseFloat(form.unitCost);
+								const sell = Number.parseFloat(form.sellingPrice);
 								if (cost > 0 && sell > 0) {
 									const margin = (((sell - cost) / sell) * 100).toFixed(1);
-									const marginNum = parseFloat(margin);
+									const marginNum = Number.parseFloat(margin);
 									return (
 										<div
 											className={`mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold

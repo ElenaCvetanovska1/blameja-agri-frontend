@@ -4,7 +4,6 @@ import { BLAMEJA_ROUTES } from 'app/routes';
 import { api, tokenStorage } from 'app/lib/api-client';
 import { useRole } from 'app/lib/useRole';
 import {
-	FiHome,
 	FiShoppingCart,
 	FiPackage,
 	FiDatabase,

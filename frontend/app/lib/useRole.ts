@@ -1,11 +1,8 @@
 // app/lib/useRole.ts
 //
 // Fetches the current user's role from public.profiles via /api/auth/me.
-// Uses raw fetch (NOT the api-client) so failures never trigger the
-// api-client's automatic logout + reload flow.
-//
-// On fetch error: throws → React Query retries (retry: 2, exponential backoff)
-// On success with null token: returns null immediately, no retries needed
+// Uses raw fetch instead of api-client so failures never trigger the
+// api-client's automatic logout and reload flow.
 
 import { useQuery } from '@tanstack/react-query';
 import { tokenStorage } from './api-client';
@@ -19,17 +16,17 @@ export const useRole = () => {
 		queryKey: ['auth', 'me'],
 		queryFn: async () => {
 			const token = tokenStorage.getAccessToken();
-			if (!token) return null; // not logged in — no point retrying
+			if (!token) return null;
 
 			const res = await fetch(`${BASE_URL}/api/auth/me`, {
 				headers: { Authorization: `Bearer ${token}` },
 			});
 
-			if (!res.ok) throw new Error(`HTTP ${res.status}`); // let React Query retry
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			return res.json() as Promise<{ role: Role }>;
 		},
-		staleTime: Infinity, // role never changes mid-session — cache forever
-		retry: 2, // retry up to 2 times on error (exponential backoff)
+		staleTime: Number.POSITIVE_INFINITY,
+		retry: 2,
 	});
 
 	return {

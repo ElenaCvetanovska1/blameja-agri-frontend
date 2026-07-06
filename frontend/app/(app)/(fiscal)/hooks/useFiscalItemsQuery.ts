@@ -57,7 +57,7 @@ function compareItems(fiscal: ItemDetail[], db: StockRow[]): ComparedItem[] {
 			results.push({ plu, fiscalItem: fi, status: 'fiscal_only' });
 			continue;
 		}
-		const fiscalPrice = parseFloat(fi.Price);
+		const fiscalPrice = Number.parseFloat(fi.Price);
 		const dbName32 = truncateFiscalName(db.name ?? '', 32);
 		const nameOk = fi.Name.toLowerCase() === dbName32.toLowerCase();
 		const priceOk = Math.abs(fiscalPrice - (db.selling_price ?? 0)) < PRICE_TOLERANCE;

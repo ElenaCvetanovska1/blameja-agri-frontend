@@ -11,7 +11,7 @@ import { useFiscalItemsQuery, type CompareStatus } from './hooks/useFiscalItemsQ
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const money = (s: string | number | null | undefined) => {
-	const n = typeof s === 'string' ? parseFloat(s) : Number(s);
+	const n = typeof s === 'string' ? Number.parseFloat(s) : Number(s);
 	return Number.isFinite(n) ? n.toFixed(2) : '—';
 };
 
@@ -181,14 +181,14 @@ const ReportsTab = () => {
 // ─── Tab: Уред ────────────────────────────────────────────────────────────────
 
 const DeviceTab = () => {
-	const { deviceTimeStr, deviceTime, driftSeconds, readBusy, syncBusy, readDateTime, syncNow } = useDatetimeSync();
+	const { deviceTimeStr, driftSeconds, readBusy, syncBusy, readDateTime, syncNow } = useDatetimeSync();
 	const { entry, busy: entryBusy, fetchEntry } = useLastEntry();
 	const [entryType, setEntryType] = useState(0);
 
 	// Auto-read datetime on first render
 	useEffect(() => {
 		void readDateTime();
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [readDateTime]);
 
 	const drift = absDrift(driftSeconds);
 	const driftHigh = drift !== null && drift > 60;
@@ -352,8 +352,14 @@ const MemoryTab = () => {
 			>
 				<div className="flex flex-wrap items-end gap-3">
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Тип</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-date-type"
+						>
+							Тип
+						</label>
 						<select
+							id="memory-date-type"
 							value={dateType}
 							onChange={(e) => setDateType(Number(e.target.value) as 0 | 1)}
 							disabled={dateBusy}
@@ -365,8 +371,14 @@ const MemoryTab = () => {
 					</div>
 
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Почетен датум (DD-MM-YY)</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-start-date"
+						>
+							Почетен датум (DD-MM-YY)
+						</label>
 						<input
+							id="memory-start-date"
 							type="text"
 							placeholder={todayFiscal()}
 							value={startDate}
@@ -377,8 +389,14 @@ const MemoryTab = () => {
 					</div>
 
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Краен датум (DD-MM-YY)</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-end-date"
+						>
+							Краен датум (DD-MM-YY)
+						</label>
 						<input
+							id="memory-end-date"
 							type="text"
 							placeholder={todayFiscal()}
 							value={endDate}
@@ -412,8 +430,14 @@ const MemoryTab = () => {
 			>
 				<div className="flex flex-wrap items-end gap-3">
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Тип</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-z-type"
+						>
+							Тип
+						</label>
 						<select
+							id="memory-z-type"
 							value={zType}
 							onChange={(e) => setZType(Number(e.target.value) as 0 | 1)}
 							disabled={zBusy}
@@ -425,8 +449,14 @@ const MemoryTab = () => {
 					</div>
 
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Прв Z-број</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-z-first"
+						>
+							Прв Z-број
+						</label>
 						<input
+							id="memory-z-first"
 							type="number"
 							min="1"
 							placeholder="1"
@@ -438,8 +468,14 @@ const MemoryTab = () => {
 					</div>
 
 					<div className="flex flex-col gap-1">
-						<label className="text-xs font-medium text-slate-600">Последен Z-број</label>
+						<label
+							className="text-xs font-medium text-slate-600"
+							htmlFor="memory-z-last"
+						>
+							Последен Z-број
+						</label>
 						<input
+							id="memory-z-last"
 							type="number"
 							min="1"
 							placeholder="последен"
@@ -560,7 +596,7 @@ const ItemsTab = () => {
 							key={s}
 							type="button"
 							onClick={() => setFilter(s)}
-							className={`rounded-full px-3 py-1 text-xs font-semibold border transition ${filter === s ? 'ring-2 ring-offset-1 ring-blamejaGreen ' + m.color : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+							className={`rounded-full px-3 py-1 text-xs font-semibold border transition ${filter === s ? `ring-2 ring-offset-1 ring-blamejaGreen ${m.color}` : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
 						>
 							{m.label} ({cnt})
 						</button>

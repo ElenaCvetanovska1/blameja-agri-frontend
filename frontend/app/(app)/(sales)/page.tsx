@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { toast } from 'sonner';
 import { api } from 'app/lib/api-client';
@@ -95,25 +95,7 @@ const SalesPage = () => {
 
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
 
-	/* Global keyboard shortcuts */
-	useEffect(() => {
-		const handler = (e: KeyboardEvent) => {
-			if (e.key === 'F4') {
-				e.preventDefault();
-				searchInputRef.current?.focus();
-				searchInputRef.current?.select();
-			}
-			if (e.key === 'F9') {
-				e.preventDefault();
-				void handleSubmitSale();
-			}
-		};
-		window.addEventListener('keydown', handler);
-		return () => window.removeEventListener('keydown', handler);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [cart, totals, paymentMethod, cashReceivedStr]);
-
-	const resetSale = () => {
+	const resetSale = useCallback(() => {
 		setCode('');
 		setNote('');
 		resetCart();
@@ -123,7 +105,7 @@ const SalesPage = () => {
 		setFocusProductId(null);
 		setPaymentMethod('CASH');
 		setCashReceivedStr('');
-	};
+	}, [resetCart, setSuggestOpen, setSuggestions]);
 
 	const addProductToCart = async (row: ProductStockRow) => {
 		if (num(row.qty_on_hand) <= 0) toast.warning(`Внимание: залиха ${num(row.qty_on_hand)}. Ќе дозволи продажба во минус.`);
@@ -159,7 +141,7 @@ const SalesPage = () => {
 		}
 	};
 
-	const handleSubmitSale = async () => {
+	const handleSubmitSale = useCallback(async () => {
 		setBusy(true);
 		try {
 			const { receiptId } = await submitSale({ cart, totals, note, paymentMethod, cashReceivedStr, onSuccess: resetSale });
@@ -188,7 +170,24 @@ const SalesPage = () => {
 		} finally {
 			setBusy(false);
 		}
-	};
+	}, [cart, cashReceivedStr, note, paymentMethod, refreshFiscalStatus, resetSale, runFiscalSale, submitSale, totals]);
+
+	/* Global keyboard shortcuts */
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === 'F4') {
+				e.preventDefault();
+				searchInputRef.current?.focus();
+				searchInputRef.current?.select();
+			}
+			if (e.key === 'F9') {
+				e.preventDefault();
+				void handleSubmitSale();
+			}
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [handleSubmitSale]);
 
 	const handleScan = (detected: IDetectedBarcode[]) => {
 		if (!detected?.length) return;

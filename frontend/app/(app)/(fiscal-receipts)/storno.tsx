@@ -112,7 +112,7 @@ const SelectionTable = ({
 
 // ─── Review table ─────────────────────────────────────────────────────────────
 
-const ReviewTable = ({ lines }: { lines: Array<{ name: string | null; qty: number; unitPrice: number }> }) => (
+const ReviewTable = ({ lines }: { lines: Array<{ id: string; name: string | null; qty: number; unitPrice: number }> }) => (
 	<table className="w-full text-xs">
 		<thead>
 			<tr className="bg-slate-50 border-b border-slate-100 text-left text-slate-500 font-semibold uppercase tracking-wide">
@@ -123,9 +123,9 @@ const ReviewTable = ({ lines }: { lines: Array<{ name: string | null; qty: numbe
 			</tr>
 		</thead>
 		<tbody className="divide-y divide-slate-100">
-			{lines.map((line, i) => (
+			{lines.map((line) => (
 				<tr
-					key={i}
+					key={line.id}
 					className="hover:bg-slate-50"
 				>
 					<td className="px-3 py-2 font-medium text-slate-800">{line.name ?? '—'}</td>
@@ -359,7 +359,7 @@ export default function StornoPage() {
 			{step === 'review' && (
 				<>
 					<SectionCard title="Преглед на сторно">
-						<ReviewTable lines={selectedLines.map((l) => ({ name: l.name, qty: l.qty, unitPrice: l.unitPrice }))} />
+						<ReviewTable lines={selectedLines.map((l) => ({ id: l.originalItemId, name: l.name, qty: l.qty, unitPrice: l.unitPrice }))} />
 					</SectionCard>
 
 					<div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-5 space-y-3">
