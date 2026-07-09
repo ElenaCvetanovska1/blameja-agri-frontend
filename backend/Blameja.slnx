@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="Blameja.Api/Blameja.Api.csproj" />
+  <Project Path="Blameja.FiscalBridge/Blameja.FiscalBridge.csproj" />
 </Solution>
