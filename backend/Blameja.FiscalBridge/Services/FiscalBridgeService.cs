@@ -144,6 +144,28 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, commandId, BuildRegisterSalePayload(request), cancellationToken);
     }
 
+    public Task<FiscalRealCommandResponse> ExecuteReceiptPaymentAsync(
+        ReceiptPaymentRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "CALCULATE_TOTAL";
+        const byte commandId = AccentCommandIds.CalculateTotal;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to calculate a real fiscal receipt payment.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, BuildReceiptPaymentPayload(request), cancellationToken);
+    }
+
     public IReadOnlyList<string> GetAvailablePorts()
     {
         return serialPortClient.GetPortNames();
@@ -414,6 +436,39 @@ public sealed class FiscalBridgeService(
             FormatPrinterCorrection(correctionType, request.PriceCorrectionValue));
     }
 
+    private static string BuildReceiptPaymentPayload(ReceiptPaymentRequest request)
+    {
+        var paymentMethod = ParseOptionalPayment(request.PaymentMethod);
+        var payload = new List<string>();
+        var infoLine1 = request.InfoLine1?.Trim();
+        var infoLine2 = request.InfoLine2?.Trim();
+
+        if (!string.IsNullOrEmpty(infoLine1))
+        {
+            payload.Add(infoLine1);
+        }
+
+        if (!string.IsNullOrEmpty(infoLine2))
+        {
+            payload.Add("\n");
+            payload.Add(infoLine2);
+        }
+
+        payload.Add("\t");
+
+        if (paymentMethod is null)
+        {
+            payload.Add("\t");
+        }
+        else if (request.Amount > 0)
+        {
+            payload.Add(AccentProtocol.ToPaymentChar(paymentMethod.Value).ToString());
+            payload.Add(AccentProtocol.FormatPrice(request.Amount));
+        }
+
+        return string.Concat(payload);
+    }
+
     private static string FormatPrinterDescription(string? productName, ICollection<string> warnings)
     {
         var description = (productName ?? string.Empty).Trim();
@@ -442,7 +497,7 @@ public sealed class FiscalBridgeService(
         var first = description[..19];
         var remainingEndExclusive = Math.Max(19, description.Length - 1);
         var remaining = description[19..remainingEndExclusive];
-        var second = remaining[..Math.Min(19, remaining.Length)];
+        var second = remaining.Length > 20 ? remaining[..19] : remaining;
 
         return string.IsNullOrEmpty(second) ? first : $"{first}\n{second}";
     }
@@ -505,6 +560,13 @@ public sealed class FiscalBridgeService(
             "DEBIT" => AccentPaymentMethod.Debit,
             _ => throw new InvalidOperationException("Invalid payment method.")
         };
+    }
+
+    private static AccentPaymentMethod? ParseOptionalPayment(string? payment)
+    {
+        return string.IsNullOrWhiteSpace(payment)
+            ? null
+            : ParsePayment(payment);
     }
 
     private static AccentPriceCorrectionType ParsePriceCorrectionType(string? correctionType)

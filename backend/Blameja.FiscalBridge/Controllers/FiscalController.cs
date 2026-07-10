@@ -74,6 +74,25 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("receipt/payment")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> ReceiptPayment(
+        [FromBody] ReceiptPaymentRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateReceiptPayment(request);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteReceiptPaymentAsync(
+            request!,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
@@ -250,6 +269,40 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return ToValidationDictionary(errors);
     }
 
+    private static Dictionary<string, string[]> ValidateReceiptPayment(ReceiptPaymentRequest? request)
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string key, string message)
+        {
+            if (!errors.TryGetValue(key, out var messages))
+            {
+                messages = [];
+                errors[key] = messages;
+            }
+
+            messages.Add(message);
+        }
+
+        if (request is null)
+        {
+            Add("request", "Request body is required.");
+            return ToValidationDictionary(errors);
+        }
+
+        if (request.Amount < 0)
+        {
+            Add("amount", "Amount must be greater than or equal to 0.");
+        }
+
+        if (!IsValidOptionalPayment(request.PaymentMethod))
+        {
+            Add("paymentMethod", "Payment method must be Cash, Credit, Check, Debit, or null.");
+        }
+
+        return ToValidationDictionary(errors);
+    }
+
     private static bool IsValidPriceCorrectionType(string? correctionType)
     {
         return correctionType?.Trim().ToUpperInvariant() is null or "" or
@@ -258,6 +311,11 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
             "DISCOUNT_PERCENT" or
             "SURCHARGE_VALUE" or
             "SURCHARGE_PERCENT";
+    }
+
+    private static bool IsValidOptionalPayment(string? payment)
+    {
+        return string.IsNullOrWhiteSpace(payment) || IsValidPayment(payment);
     }
 
     private static bool IsBlocked(FiscalRealCommandResponse response)
