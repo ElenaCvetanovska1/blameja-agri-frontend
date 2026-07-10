@@ -166,6 +166,28 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, commandId, BuildReceiptPaymentPayload(request), cancellationToken);
     }
 
+    public Task<FiscalRealCommandResponse> ExecuteCloseFiscalReceiptAsync(
+        ReceiptCloseRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "CLOSE_FISCAL_RECEIPT";
+        const byte commandId = AccentCommandIds.CloseFiscalReceipt;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to close a real fiscal receipt.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, null, cancellationToken);
+    }
+
     public IReadOnlyList<string> GetAvailablePorts()
     {
         return serialPortClient.GetPortNames();

@@ -93,6 +93,19 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("receipt/close")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> CloseReceipt(
+        [FromBody] ReceiptCloseRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteCloseFiscalReceiptAsync(
+            request ?? new ReceiptCloseRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
