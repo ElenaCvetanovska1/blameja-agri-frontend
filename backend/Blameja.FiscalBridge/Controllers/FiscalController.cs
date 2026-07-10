@@ -35,6 +35,13 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
     }
 
+    [HttpGet("date-time")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> GetDateTime(CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteDateTimeAsync(cancellationToken);
+        return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
@@ -45,6 +52,12 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
     public ActionResult<FiscalDryRunResponse> DiagnosticDryRun()
     {
         return Ok(fiscalBridge.BuildDiagnosticDryRun());
+    }
+
+    [HttpGet("date-time/dry-run")]
+    public ActionResult<FiscalDryRunResponse> DateTimeDryRun()
+    {
+        return Ok(fiscalBridge.BuildDateTimeDryRun());
     }
 
     [HttpPost("receipt/dry-run")]

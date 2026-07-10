@@ -37,6 +37,11 @@ public sealed class FiscalBridgeService(
         return DryRun([Build("GET_DIAGNOSTIC_INFORMATION", AccentCommandIds.GetDiagnosticInformation, "1")]);
     }
 
+    public FiscalDryRunResponse BuildDateTimeDryRun()
+    {
+        return DryRun([Build("GET_DATE_TIME", AccentCommandIds.GetDateTime, null)]);
+    }
+
     public FiscalDryRunResponse BuildReceiptDryRun(FiscalReceiptRequest request)
     {
         var warnings = new List<string>();
@@ -86,6 +91,11 @@ public sealed class FiscalBridgeService(
     public Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken)
     {
         return ExecuteReadOnlyCommandAsync("GET_DIAGNOSTIC_INFORMATION", AccentCommandIds.GetDiagnosticInformation, "1", cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken)
+    {
+        return ExecuteReadOnlyCommandAsync("GET_DATE_TIME", AccentCommandIds.GetDateTime, null, cancellationToken);
     }
 
     public IReadOnlyList<string> GetAvailablePorts()
@@ -140,6 +150,10 @@ public sealed class FiscalBridgeService(
 
         var serialResult = await serialPortClient.SendAsync(packet.PacketBytes, cancellationToken);
         var response = responseParser.Parse(commandId, serialResult);
+        var responseLength = GetResponseByte(response.ResponseBytes, 1);
+        var responseSequence = GetResponseByte(response.ResponseBytes, 2);
+        var responseCommandId = GetResponseByte(response.ResponseBytes, 3);
+        var expectedCommandIdHex = $"0x{commandId:X2}";
 
         logger.LogInformation(
             "Fiscal command {CommandName} completed on {ComPort}. ResponseStatus={ResponseStatus} ResponseHex={ResponseHex}",
@@ -170,9 +184,17 @@ public sealed class FiscalBridgeService(
             RequestBytes: packet.PacketBytes.Select(b => (int)b).ToArray(),
             ResponseHex: AccentProtocol.ToHex(response.ResponseBytes),
             ResponseBytes: response.ResponseBytes.Select(b => (int)b).ToArray(),
+            ResponseLength: responseLength,
+            ResponseSequence: responseSequence,
+            ResponseCommandIdDecimal: responseCommandId,
+            ResponseCommandIdHex: FormatHex(responseCommandId),
+            ExpectedCommandIdHex: expectedCommandIdHex,
+            IsCommandIdMatch: responseCommandId is null ? null : responseCommandId.Value == commandId,
+            IsSequenceMatch: responseSequence is null ? null : responseSequence.Value == packet.Sequence,
             ResponseStatus: response.ResponseStatus.ToString(),
             DataHex: AccentProtocol.ToHex(response.DataBytes),
             DataBytes: response.DataBytes.Select(b => (int)b).ToArray(),
+            DataText: DecodeDataText(response.DataBytes),
             StatusHex: AccentProtocol.ToHex(response.StatusBytes),
             StatusBytes: response.StatusBytes.Select(b => (int)b).ToArray(),
             ElapsedMs: serialResult.ElapsedMs,
@@ -198,15 +220,38 @@ public sealed class FiscalBridgeService(
             RequestBytes: [],
             ResponseHex: string.Empty,
             ResponseBytes: [],
+            ResponseLength: null,
+            ResponseSequence: null,
+            ResponseCommandIdDecimal: null,
+            ResponseCommandIdHex: null,
+            ExpectedCommandIdHex: $"0x{commandId:X2}",
+            IsCommandIdMatch: null,
+            IsSequenceMatch: null,
             ResponseStatus: "REAL_SERIAL_DISABLED",
             DataHex: string.Empty,
             DataBytes: [],
+            DataText: string.Empty,
             StatusHex: string.Empty,
             StatusBytes: [],
             ElapsedMs: 0,
             Message: message,
             Error: message,
             ExecutedAt: DateTimeOffset.UtcNow);
+    }
+
+    private static int? GetResponseByte(IReadOnlyList<byte> responseBytes, int index)
+    {
+        return responseBytes.Count > index ? responseBytes[index] : null;
+    }
+
+    private static string? FormatHex(int? value)
+    {
+        return value is null ? null : $"0x{value.Value:X2}";
+    }
+
+    private static string DecodeDataText(byte[] dataBytes)
+    {
+        return dataBytes.Length == 0 ? string.Empty : AccentProtocol.Cp1251.GetString(dataBytes);
     }
 
     private static string BuildRegisterSalePayload(FiscalReceiptItemDto item, ICollection<string> warnings)

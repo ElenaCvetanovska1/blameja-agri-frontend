@@ -7,11 +7,13 @@ public interface IFiscalBridgeService
     FiscalHealthResponse GetHealth();
     FiscalDryRunResponse BuildStatusDryRun();
     FiscalDryRunResponse BuildDiagnosticDryRun();
+    FiscalDryRunResponse BuildDateTimeDryRun();
     FiscalDryRunResponse BuildReceiptDryRun(FiscalReceiptRequest request);
     FiscalDryRunResponse BuildCancelReceiptDryRun();
     FiscalDryRunResponse BuildZReportDryRun();
     FiscalDryRunResponse BuildSetDateTimeDryRun(FiscalSetDateTimeRequest? request);
     Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }
