@@ -2,13 +2,17 @@ using System.Globalization;
 using Blameja.FiscalBridge.Models;
 using Blameja.FiscalBridge.Options;
 using Blameja.FiscalBridge.Protocol;
+using Blameja.FiscalBridge.Serial;
 using Microsoft.Extensions.Options;
 
 namespace Blameja.FiscalBridge.Services;
 
 public sealed class FiscalBridgeService(
     AccentPacketBuilder packetBuilder,
-    IOptions<FiscalBridgeOptions> options) : IFiscalBridgeService
+    AccentResponseParser responseParser,
+    ISerialPortClient serialPortClient,
+    IOptions<FiscalBridgeOptions> options,
+    ILogger<FiscalBridgeService> logger) : IFiscalBridgeService
 {
     private readonly FiscalBridgeOptions _options = options.Value;
 
@@ -74,6 +78,21 @@ public sealed class FiscalBridgeService(
         return DryRun([Build("SET_DATE_TIME", AccentCommandIds.SetDateTime, payload)]);
     }
 
+    public Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken)
+    {
+        return ExecuteReadOnlyCommandAsync("GET_STATUS_BYTES", AccentCommandIds.GetStatusBytes, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken)
+    {
+        return ExecuteReadOnlyCommandAsync("GET_DIAGNOSTIC_INFORMATION", AccentCommandIds.GetDiagnosticInformation, "1", cancellationToken);
+    }
+
+    public IReadOnlyList<string> GetAvailablePorts()
+    {
+        return serialPortClient.GetPortNames();
+    }
+
     private FiscalCommandPacketDto Build(string commandName, byte commandId, string? payloadText)
     {
         var packet = packetBuilder.Build(commandName, commandId, payloadText);
@@ -97,6 +116,97 @@ public sealed class FiscalBridgeService(
             GeneratedAt: DateTimeOffset.UtcNow,
             Commands: commands,
             Warnings: warnings ?? []);
+    }
+
+    private async Task<FiscalRealCommandResponse> ExecuteReadOnlyCommandAsync(
+        string commandName,
+        byte commandId,
+        string? payloadText,
+        CancellationToken cancellationToken)
+    {
+        if (!_options.RealSerialEnabled)
+        {
+            return DisabledRealSerialResponse(commandName, commandId);
+        }
+
+        var packet = packetBuilder.Build(commandName, commandId, payloadText);
+        var requestHex = AccentProtocol.ToHex(packet.PacketBytes);
+
+        logger.LogInformation(
+            "Sending fiscal command {CommandName} to {ComPort}. RequestHex={RequestHex}",
+            commandName,
+            _options.ComPort,
+            requestHex);
+
+        var serialResult = await serialPortClient.SendAsync(packet.PacketBytes, cancellationToken);
+        var response = responseParser.Parse(commandId, serialResult);
+
+        logger.LogInformation(
+            "Fiscal command {CommandName} completed on {ComPort}. ResponseStatus={ResponseStatus} ResponseHex={ResponseHex}",
+            commandName,
+            _options.ComPort,
+            response.ResponseStatus,
+            AccentProtocol.ToHex(response.ResponseBytes));
+
+        if (!string.IsNullOrWhiteSpace(response.Error))
+        {
+            logger.LogWarning(
+                "Fiscal command {CommandName} on {ComPort} returned error: {Error}",
+                commandName,
+                _options.ComPort,
+                response.Error);
+        }
+
+        return new FiscalRealCommandResponse(
+            Success: response.ResponseStatus == AccentResponseStatus.OK,
+            DryRun: false,
+            CommandName: packet.CommandName,
+            CommandIdDecimal: packet.CommandId,
+            CommandIdHex: $"0x{packet.CommandId:X2}",
+            Sequence: packet.Sequence,
+            ComPort: _options.ComPort,
+            BaudRate: _options.BaudRate,
+            RequestHex: requestHex,
+            RequestBytes: packet.PacketBytes.Select(b => (int)b).ToArray(),
+            ResponseHex: AccentProtocol.ToHex(response.ResponseBytes),
+            ResponseBytes: response.ResponseBytes.Select(b => (int)b).ToArray(),
+            ResponseStatus: response.ResponseStatus.ToString(),
+            DataHex: AccentProtocol.ToHex(response.DataBytes),
+            DataBytes: response.DataBytes.Select(b => (int)b).ToArray(),
+            StatusHex: AccentProtocol.ToHex(response.StatusBytes),
+            StatusBytes: response.StatusBytes.Select(b => (int)b).ToArray(),
+            ElapsedMs: serialResult.ElapsedMs,
+            Message: response.Error,
+            Error: response.Error,
+            ExecutedAt: DateTimeOffset.UtcNow);
+    }
+
+    private FiscalRealCommandResponse DisabledRealSerialResponse(string commandName, byte commandId)
+    {
+        const string message = "Set FiscalBridge:RealSerialEnabled=true to use COM port.";
+
+        return new FiscalRealCommandResponse(
+            Success: false,
+            DryRun: false,
+            CommandName: commandName,
+            CommandIdDecimal: commandId,
+            CommandIdHex: $"0x{commandId:X2}",
+            Sequence: null,
+            ComPort: _options.ComPort,
+            BaudRate: _options.BaudRate,
+            RequestHex: string.Empty,
+            RequestBytes: [],
+            ResponseHex: string.Empty,
+            ResponseBytes: [],
+            ResponseStatus: "REAL_SERIAL_DISABLED",
+            DataHex: string.Empty,
+            DataBytes: [],
+            StatusHex: string.Empty,
+            StatusBytes: [],
+            ElapsedMs: 0,
+            Message: message,
+            Error: message,
+            ExecutedAt: DateTimeOffset.UtcNow);
     }
 
     private static string BuildRegisterSalePayload(FiscalReceiptItemDto item, ICollection<string> warnings)

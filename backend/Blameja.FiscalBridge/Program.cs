@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Blameja.FiscalBridge.Options;
 using Blameja.FiscalBridge.Protocol;
+using Blameja.FiscalBridge.Serial;
 using Blameja.FiscalBridge.Services;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -20,6 +21,8 @@ builder.Services
 
 builder.Services.AddSingleton<AccentSequenceGenerator>();
 builder.Services.AddSingleton<AccentPacketBuilder>();
+builder.Services.AddSingleton<AccentResponseParser>();
+builder.Services.AddSingleton<ISerialPortClient, SerialPortClient>();
 builder.Services.AddScoped<IFiscalBridgeService, FiscalBridgeService>();
 
 builder.Services.AddControllers();

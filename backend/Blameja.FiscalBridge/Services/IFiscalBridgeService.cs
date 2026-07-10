@@ -11,4 +11,7 @@ public interface IFiscalBridgeService
     FiscalDryRunResponse BuildCancelReceiptDryRun();
     FiscalDryRunResponse BuildZReportDryRun();
     FiscalDryRunResponse BuildSetDateTimeDryRun(FiscalSetDateTimeRequest? request);
+    Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken);
+    IReadOnlyList<string> GetAvailablePorts();
 }

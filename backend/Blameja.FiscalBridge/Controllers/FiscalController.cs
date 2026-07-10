@@ -15,6 +15,26 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return Ok(fiscalBridge.GetHealth());
     }
 
+    [HttpGet("ports")]
+    public ActionResult<IReadOnlyList<string>> Ports()
+    {
+        return Ok(fiscalBridge.GetAvailablePorts());
+    }
+
+    [HttpGet("status")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> Status(CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteStatusAsync(cancellationToken);
+        return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
+    }
+
+    [HttpGet("diagnostic")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> Diagnostic(CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteDiagnosticAsync(cancellationToken);
+        return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
