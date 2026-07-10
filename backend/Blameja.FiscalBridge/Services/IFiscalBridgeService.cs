@@ -15,5 +15,9 @@ public interface IFiscalBridgeService
     Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteOpenFiscalReceiptAsync(
+        ReceiptOpenRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }

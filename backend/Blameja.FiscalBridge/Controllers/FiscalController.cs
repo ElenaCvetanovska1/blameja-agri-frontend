@@ -42,6 +42,19 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("receipt/open")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> OpenReceipt(
+        [FromBody] ReceiptOpenRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteOpenFiscalReceiptAsync(
+            request ?? new ReceiptOpenRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
@@ -167,6 +180,15 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
     private static bool IsValidPayment(string? payment)
     {
         return payment?.Trim().ToUpperInvariant() is "CASH" or "CREDIT" or "CHECK" or "DEBIT";
+    }
+
+    private static bool IsBlocked(FiscalRealCommandResponse response)
+    {
+        return response.ResponseStatus is
+            "REAL_SERIAL_DISABLED" or
+            "RECEIPT_PRINTING_DISABLED" or
+            "PRINT_NOT_CONFIRMED" or
+            "PRINT_CONFIRMATION_HEADER_MISSING";
     }
 
     private static Dictionary<string, string[]> ToValidationDictionary(Dictionary<string, List<string>> errors)

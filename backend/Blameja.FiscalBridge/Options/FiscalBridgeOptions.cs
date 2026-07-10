@@ -9,6 +9,7 @@ public sealed class FiscalBridgeOptions
     public int BaudRate { get; init; } = 9600;
     public bool DryRun { get; init; } = true;
     public bool RealSerialEnabled { get; init; }
+    public bool AllowReceiptPrinting { get; init; }
     public int DataBits { get; init; } = 8;
     public string Parity { get; init; } = "None";
     public string StopBits { get; init; } = "One";

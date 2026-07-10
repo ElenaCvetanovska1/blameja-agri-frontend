@@ -14,6 +14,7 @@ public sealed class FiscalBridgeService(
     IOptions<FiscalBridgeOptions> options,
     ILogger<FiscalBridgeService> logger) : IFiscalBridgeService
 {
+    private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
     private readonly FiscalBridgeOptions _options = options.Value;
 
     public FiscalHealthResponse GetHealth()
@@ -96,6 +97,50 @@ public sealed class FiscalBridgeService(
     public Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken)
     {
         return ExecuteReadOnlyCommandAsync("GET_DATE_TIME", AccentCommandIds.GetDateTime, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteOpenFiscalReceiptAsync(
+        ReceiptOpenRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "OPEN_FISCAL_RECEIPT";
+        const byte commandId = AccentCommandIds.OpenFiscalReceipt;
+        const string payload = "1,0000,1";
+
+        if (!_options.RealSerialEnabled)
+        {
+            return Task.FromResult(DisabledRealSerialResponse(commandName, commandId));
+        }
+
+        if (!_options.AllowReceiptPrinting)
+        {
+            return Task.FromResult(BlockedCommandResponse(
+                commandName,
+                commandId,
+                "RECEIPT_PRINTING_DISABLED",
+                "Set FiscalBridge:AllowReceiptPrinting=true to allow real fiscal receipt printing."));
+        }
+
+        if (!request.ConfirmPrint)
+        {
+            return Task.FromResult(BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PRINT_NOT_CONFIRMED",
+                "Set confirmPrint=true in the request body to open a real fiscal receipt."));
+        }
+
+        if (!string.Equals(printConfirmationHeader, PrintConfirmationHeaderValue, StringComparison.Ordinal))
+        {
+            return Task.FromResult(BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PRINT_CONFIRMATION_HEADER_MISSING",
+                $"Set X-Fiscal-Print-Confirmation to {PrintConfirmationHeaderValue}."));
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, payload, cancellationToken);
     }
 
     public IReadOnlyList<string> GetAvailablePorts()
@@ -228,6 +273,44 @@ public sealed class FiscalBridgeService(
             IsCommandIdMatch: null,
             IsSequenceMatch: null,
             ResponseStatus: "REAL_SERIAL_DISABLED",
+            DataHex: string.Empty,
+            DataBytes: [],
+            DataText: string.Empty,
+            StatusHex: string.Empty,
+            StatusBytes: [],
+            ElapsedMs: 0,
+            Message: message,
+            Error: message,
+            ExecutedAt: DateTimeOffset.UtcNow);
+    }
+
+    private FiscalRealCommandResponse BlockedCommandResponse(
+        string commandName,
+        byte commandId,
+        string responseStatus,
+        string message)
+    {
+        return new FiscalRealCommandResponse(
+            Success: false,
+            DryRun: false,
+            CommandName: commandName,
+            CommandIdDecimal: commandId,
+            CommandIdHex: $"0x{commandId:X2}",
+            Sequence: null,
+            ComPort: _options.ComPort,
+            BaudRate: _options.BaudRate,
+            RequestHex: string.Empty,
+            RequestBytes: [],
+            ResponseHex: string.Empty,
+            ResponseBytes: [],
+            ResponseLength: null,
+            ResponseSequence: null,
+            ResponseCommandIdDecimal: null,
+            ResponseCommandIdHex: null,
+            ExpectedCommandIdHex: $"0x{commandId:X2}",
+            IsCommandIdMatch: null,
+            IsSequenceMatch: null,
+            ResponseStatus: responseStatus,
             DataHex: string.Empty,
             DataBytes: [],
             DataText: string.Empty,
