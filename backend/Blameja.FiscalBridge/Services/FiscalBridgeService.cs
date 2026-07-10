@@ -108,39 +108,40 @@ public sealed class FiscalBridgeService(
         const byte commandId = AccentCommandIds.OpenFiscalReceipt;
         const string payload = "1,0000,1";
 
-        if (!_options.RealSerialEnabled)
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to open a real fiscal receipt.");
+        if (blockedResponse is not null)
         {
-            return Task.FromResult(DisabledRealSerialResponse(commandName, commandId));
-        }
-
-        if (!_options.AllowReceiptPrinting)
-        {
-            return Task.FromResult(BlockedCommandResponse(
-                commandName,
-                commandId,
-                "RECEIPT_PRINTING_DISABLED",
-                "Set FiscalBridge:AllowReceiptPrinting=true to allow real fiscal receipt printing."));
-        }
-
-        if (!request.ConfirmPrint)
-        {
-            return Task.FromResult(BlockedCommandResponse(
-                commandName,
-                commandId,
-                "PRINT_NOT_CONFIRMED",
-                "Set confirmPrint=true in the request body to open a real fiscal receipt."));
-        }
-
-        if (!string.Equals(printConfirmationHeader, PrintConfirmationHeaderValue, StringComparison.Ordinal))
-        {
-            return Task.FromResult(BlockedCommandResponse(
-                commandName,
-                commandId,
-                "PRINT_CONFIRMATION_HEADER_MISSING",
-                $"Set X-Fiscal-Print-Confirmation to {PrintConfirmationHeaderValue}."));
+            return Task.FromResult(blockedResponse);
         }
 
         return ExecuteReadOnlyCommandAsync(commandName, commandId, payload, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteRegisterSaleAsync(
+        ReceiptSaleRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "REGISTER_SALE";
+        const byte commandId = AccentCommandIds.RegisterSale;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to register a real fiscal sale.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, BuildRegisterSalePayload(request), cancellationToken);
     }
 
     public IReadOnlyList<string> GetAvailablePorts()
@@ -284,6 +285,48 @@ public sealed class FiscalBridgeService(
             ExecutedAt: DateTimeOffset.UtcNow);
     }
 
+    private FiscalRealCommandResponse? ValidatePrintExecution(
+        string commandName,
+        byte commandId,
+        bool confirmPrint,
+        string? printConfirmationHeader,
+        string confirmPrintMessage)
+    {
+        if (!_options.RealSerialEnabled)
+        {
+            return DisabledRealSerialResponse(commandName, commandId);
+        }
+
+        if (!_options.AllowReceiptPrinting)
+        {
+            return BlockedCommandResponse(
+                commandName,
+                commandId,
+                "RECEIPT_PRINTING_DISABLED",
+                "Set FiscalBridge:AllowReceiptPrinting=true to allow real fiscal receipt printing.");
+        }
+
+        if (!confirmPrint)
+        {
+            return BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PRINT_NOT_CONFIRMED",
+                confirmPrintMessage);
+        }
+
+        if (!string.Equals(printConfirmationHeader, PrintConfirmationHeaderValue, StringComparison.Ordinal))
+        {
+            return BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PRINT_CONFIRMATION_HEADER_MISSING",
+                $"Set X-Fiscal-Print-Confirmation to {PrintConfirmationHeaderValue}.");
+        }
+
+        return null;
+    }
+
     private FiscalRealCommandResponse BlockedCommandResponse(
         string commandName,
         byte commandId,
@@ -353,6 +396,24 @@ public sealed class FiscalBridgeService(
             AccentProtocol.FormatQuantity(item.Quantity));
     }
 
+    private static string BuildRegisterSalePayload(ReceiptSaleRequest request)
+    {
+        var description = FormatPrinterDescriptionLikeJava(request.Description!);
+        var vatGroup = ParseVatGroup(request.VatGroup);
+        var correctionType = ParsePriceCorrectionType(request.PriceCorrectionType);
+        var macedonianMarker = request.MacedonianItem ? "@" : string.Empty;
+
+        return string.Concat(
+            description,
+            "\t",
+            macedonianMarker,
+            AccentProtocol.ToVatChar(vatGroup),
+            AccentProtocol.FormatPrice(request.Price),
+            "*",
+            AccentProtocol.FormatQuantity(request.Quantity),
+            FormatPrinterCorrection(correctionType, request.PriceCorrectionValue));
+    }
+
     private static string FormatPrinterDescription(string? productName, ICollection<string> warnings)
     {
         var description = (productName ?? string.Empty).Trim();
@@ -369,6 +430,41 @@ public sealed class FiscalBridgeService(
         var second = remaining[..Math.Min(19, remaining.Length)];
 
         return string.IsNullOrEmpty(second) ? first : $"{first}\n{second}";
+    }
+
+    private static string FormatPrinterDescriptionLikeJava(string description)
+    {
+        if (description.Length <= 20)
+        {
+            return description;
+        }
+
+        var first = description[..19];
+        var remainingEndExclusive = Math.Max(19, description.Length - 1);
+        var remaining = description[19..remainingEndExclusive];
+        var second = remaining[..Math.Min(19, remaining.Length)];
+
+        return string.IsNullOrEmpty(second) ? first : $"{first}\n{second}";
+    }
+
+    private static string FormatPrinterCorrection(AccentPriceCorrectionType correctionType, decimal correctionValue)
+    {
+        if (correctionType == AccentPriceCorrectionType.None)
+        {
+            return string.Empty;
+        }
+
+        var separator = correctionType is AccentPriceCorrectionType.DiscountValue or AccentPriceCorrectionType.SurchargeValue
+            ? ";"
+            : ",";
+        var sign = correctionType is AccentPriceCorrectionType.SurchargePercent or AccentPriceCorrectionType.SurchargeValue
+            ? "+"
+            : "-";
+        var value = correctionType is AccentPriceCorrectionType.DiscountPercent or AccentPriceCorrectionType.DiscountValue
+            ? Math.Abs(correctionValue)
+            : correctionValue;
+
+        return string.Concat(separator, sign, AccentProtocol.FormatPrice(value));
     }
 
     private static DateTime ResolveDateTime(FiscalSetDateTimeRequest? request)
@@ -408,6 +504,19 @@ public sealed class FiscalBridgeService(
             "CHECK" => AccentPaymentMethod.Check,
             "DEBIT" => AccentPaymentMethod.Debit,
             _ => throw new InvalidOperationException("Invalid payment method.")
+        };
+    }
+
+    private static AccentPriceCorrectionType ParsePriceCorrectionType(string? correctionType)
+    {
+        return correctionType?.Trim().ToUpperInvariant() switch
+        {
+            null or "" or "NONE" => AccentPriceCorrectionType.None,
+            "DISCOUNT_VALUE" => AccentPriceCorrectionType.DiscountValue,
+            "DISCOUNT_PERCENT" => AccentPriceCorrectionType.DiscountPercent,
+            "SURCHARGE_VALUE" => AccentPriceCorrectionType.SurchargeValue,
+            "SURCHARGE_PERCENT" => AccentPriceCorrectionType.SurchargePercent,
+            _ => throw new InvalidOperationException("Invalid price correction type.")
         };
     }
 }

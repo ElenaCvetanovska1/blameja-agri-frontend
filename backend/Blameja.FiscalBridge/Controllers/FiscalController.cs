@@ -55,6 +55,25 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("receipt/sale")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> RegisterSale(
+        [FromBody] ReceiptSaleRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateReceiptSale(request);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteRegisterSaleAsync(
+            request!,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("status/dry-run")]
     public ActionResult<FiscalDryRunResponse> StatusDryRun()
     {
@@ -180,6 +199,65 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
     private static bool IsValidPayment(string? payment)
     {
         return payment?.Trim().ToUpperInvariant() is "CASH" or "CREDIT" or "CHECK" or "DEBIT";
+    }
+
+    private static Dictionary<string, string[]> ValidateReceiptSale(ReceiptSaleRequest? request)
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string key, string message)
+        {
+            if (!errors.TryGetValue(key, out var messages))
+            {
+                messages = [];
+                errors[key] = messages;
+            }
+
+            messages.Add(message);
+        }
+
+        if (request is null)
+        {
+            Add("request", "Request body is required.");
+            return ToValidationDictionary(errors);
+        }
+
+        if (request.Description is null)
+        {
+            Add("description", "Description must not be null.");
+        }
+
+        if (request.Price < 0)
+        {
+            Add("price", "Price must be greater than or equal to 0.");
+        }
+
+        if (request.Quantity < 0)
+        {
+            Add("quantity", "Quantity must be greater than or equal to 0.");
+        }
+
+        if (!IsValidVatGroup(request.VatGroup))
+        {
+            Add("vatGroup", "VAT group must be A, B, V, or G.");
+        }
+
+        if (!IsValidPriceCorrectionType(request.PriceCorrectionType))
+        {
+            Add("priceCorrectionType", "Price correction type must be NONE, DISCOUNT_VALUE, DISCOUNT_PERCENT, SURCHARGE_VALUE, or SURCHARGE_PERCENT.");
+        }
+
+        return ToValidationDictionary(errors);
+    }
+
+    private static bool IsValidPriceCorrectionType(string? correctionType)
+    {
+        return correctionType?.Trim().ToUpperInvariant() is null or "" or
+            "NONE" or
+            "DISCOUNT_VALUE" or
+            "DISCOUNT_PERCENT" or
+            "SURCHARGE_VALUE" or
+            "SURCHARGE_PERCENT";
     }
 
     private static bool IsBlocked(FiscalRealCommandResponse response)

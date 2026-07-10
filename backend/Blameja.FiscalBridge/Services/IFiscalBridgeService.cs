@@ -19,5 +19,9 @@ public interface IFiscalBridgeService
         ReceiptOpenRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteRegisterSaleAsync(
+        ReceiptSaleRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }
