@@ -1,7 +1,8 @@
+using System.Diagnostics;
+using System.Globalization;
 using Blameja.FiscalBridge.Models;
 using Blameja.FiscalBridge.Services;
 using Microsoft.AspNetCore.Mvc;
-using System.Globalization;
 
 namespace Blameja.FiscalBridge.Controllers;
 
@@ -104,6 +105,96 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
             cancellationToken);
 
         return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    [HttpPost("dev/test-receipt")]
+    public async Task<ActionResult<DevTestReceiptResponse>> DevTestReceipt(
+        [FromBody] DevTestReceiptRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["request"] = ["Request body is required."]
+            }));
+        }
+
+        var saleRequest = new ReceiptSaleRequest
+        {
+            ConfirmPrint = request.ConfirmPrint,
+            Description = request.Description,
+            VatGroup = request.VatGroup,
+            Price = request.Price,
+            Quantity = request.Quantity,
+            MacedonianItem = request.MacedonianItem
+        };
+        var saleErrors = ValidateReceiptSale(saleRequest);
+        if (saleErrors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(saleErrors));
+        }
+
+        var paymentRequest = new ReceiptPaymentRequest
+        {
+            ConfirmPrint = request.ConfirmPrint,
+            PaymentMethod = request.PaymentMethod,
+            Amount = request.PaymentAmount
+        };
+        var paymentErrors = ValidateReceiptPayment(paymentRequest);
+        if (paymentErrors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(paymentErrors));
+        }
+
+        var printConfirmationHeader = Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault();
+        var stopwatch = Stopwatch.StartNew();
+
+        var openResult = await fiscalBridge.ExecuteOpenFiscalReceiptAsync(
+            new ReceiptOpenRequest { ConfirmPrint = request.ConfirmPrint },
+            printConfirmationHeader,
+            cancellationToken);
+        if (!openResult.Success)
+        {
+            stopwatch.Stop();
+            return Conflict(new DevTestReceiptResponse(openResult, null, null, null, false, stopwatch.ElapsedMilliseconds));
+        }
+
+        var saleResult = await fiscalBridge.ExecuteRegisterSaleAsync(
+            saleRequest,
+            printConfirmationHeader,
+            cancellationToken);
+        if (!saleResult.Success)
+        {
+            stopwatch.Stop();
+            return Conflict(new DevTestReceiptResponse(openResult, saleResult, null, null, false, stopwatch.ElapsedMilliseconds));
+        }
+
+        var paymentResult = await fiscalBridge.ExecuteReceiptPaymentAsync(
+            paymentRequest,
+            printConfirmationHeader,
+            cancellationToken);
+        if (!paymentResult.Success)
+        {
+            stopwatch.Stop();
+            return Conflict(new DevTestReceiptResponse(openResult, saleResult, paymentResult, null, false, stopwatch.ElapsedMilliseconds));
+        }
+
+        var closeResult = await fiscalBridge.ExecuteCloseFiscalReceiptAsync(
+            new ReceiptCloseRequest { ConfirmPrint = request.ConfirmPrint },
+            printConfirmationHeader,
+            cancellationToken);
+
+        stopwatch.Stop();
+        var response = new DevTestReceiptResponse(
+            openResult,
+            saleResult,
+            paymentResult,
+            closeResult,
+            closeResult.Success,
+            stopwatch.ElapsedMilliseconds);
+
+        return response.OverallSuccess ? Ok(response) : Conflict(response);
     }
 
     [HttpGet("status/dry-run")]
