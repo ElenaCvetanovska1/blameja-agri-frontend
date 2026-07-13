@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Blameja.FiscalBridge.Models;
+using Blameja.FiscalBridge.Protocol;
 using Blameja.FiscalBridge.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -41,6 +42,42 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
     {
         var response = await fiscalBridge.ExecuteDateTimeAsync(cancellationToken);
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
+    }
+
+    [HttpPost("articles/program")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> ProgramArticle(
+        [FromBody] ProgramArticleRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateProgramArticle(request);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteProgramArticleAsync(
+            request!,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    [HttpGet("articles/read/{plu:int}")]
+    public async Task<ActionResult<FiscalArticleDto>> ReadArticle(
+        int plu,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteReadArticleAsync(
+            plu,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+        if (!response.Success)
+        {
+            return Conflict(response);
+        }
+
+        return Ok(ParseArticle(response.DataText, plu));
     }
 
     [HttpPost("receipt/open")]
@@ -407,6 +444,40 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return ToValidationDictionary(errors);
     }
 
+    private static Dictionary<string, string[]> ValidateProgramArticle(ProgramArticleRequest? request)
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string key, string message)
+        {
+            if (!errors.TryGetValue(key, out var messages))
+            {
+                messages = [];
+                errors[key] = messages;
+            }
+
+            messages.Add(message);
+        }
+
+        if (request is null)
+        {
+            Add("request", "Request body is required.");
+            return ToValidationDictionary(errors);
+        }
+
+        if (request.Name is null)
+        {
+            Add("name", "Name must not be null.");
+        }
+
+        if (!IsValidVatGroup(request.VatGroup))
+        {
+            Add("vatGroup", "VAT group must be A, B, V, or G.");
+        }
+
+        return ToValidationDictionary(errors);
+    }
+
     private static bool IsValidPriceCorrectionType(string? correctionType)
     {
         return correctionType?.Trim().ToUpperInvariant() is null or "" or
@@ -428,7 +499,122 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
             "REAL_SERIAL_DISABLED" or
             "RECEIPT_PRINTING_DISABLED" or
             "PRINT_NOT_CONFIRMED" or
-            "PRINT_CONFIRMATION_HEADER_MISSING";
+            "PRINT_CONFIRMATION_HEADER_MISSING" or
+            "PROGRAMMING_NOT_CONFIRMED" or
+            "PROGRAMMING_CONFIRMATION_HEADER_MISSING";
+    }
+
+    private static FiscalArticleDto ParseArticle(string dataText, int requestedPlu)
+    {
+        return dataText.Contains('\t', StringComparison.Ordinal)
+            ? ParseCashRegisterArticle(dataText, requestedPlu)
+            : ParsePrinterArticle(dataText, requestedPlu);
+    }
+
+    private static FiscalArticleDto ParsePrinterArticle(string dataText, int requestedPlu)
+    {
+        var fields = dataText.Split(',');
+        if (fields.Length < 8
+            || !int.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var plu)
+            || !TryParsePrinterVatGroup(fields[3], out var vatGroup)
+            || !decimal.TryParse(fields[4], NumberStyles.Number, CultureInfo.InvariantCulture, out var price))
+        {
+            return DefaultArticle(requestedPlu);
+        }
+
+        return new FiscalArticleDto(
+            Plu: plu,
+            Name: fields[7],
+            Price: price,
+            VatGroup: vatGroup,
+            Department: 1,
+            Group: 1,
+            PriceType: 3,
+            Quantity: 0,
+            Barcode1: "0",
+            Barcode2: "0",
+            Barcode3: "0",
+            Barcode4: "0",
+            Programmed: true);
+    }
+
+    private static FiscalArticleDto ParseCashRegisterArticle(string dataText, int requestedPlu)
+    {
+        var fields = dataText.Split('\t');
+        if (fields.Length < 15
+            || !int.TryParse(fields[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var plu)
+            || !TryParseCashRegisterVatGroup(fields[2], out var vatGroup)
+            || !int.TryParse(fields[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var department)
+            || !int.TryParse(fields[4], NumberStyles.Integer, CultureInfo.InvariantCulture, out var group)
+            || !int.TryParse(fields[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out var priceType)
+            || !decimal.TryParse(fields[6], NumberStyles.Number, CultureInfo.InvariantCulture, out var price)
+            || !decimal.TryParse(fields[9], NumberStyles.Number, CultureInfo.InvariantCulture, out var quantity))
+        {
+            return DefaultArticle(requestedPlu);
+        }
+
+        return new FiscalArticleDto(
+            Plu: plu,
+            Name: fields[14].ToUpper(CultureInfo.CurrentCulture),
+            Price: price,
+            VatGroup: vatGroup,
+            Department: department,
+            Group: group,
+            PriceType: priceType,
+            Quantity: quantity,
+            Barcode1: fields[10],
+            Barcode2: fields[11],
+            Barcode3: fields[12],
+            Barcode4: fields[13],
+            Programmed: true);
+    }
+
+    private static FiscalArticleDto DefaultArticle(int plu)
+    {
+        return new FiscalArticleDto(
+            Plu: plu,
+            Name: string.Empty,
+            Price: 0,
+            VatGroup: "A",
+            Department: 1,
+            Group: 1,
+            PriceType: 3,
+            Quantity: 0,
+            Barcode1: "0",
+            Barcode2: "0",
+            Barcode3: "0",
+            Barcode4: "0",
+            Programmed: false);
+    }
+
+    private static bool TryParsePrinterVatGroup(string value, out string vatGroup)
+    {
+        vatGroup = value.Length == 0
+            ? string.Empty
+            : value[0] switch
+            {
+                var c when c == AccentProtocol.ToVatChar(AccentVatGroup.A) => "A",
+                var c when c == AccentProtocol.ToVatChar(AccentVatGroup.B) => "B",
+                var c when c == AccentProtocol.ToVatChar(AccentVatGroup.V) => "V",
+                var c when c == AccentProtocol.ToVatChar(AccentVatGroup.G) => "G",
+                _ => string.Empty
+            };
+
+        return vatGroup.Length > 0;
+    }
+
+    private static bool TryParseCashRegisterVatGroup(string value, out string vatGroup)
+    {
+        vatGroup = value switch
+        {
+            "1" => "A",
+            "2" => "B",
+            "3" => "V",
+            "4" => "G",
+            _ => string.Empty
+        };
+
+        return vatGroup.Length > 0;
     }
 
     private static Dictionary<string, string[]> ToValidationDictionary(Dictionary<string, List<string>> errors)

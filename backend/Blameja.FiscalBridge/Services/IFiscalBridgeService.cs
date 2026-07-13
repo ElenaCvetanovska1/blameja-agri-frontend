@@ -31,5 +31,13 @@ public interface IFiscalBridgeService
         ReceiptCloseRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
+        ProgramArticleRequest request,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteReadArticleAsync(
+        int plu,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }

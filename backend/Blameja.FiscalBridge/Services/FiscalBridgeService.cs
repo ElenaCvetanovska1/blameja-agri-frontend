@@ -15,6 +15,7 @@ public sealed class FiscalBridgeService(
     ILogger<FiscalBridgeService> logger) : IFiscalBridgeService
 {
     private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
+    private const byte SetAndReadItemsCommandId = 0x6B;
     private readonly FiscalBridgeOptions _options = options.Value;
 
     public FiscalHealthResponse GetHealth()
@@ -186,6 +187,52 @@ public sealed class FiscalBridgeService(
         }
 
         return ExecuteReadOnlyCommandAsync(commandName, commandId, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
+        ProgramArticleRequest request,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "ProgramArticle";
+
+        var blockedResponse = ValidateProgrammingExecution(
+            commandName,
+            SetAndReadItemsCommandId,
+            request.ConfirmProgramming,
+            programmingConfirmationHeader,
+            "Set confirmProgramming=true in the request body to program a real fiscal article.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(
+            commandName,
+            SetAndReadItemsCommandId,
+            BuildProgramArticlePayload(request),
+            cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteReadArticleAsync(
+        int plu,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "ReadArticle";
+
+        var blockedResponse = ValidateProgrammingExecution(
+            commandName,
+            SetAndReadItemsCommandId,
+            true,
+            programmingConfirmationHeader,
+            string.Empty);
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, $"R\t{plu}\t", cancellationToken);
     }
 
     public IReadOnlyList<string> GetAvailablePorts()
@@ -371,6 +418,39 @@ public sealed class FiscalBridgeService(
         return null;
     }
 
+    private FiscalRealCommandResponse? ValidateProgrammingExecution(
+        string commandName,
+        byte commandId,
+        bool confirmProgramming,
+        string? programmingConfirmationHeader,
+        string confirmProgrammingMessage)
+    {
+        if (!_options.RealSerialEnabled)
+        {
+            return DisabledRealSerialResponse(commandName, commandId);
+        }
+
+        if (!confirmProgramming)
+        {
+            return BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PROGRAMMING_NOT_CONFIRMED",
+                confirmProgrammingMessage);
+        }
+
+        if (!string.Equals(programmingConfirmationHeader, PrintConfirmationHeaderValue, StringComparison.Ordinal))
+        {
+            return BlockedCommandResponse(
+                commandName,
+                commandId,
+                "PROGRAMMING_CONFIRMATION_HEADER_MISSING",
+                $"Set X-Fiscal-Print-Confirmation to {PrintConfirmationHeaderValue}.");
+        }
+
+        return null;
+    }
+
     private FiscalRealCommandResponse BlockedCommandResponse(
         string commandName,
         byte commandId,
@@ -489,6 +569,18 @@ public sealed class FiscalBridgeService(
         }
 
         return string.Concat(payload);
+    }
+
+    private static string BuildProgramArticlePayload(ProgramArticleRequest request)
+    {
+        return string.Concat(
+            "P",
+            AccentProtocol.ToVatChar(ParseVatGroup(request.VatGroup)),
+            request.Plu.ToString(CultureInfo.InvariantCulture),
+            ",",
+            AccentProtocol.FormatPrice(request.Price),
+            ",",
+            request.Name!.ToUpper(CultureInfo.CurrentCulture));
     }
 
     private static string FormatPrinterDescription(string? productName, ICollection<string> warnings)
