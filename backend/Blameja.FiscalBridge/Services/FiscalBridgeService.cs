@@ -257,6 +257,35 @@ public sealed class FiscalBridgeService(
             cancellationToken);
     }
 
+    public async Task<FiscalRealCommandResponse> ExecuteDeleteArticleAsync(
+        DeleteArticleRequest request,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "DeleteArticles";
+
+        var blockedResponse = ValidateProgrammingExecution(
+            commandName,
+            SetAndReadItemsCommandId,
+            request.ConfirmProgramming,
+            programmingConfirmationHeader,
+            "Set confirmProgramming=true in the request body to delete a real fiscal article.");
+        if (blockedResponse is not null)
+        {
+            LogDeleteArticleCommand(blockedResponse, request.Plu);
+            return blockedResponse;
+        }
+
+        var response = await ExecuteReadOnlyCommandAsync(
+            commandName,
+            SetAndReadItemsCommandId,
+            BuildDeleteArticlePayload(request.Plu),
+            cancellationToken);
+
+        LogDeleteArticleCommand(response, request.Plu);
+        return response;
+    }
+
     public IReadOnlyList<string> GetAvailablePorts()
     {
         return serialPortClient.GetPortNames();
@@ -493,6 +522,17 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, payload, cancellationToken);
     }
 
+    private void LogDeleteArticleCommand(FiscalRealCommandResponse response, int plu)
+    {
+        logger.LogInformation(
+            "Article delete command completed. Command={Command} PLU={Plu} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs}",
+            response.CommandName,
+            plu,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs);
+    }
+
     private FiscalRealCommandResponse BlockedCommandResponse(
         string commandName,
         byte commandId,
@@ -653,6 +693,12 @@ public sealed class FiscalBridgeService(
     private static string BuildFindNextProgrammedArticlePayload()
     {
         return "N\t";
+    }
+
+    private static string BuildDeleteArticlePayload(int plu)
+    {
+        var pluText = plu.ToString(CultureInfo.InvariantCulture);
+        return string.Concat("D\t", pluText, "\t", pluText, "\t");
     }
 
     private static string ToCashRegisterVatGroup(AccentVatGroup vatGroup)

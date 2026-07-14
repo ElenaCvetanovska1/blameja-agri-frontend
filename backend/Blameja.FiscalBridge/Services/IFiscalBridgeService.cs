@@ -45,5 +45,9 @@ public interface IFiscalBridgeService
     Task<FiscalRealCommandResponse> ExecuteFindNextProgrammedArticleAsync(
         string? programmingConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteDeleteArticleAsync(
+        DeleteArticleRequest request,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }
