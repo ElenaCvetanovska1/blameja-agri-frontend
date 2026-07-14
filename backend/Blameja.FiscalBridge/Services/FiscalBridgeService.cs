@@ -235,6 +235,28 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, $"R\t{plu}\t", cancellationToken);
     }
 
+    public Task<FiscalRealCommandResponse> ExecuteFindFirstProgrammedArticleAsync(
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteArticleReadCommandAsync(
+            "FindFirstProgrammedArticle",
+            BuildFindFirstProgrammedArticlePayload(),
+            programmingConfirmationHeader,
+            cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteFindNextProgrammedArticleAsync(
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteArticleReadCommandAsync(
+            "FindNextProgrammedArticle",
+            BuildFindNextProgrammedArticlePayload(),
+            programmingConfirmationHeader,
+            cancellationToken);
+    }
+
     public IReadOnlyList<string> GetAvailablePorts()
     {
         return serialPortClient.GetPortNames();
@@ -451,6 +473,26 @@ public sealed class FiscalBridgeService(
         return null;
     }
 
+    private Task<FiscalRealCommandResponse> ExecuteArticleReadCommandAsync(
+        string commandName,
+        string payload,
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        var blockedResponse = ValidateProgrammingExecution(
+            commandName,
+            SetAndReadItemsCommandId,
+            true,
+            programmingConfirmationHeader,
+            string.Empty);
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, payload, cancellationToken);
+    }
+
     private FiscalRealCommandResponse BlockedCommandResponse(
         string commandName,
         byte commandId,
@@ -574,13 +616,146 @@ public sealed class FiscalBridgeService(
     private static string BuildProgramArticlePayload(ProgramArticleRequest request)
     {
         return string.Concat(
-            "P",
-            AccentProtocol.ToVatChar(ParseVatGroup(request.VatGroup)),
+            "P\t",
             request.Plu.ToString(CultureInfo.InvariantCulture),
-            ",",
+            "\t",
+            ToCashRegisterVatGroup(ParseVatGroup(request.VatGroup)),
+            "\t",
+            request.Department.ToString(CultureInfo.InvariantCulture),
+            "\t",
+            request.Group.ToString(CultureInfo.InvariantCulture),
+            "\t",
+            request.PriceType.ToString(CultureInfo.InvariantCulture),
+            "\t",
             AccentProtocol.FormatPrice(request.Price),
-            ",",
-            request.Name!.ToUpper(CultureInfo.CurrentCulture));
+            "\t",
+            string.Empty,
+            "\t",
+            FormatArticleQuantity(request.Quantity),
+            "\t",
+            JavaString(request.Barcode1),
+            "\t",
+            JavaString(request.Barcode2),
+            "\t",
+            JavaString(request.Barcode3),
+            "\t",
+            JavaString(request.Barcode4),
+            "\t",
+            TranslateToCyrillicLikeJava(request.Name!.ToUpper(CultureInfo.CurrentCulture)),
+            "\t");
+    }
+
+    private static string BuildFindFirstProgrammedArticlePayload()
+    {
+        return "F\t\t";
+    }
+
+    private static string BuildFindNextProgrammedArticlePayload()
+    {
+        return "N\t";
+    }
+
+    private static string ToCashRegisterVatGroup(AccentVatGroup vatGroup)
+    {
+        return vatGroup switch
+        {
+            AccentVatGroup.A => "1",
+            AccentVatGroup.B => "2",
+            AccentVatGroup.V => "3",
+            AccentVatGroup.G => "4",
+            _ => throw new ArgumentOutOfRangeException(nameof(vatGroup), vatGroup, null)
+        };
+    }
+
+    private static string FormatArticleQuantity(decimal value)
+    {
+        return value.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
+    private static string JavaString(string? value)
+    {
+        return value ?? "null";
+    }
+
+    private static string TranslateToCyrillicLikeJava(string value)
+    {
+        var chars = value.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            chars[i] = TranslateToCyrillicLikeJava(chars[i]);
+        }
+
+        return new string(chars);
+    }
+
+    private static char TranslateToCyrillicLikeJava(char value)
+    {
+        return value switch
+        {
+            'q' => (char)1113,
+            'w' => (char)1114,
+            'e' => (char)1077,
+            'r' => (char)1088,
+            't' => (char)1090,
+            'y' => (char)1109,
+            'u' => (char)1091,
+            'i' => (char)1080,
+            'o' => (char)1086,
+            'p' => (char)1087,
+            '[' => (char)1096,
+            ']' => (char)1107,
+            'a' => (char)1072,
+            's' => (char)1089,
+            'd' => (char)1076,
+            'f' => (char)1092,
+            'g' => (char)1075,
+            'h' => (char)1093,
+            'j' => (char)1112,
+            'k' => (char)1082,
+            'l' => (char)1083,
+            ';' => (char)1095,
+            '\'' => (char)1116,
+            '\\' => (char)1078,
+            'z' => (char)1079,
+            'x' => (char)1119,
+            'c' => (char)1094,
+            'v' => (char)1074,
+            'b' => (char)1073,
+            'n' => (char)1085,
+            'm' => (char)1084,
+            'Q' => (char)1033,
+            'W' => (char)1034,
+            'E' => (char)1045,
+            'R' => (char)1056,
+            'T' => (char)1058,
+            'Y' => (char)1029,
+            'U' => (char)1059,
+            'I' => (char)1048,
+            'O' => (char)1054,
+            'P' => (char)1055,
+            '{' => (char)1064,
+            '}' => (char)1027,
+            'A' => (char)1040,
+            'S' => (char)1057,
+            'D' => (char)1044,
+            'F' => (char)1060,
+            'G' => (char)1043,
+            'H' => (char)1061,
+            'J' => (char)1032,
+            'K' => (char)1050,
+            'L' => (char)1051,
+            ':' => (char)1063,
+            '"' => (char)1036,
+            '|' => (char)1046,
+            'Z' => (char)1047,
+            'X' => (char)1039,
+            'C' => (char)1062,
+            'V' => (char)1042,
+            'B' => (char)1041,
+            'N' => (char)1053,
+            'M' => (char)1052,
+            _ => value
+        };
     }
 
     private static string FormatPrinterDescription(string? productName, ICollection<string> warnings)

@@ -39,5 +39,11 @@ public interface IFiscalBridgeService
         int plu,
         string? programmingConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteFindFirstProgrammedArticleAsync(
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteFindNextProgrammedArticleAsync(
+        string? programmingConfirmationHeader,
+        CancellationToken cancellationToken);
     IReadOnlyList<string> GetAvailablePorts();
 }

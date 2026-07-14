@@ -9,7 +9,7 @@ namespace Blameja.FiscalBridge.Controllers;
 
 [ApiController]
 [Route("api/fiscal")]
-public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : ControllerBase
+public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<FiscalController> logger) : ControllerBase
 {
     [HttpGet("health")]
     public ActionResult<FiscalHealthResponse> Health()
@@ -78,6 +78,54 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         }
 
         return Ok(ParseArticle(response.DataText, plu));
+    }
+
+    [HttpGet("articles")]
+    public async Task<ActionResult<IReadOnlyList<FiscalArticleDto>>> ReadAllArticles(CancellationToken cancellationToken)
+    {
+        var programmingConfirmationHeader = Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault();
+        var articles = new List<FiscalArticleDto>();
+
+        var response = await fiscalBridge.ExecuteFindFirstProgrammedArticleAsync(
+            programmingConfirmationHeader,
+            cancellationToken);
+        if (IsBlocked(response))
+        {
+            LogArticleReadCommand(response, "F\t\t", articles.Count);
+            return Conflict(response);
+        }
+
+        if (!HasProgrammedArticleData(response))
+        {
+            LogArticleReadCommand(response, "F\t\t", articles.Count);
+            return Ok(articles);
+        }
+
+        articles.Add(ParseArticle(response.DataText, 0));
+        LogArticleReadCommand(response, "F\t\t", articles.Count);
+
+        while (true)
+        {
+            response = await fiscalBridge.ExecuteFindNextProgrammedArticleAsync(
+                programmingConfirmationHeader,
+                cancellationToken);
+            if (IsBlocked(response))
+            {
+                LogArticleReadCommand(response, "N\t", articles.Count);
+                return Conflict(response);
+            }
+
+            if (!HasProgrammedArticleData(response))
+            {
+                LogArticleReadCommand(response, "N\t", articles.Count);
+                break;
+            }
+
+            articles.Add(ParseArticle(response.DataText, 0));
+            LogArticleReadCommand(response, "N\t", articles.Count);
+        }
+
+        return Ok(articles);
     }
 
     [HttpPost("receipt/open")]
@@ -509,6 +557,23 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge) : Contro
         return dataText.Contains('\t', StringComparison.Ordinal)
             ? ParseCashRegisterArticle(dataText, requestedPlu)
             : ParsePrinterArticle(dataText, requestedPlu);
+    }
+
+    private static bool HasProgrammedArticleData(FiscalRealCommandResponse response)
+    {
+        return response.Success && response.DataBytes.Count >= 1 && response.DataBytes[0] == 'P';
+    }
+
+    private void LogArticleReadCommand(FiscalRealCommandResponse response, string payload, int totalArticlesFound)
+    {
+        logger.LogInformation(
+            "Article read command completed. Command={Command} Payload={Payload} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs} TotalArticlesFound={TotalArticlesFound}",
+            response.CommandName,
+            payload,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs,
+            totalArticlesFound);
     }
 
     private static FiscalArticleDto ParsePrinterArticle(string dataText, int requestedPlu)
