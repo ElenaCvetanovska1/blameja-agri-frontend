@@ -39,6 +39,14 @@ public interface IFiscalBridgeService
         CashMovementRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteXReportAsync(
+        XReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteExtendedXReportAsync(
+        XReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
         ProgramArticleRequest request,
         string? programmingConfirmationHeader,

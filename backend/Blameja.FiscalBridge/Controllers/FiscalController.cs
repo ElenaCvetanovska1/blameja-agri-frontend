@@ -185,6 +185,32 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("reports/x")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> XReport(
+        [FromBody] XReportRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteXReportAsync(
+            request ?? new XReportRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    [HttpPost("reports/x/extended")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> ExtendedXReport(
+        [FromBody] XReportRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteExtendedXReportAsync(
+            request ?? new XReportRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpPost("receipt/open")]
     public async Task<ActionResult<FiscalRealCommandResponse>> OpenReceipt(
         [FromBody] ReceiptOpenRequest? request,

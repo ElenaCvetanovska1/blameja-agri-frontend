@@ -15,6 +15,7 @@ public sealed class FiscalBridgeService(
     ILogger<FiscalBridgeService> logger) : IFiscalBridgeService
 {
     private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
+    private const string CashRegisterXReportPayload = "X\t";
     private const byte SetAndReadItemsCommandId = 0x6B;
     private const byte CashInOutCommandId = 0x46;
     private readonly FiscalBridgeOptions _options = options.Value;
@@ -214,6 +215,61 @@ public sealed class FiscalBridgeService(
             -request.Amount,
             printConfirmationHeader,
             cancellationToken);
+    }
+
+    public async Task<FiscalRealCommandResponse> ExecuteXReportAsync(
+        XReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return await ExecuteXReportAsync(
+            request,
+            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS,
+            printConfirmationHeader,
+            cancellationToken);
+    }
+
+    public async Task<FiscalRealCommandResponse> ExecuteExtendedXReportAsync(
+        XReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return await ExecuteXReportAsync(
+            request,
+            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS,
+            printConfirmationHeader,
+            cancellationToken);
+    }
+
+    private async Task<FiscalRealCommandResponse> ExecuteXReportAsync(
+        XReportRequest request,
+        DailyClosureReportOptionEnum option,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "DAILY_FINANCIAL_REPORT";
+        const byte commandId = AccentCommandIds.DailyFinancialReport;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to print a real X report.");
+        if (blockedResponse is not null)
+        {
+            LogXReportCommand(blockedResponse);
+            return blockedResponse;
+        }
+
+        var response = await ExecuteReadOnlyCommandAsync(
+            commandName,
+            commandId,
+            BuildXReportPayload(option),
+            cancellationToken);
+
+        LogXReportCommand(response);
+        return response;
     }
 
     public Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
@@ -549,6 +605,16 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, payload, cancellationToken);
     }
 
+    private void LogXReportCommand(FiscalRealCommandResponse response)
+    {
+        logger.LogInformation(
+            "X report command completed. Command={Command} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs}",
+            response.CommandName,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs);
+    }
+
     private async Task<FiscalRealCommandResponse> ExecuteCashMovementAsync(
         CashMovementRequest request,
         string movementType,
@@ -729,6 +795,16 @@ public sealed class FiscalBridgeService(
         var amount = Math.Abs(signedAmount);
 
         return string.Concat(type, "\t", AccentProtocol.FormatPrice(amount), "\t");
+    }
+
+    private static string BuildXReportPayload(DailyClosureReportOptionEnum option)
+    {
+        return option switch
+        {
+            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS => CashRegisterXReportPayload,
+            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS => CashRegisterXReportPayload,
+            _ => throw new ArgumentOutOfRangeException(nameof(option), option, null)
+        };
     }
 
     private static string BuildProgramArticlePayload(ProgramArticleRequest request)
@@ -993,5 +1069,11 @@ public sealed class FiscalBridgeService(
             "SURCHARGE_PERCENT" => AccentPriceCorrectionType.SurchargePercent,
             _ => throw new InvalidOperationException("Invalid price correction type.")
         };
+    }
+
+    private enum DailyClosureReportOptionEnum
+    {
+        REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS = 50,
+        REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS = 51
     }
 }
