@@ -147,6 +147,44 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("cash/in")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> CashIn(
+        [FromBody] CashMovementRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateCashMovement(request);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteCashInAsync(
+            request!,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    [HttpPost("cash/out")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> CashOut(
+        [FromBody] CashMovementRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = ValidateCashMovement(request);
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteCashOutAsync(
+            request!,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpPost("receipt/open")]
     public async Task<ActionResult<FiscalRealCommandResponse>> OpenReceipt(
         [FromBody] ReceiptOpenRequest? request,
@@ -540,6 +578,35 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         if (!IsValidVatGroup(request.VatGroup))
         {
             Add("vatGroup", "VAT group must be A, B, V, or G.");
+        }
+
+        return ToValidationDictionary(errors);
+    }
+
+    private static Dictionary<string, string[]> ValidateCashMovement(CashMovementRequest? request)
+    {
+        var errors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        void Add(string key, string message)
+        {
+            if (!errors.TryGetValue(key, out var messages))
+            {
+                messages = [];
+                errors[key] = messages;
+            }
+
+            messages.Add(message);
+        }
+
+        if (request is null)
+        {
+            Add("request", "Request body is required.");
+            return ToValidationDictionary(errors);
+        }
+
+        if (request.Amount <= 0)
+        {
+            Add("amount", "Amount must be greater than 0.");
         }
 
         return ToValidationDictionary(errors);

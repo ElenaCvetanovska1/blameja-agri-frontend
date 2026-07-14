@@ -31,6 +31,14 @@ public interface IFiscalBridgeService
         ReceiptCloseRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteCashInAsync(
+        CashMovementRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteCashOutAsync(
+        CashMovementRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
         ProgramArticleRequest request,
         string? programmingConfirmationHeader,

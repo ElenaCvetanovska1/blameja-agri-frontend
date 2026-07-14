@@ -16,6 +16,7 @@ public sealed class FiscalBridgeService(
 {
     private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
     private const byte SetAndReadItemsCommandId = 0x6B;
+    private const byte CashInOutCommandId = 0x46;
     private readonly FiscalBridgeOptions _options = options.Value;
 
     public FiscalHealthResponse GetHealth()
@@ -187,6 +188,32 @@ public sealed class FiscalBridgeService(
         }
 
         return ExecuteReadOnlyCommandAsync(commandName, commandId, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteCashInAsync(
+        CashMovementRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteCashMovementAsync(
+            request,
+            "IN",
+            request.Amount,
+            printConfirmationHeader,
+            cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteCashOutAsync(
+        CashMovementRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteCashMovementAsync(
+            request,
+            "OUT",
+            -request.Amount,
+            printConfirmationHeader,
+            cancellationToken);
     }
 
     public Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
@@ -522,6 +549,49 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync(commandName, SetAndReadItemsCommandId, payload, cancellationToken);
     }
 
+    private async Task<FiscalRealCommandResponse> ExecuteCashMovementAsync(
+        CashMovementRequest request,
+        string movementType,
+        decimal signedAmount,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "CASH_IN_OUT";
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            CashInOutCommandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to perform a real cash movement.");
+        if (blockedResponse is not null)
+        {
+            LogCashMovementCommand(blockedResponse, movementType, request.Amount);
+            return blockedResponse;
+        }
+
+        var response = await ExecuteReadOnlyCommandAsync(
+            commandName,
+            CashInOutCommandId,
+            BuildCashInOutPayload(signedAmount),
+            cancellationToken);
+
+        LogCashMovementCommand(response, movementType, request.Amount);
+        return response;
+    }
+
+    private void LogCashMovementCommand(FiscalRealCommandResponse response, string movementType, decimal amount)
+    {
+        logger.LogInformation(
+            "Cash movement command completed. Command={Command} MovementType={MovementType} Amount={Amount} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs}",
+            response.CommandName,
+            movementType,
+            amount,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs);
+    }
+
     private void LogDeleteArticleCommand(FiscalRealCommandResponse response, int plu)
     {
         logger.LogInformation(
@@ -651,6 +721,14 @@ public sealed class FiscalBridgeService(
         }
 
         return string.Concat(payload);
+    }
+
+    private static string BuildCashInOutPayload(decimal signedAmount)
+    {
+        var type = signedAmount < 0 ? "1" : "0";
+        var amount = Math.Abs(signedAmount);
+
+        return string.Concat(type, "\t", AccentProtocol.FormatPrice(amount), "\t");
     }
 
     private static string BuildProgramArticlePayload(ProgramArticleRequest request)
