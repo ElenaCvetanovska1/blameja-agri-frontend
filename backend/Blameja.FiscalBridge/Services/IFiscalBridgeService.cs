@@ -43,10 +43,6 @@ public interface IFiscalBridgeService
         XReportRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
-    Task<FiscalRealCommandResponse> ExecuteExtendedXReportAsync(
-        XReportRequest request,
-        string? printConfirmationHeader,
-        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteZReportAsync(
         ZReportRequest request,
         string? printConfirmationHeader,

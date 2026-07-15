@@ -16,5 +16,5 @@ public sealed class FiscalBridgeOptions
     public string Handshake { get; init; } = "None";
     public int ReadTimeoutMs { get; init; } = 1000;
     public int WriteTimeoutMs { get; init; } = 1000;
-    public int OverallReadTimeoutMs { get; init; } = 3000;
+    public int OverallReadTimeoutMs { get; init; } = 15000;
 }

@@ -15,8 +15,6 @@ public sealed class FiscalBridgeService(
     ILogger<FiscalBridgeService> logger) : IFiscalBridgeService
 {
     private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
-    private const string CashRegisterXReportPayload = "X\t";
-    private const string CashRegisterZReportPayload = "Z\t";
     private const byte SetAndReadItemsCommandId = 0x6B;
     private const byte CashInOutCommandId = 0x46;
     private readonly FiscalBridgeOptions _options = options.Value;
@@ -223,31 +221,6 @@ public sealed class FiscalBridgeService(
         string? printConfirmationHeader,
         CancellationToken cancellationToken)
     {
-        return await ExecuteXReportAsync(
-            request,
-            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS,
-            printConfirmationHeader,
-            cancellationToken);
-    }
-
-    public async Task<FiscalRealCommandResponse> ExecuteExtendedXReportAsync(
-        XReportRequest request,
-        string? printConfirmationHeader,
-        CancellationToken cancellationToken)
-    {
-        return await ExecuteXReportAsync(
-            request,
-            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS,
-            printConfirmationHeader,
-            cancellationToken);
-    }
-
-    private async Task<FiscalRealCommandResponse> ExecuteXReportAsync(
-        XReportRequest request,
-        DailyClosureReportOptionEnum option,
-        string? printConfirmationHeader,
-        CancellationToken cancellationToken)
-    {
         const string commandName = "DAILY_FINANCIAL_REPORT";
         const byte commandId = AccentCommandIds.DailyFinancialReport;
 
@@ -266,7 +239,7 @@ public sealed class FiscalBridgeService(
         var response = await ExecuteReadOnlyCommandAsync(
             commandName,
             commandId,
-            BuildXReportPayload(option),
+            BuildDailyReportPayload(DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS),
             cancellationToken);
 
         LogXReportCommand(response);
@@ -296,7 +269,7 @@ public sealed class FiscalBridgeService(
         var response = await ExecuteReadOnlyCommandAsync(
             commandName,
             commandId,
-            BuildZReportPayload(DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS),
+            BuildDailyReportPayload(DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS),
             cancellationToken);
 
         LogZReportCommand(response);
@@ -838,24 +811,19 @@ public sealed class FiscalBridgeService(
         return string.Concat(type, "\t", AccentProtocol.FormatPrice(amount), "\t");
     }
 
-    private static string BuildXReportPayload(DailyClosureReportOptionEnum option)
+    // Mirrors the Java DailyClosureReport.toIntList() CASH_REGISTER branch AND is confirmed on the
+    // real device: command 0x45 accepts ONLY the letter+TAB form — "X\t" (0x58 0x09) for any control
+    // read-out, "Z\t" (0x5A 0x09) for fiscal closure. Hardware probing proved every other form is
+    // rejected: raw digit '2'/'3' and lowercase 'x' → firmware "Bad input" (-1004); a second
+    // parameter ("X\t\t", "X\t0\t", ...) → error -12001. Therefore the device exposes exactly one X
+    // report (the extended "ПРОШИРЕН КОНТРОЛЕН ИЗВЕШТАЈ") via 0x45; there is no separate short
+    // "КОНТРОЛЕН ИЗВЕШТАЈ" reachable from the PC over this command — it is a device-keypad function.
+    private static string BuildDailyReportPayload(DailyClosureReportOptionEnum option)
     {
-        return option switch
-        {
-            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS => CashRegisterXReportPayload,
-            DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS => CashRegisterXReportPayload,
-            _ => throw new ArgumentOutOfRangeException(nameof(option), option, null)
-        };
-    }
-
-    private static string BuildZReportPayload(DailyClosureReportOptionEnum option)
-    {
-        return option switch
-        {
-            DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS => CashRegisterZReportPayload,
-            DailyClosureReportOptionEnum.FISCAL_CLOSURE_WO_REGISTERS => CashRegisterZReportPayload,
-            _ => throw new ArgumentOutOfRangeException(nameof(option), option, null)
-        };
+        var isFiscalClosure =
+            option is DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS
+                   or DailyClosureReportOptionEnum.FISCAL_CLOSURE_WO_REGISTERS;
+        return isFiscalClosure ? "Z\t" : "X\t";
     }
 
     private static string BuildProgramArticlePayload(ProgramArticleRequest request)

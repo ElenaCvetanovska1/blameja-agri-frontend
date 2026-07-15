@@ -185,25 +185,14 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    // Single official X-report endpoint. On this device command 0x45 exposes only the extended
+    // control report (ПРОШИРЕН); see docs/fiscal/x-z-report-device-mode-findings.md.
     [HttpPost("reports/x")]
     public async Task<ActionResult<FiscalRealCommandResponse>> XReport(
         [FromBody] XReportRequest? request,
         CancellationToken cancellationToken)
     {
         var response = await fiscalBridge.ExecuteXReportAsync(
-            request ?? new XReportRequest(),
-            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
-            cancellationToken);
-
-        return IsBlocked(response) ? Conflict(response) : Ok(response);
-    }
-
-    [HttpPost("reports/x/extended")]
-    public async Task<ActionResult<FiscalRealCommandResponse>> ExtendedXReport(
-        [FromBody] XReportRequest? request,
-        CancellationToken cancellationToken)
-    {
-        var response = await fiscalBridge.ExecuteExtendedXReportAsync(
             request ?? new XReportRequest(),
             Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
             cancellationToken);
