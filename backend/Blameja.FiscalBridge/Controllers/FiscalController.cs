@@ -213,6 +213,45 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    // Fiscal-memory report from date to date (period). detailed=false → short, true → detailed.
+    [HttpPost("reports/fm-date")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> FmDateReport(
+        [FromBody] FmReportRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var errors = new Dictionary<string, string[]>();
+
+        if (!DateTime.TryParse(request?.From, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var fromDate))
+        {
+            errors["from"] = ["from is required and must be a valid date (e.g. 2026-07-01)."];
+        }
+
+        if (!DateTime.TryParse(request?.To, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var toDate))
+        {
+            errors["to"] = ["to is required and must be a valid date (e.g. 2026-07-15)."];
+        }
+
+        if (errors.Count == 0 && fromDate.Date > toDate.Date)
+        {
+            errors["from"] = ["from must be on or before to."];
+        }
+
+        if (errors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(errors));
+        }
+
+        var response = await fiscalBridge.ExecuteFmDateReportAsync(
+            fromDate,
+            toDate,
+            request!.Detailed,
+            request.ConfirmPrint,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpPost("receipt/open")]
     public async Task<ActionResult<FiscalRealCommandResponse>> OpenReceipt(
         [FromBody] ReceiptOpenRequest? request,
@@ -271,6 +310,162 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
     {
         var response = await fiscalBridge.ExecuteCloseFiscalReceiptAsync(
             request ?? new ReceiptCloseRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    // Recovery: abort a stuck/half-open receipt (CANCEL_FISCAL_RECEIPT 0x3C). Discards it, no fiscal record.
+    [HttpPost("receipt/cancel")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> CancelReceipt(
+        [FromBody] CancelReceiptRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteCancelReceiptAsync(
+            request ?? new CancelReceiptRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
+    // STORNO — void receipt in one call: OPEN_VOID (0x55) → REGISTER_SALE (0x31) per item →
+    // CALCULATE_TOTAL (0x35) → CLOSE_VOID (0x56). Items/payment are positive; no original-receipt
+    // reference (Option A, exact Java void-receipt port). Same print protections as a normal receipt.
+    [HttpPost("receipt/storno")]
+    public async Task<ActionResult<StornoResponse>> Storno(
+        [FromBody] StornoRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || request.Items.Count == 0)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["items"] = ["At least one storno item is required."]
+            }));
+        }
+
+        var saleRequests = new List<ReceiptSaleRequest>();
+        foreach (var item in request.Items)
+        {
+            var sale = new ReceiptSaleRequest
+            {
+                ConfirmPrint = request.ConfirmPrint,
+                Description = item.Description,
+                VatGroup = item.VatGroup,
+                Price = item.Price,
+                Quantity = item.Quantity,
+                MacedonianItem = item.MacedonianItem,
+                PriceCorrectionType = item.PriceCorrectionType,
+                PriceCorrectionValue = item.PriceCorrectionValue
+            };
+
+            var saleErrors = ValidateReceiptSale(sale);
+            if (saleErrors.Count > 0)
+            {
+                return BadRequest(new ValidationProblemDetails(saleErrors));
+            }
+
+            saleRequests.Add(sale);
+        }
+
+        var paymentRequest = new ReceiptPaymentRequest
+        {
+            ConfirmPrint = request.ConfirmPrint,
+            PaymentMethod = request.PaymentMethod,
+            Amount = request.Amount,
+            InfoLine1 = request.InfoLine1,
+            InfoLine2 = request.InfoLine2
+        };
+
+        var paymentErrors = ValidateReceiptPayment(paymentRequest);
+        if (paymentErrors.Count > 0)
+        {
+            return BadRequest(new ValidationProblemDetails(paymentErrors));
+        }
+
+        var printConfirmationHeader = Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault();
+        var stopwatch = Stopwatch.StartNew();
+        var saleResults = new List<FiscalRealCommandResponse>();
+
+        var openResult = await fiscalBridge.ExecuteOpenFiscalReceiptAsync(
+            new ReceiptOpenRequest { ConfirmPrint = request.ConfirmPrint, Storno = true },
+            printConfirmationHeader,
+            cancellationToken);
+        if (!openResult.Success)
+        {
+            stopwatch.Stop();
+            return Conflict(new StornoResponse(openResult, saleResults, null, null, false, stopwatch.ElapsedMilliseconds));
+        }
+
+        foreach (var sale in saleRequests)
+        {
+            var saleResult = await fiscalBridge.ExecuteRegisterSaleAsync(sale, printConfirmationHeader, cancellationToken);
+            saleResults.Add(saleResult);
+            if (!saleResult.Success)
+            {
+                stopwatch.Stop();
+                return Conflict(new StornoResponse(openResult, saleResults, null, null, false, stopwatch.ElapsedMilliseconds));
+            }
+        }
+
+        var paymentResult = await fiscalBridge.ExecuteReceiptPaymentAsync(paymentRequest, printConfirmationHeader, cancellationToken);
+        if (!paymentResult.Success)
+        {
+            stopwatch.Stop();
+            return Conflict(new StornoResponse(openResult, saleResults, paymentResult, null, false, stopwatch.ElapsedMilliseconds));
+        }
+
+        var closeResult = await fiscalBridge.ExecuteCloseFiscalReceiptAsync(
+            new ReceiptCloseRequest { ConfirmPrint = request.ConfirmPrint, Storno = true },
+            printConfirmationHeader,
+            cancellationToken);
+
+        stopwatch.Stop();
+        var response = new StornoResponse(
+            openResult,
+            saleResults,
+            paymentResult,
+            closeResult,
+            closeResult.Success,
+            stopwatch.ElapsedMilliseconds);
+
+        return response.OverallSuccess ? Ok(response) : Conflict(response);
+    }
+
+    // DEV-ONLY raw command probe: send any command id + payload to discover exact device formats.
+    [HttpPost("dev/raw")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> RawCommand(
+        [FromBody] RawCommandRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.CommandId))
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["commandId"] = ["commandId is required (decimal e.g. 48, or hex e.g. 0x30)."]
+            }));
+        }
+
+        var raw = request.CommandId.Trim();
+        var parsed = raw.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+            ? byte.TryParse(raw[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hexId) ? hexId : (byte?)null
+            : byte.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var decId) ? decId : (byte?)null;
+
+        if (parsed is not { } commandId)
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["commandId"] = ["commandId must be a byte value 0-255 (decimal or 0x hex)."]
+            }));
+        }
+
+        var response = await fiscalBridge.ExecuteRawCommandAsync(
+            commandId,
+            $"RAW_0x{commandId:X2}",
+            string.IsNullOrEmpty(request.Payload) ? null : request.Payload,
+            request.ConfirmPrint,
             Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
             cancellationToken);
 

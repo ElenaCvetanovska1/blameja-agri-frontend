@@ -50,7 +50,7 @@ public sealed class FiscalBridgeService(
         var warnings = new List<string>();
         var commands = new List<FiscalCommandPacketDto>
         {
-            Build("OPEN_FISCAL_RECEIPT", AccentCommandIds.OpenFiscalReceipt, "1,0000,1")
+            Build("OPEN_FISCAL_RECEIPT", AccentCommandIds.OpenFiscalReceipt, "1\t1\t\t0\t")
         };
 
         foreach (var item in request.Items)
@@ -60,7 +60,7 @@ public sealed class FiscalBridgeService(
 
         var payment = ParsePayment(request.Payment);
         var amount = request.CashReceived.GetValueOrDefault(request.Total);
-        var paymentPayload = $"\t{AccentProtocol.ToPaymentChar(payment)}{AccentProtocol.FormatPrice(amount)}";
+        var paymentPayload = string.Concat(ToCashRegisterPaymentType(payment), "\t", AccentProtocol.FormatPrice(amount), "\t");
 
         commands.Add(Build("CALCULATE_TOTAL", AccentCommandIds.CalculateTotal, paymentPayload));
         commands.Add(Build("CLOSE_FISCAL_RECEIPT", AccentCommandIds.CloseFiscalReceipt, null));
@@ -106,9 +106,12 @@ public sealed class FiscalBridgeService(
         string? printConfirmationHeader,
         CancellationToken cancellationToken)
     {
-        const string commandName = "OPEN_FISCAL_RECEIPT";
+        // CASH REGISTER: open always uses OPEN_FISCAL_RECEIPT (0x30); the storno/void distinction is a
+        // payload flag (4th tab field: 0 = normal, 1 = storno), NOT a separate command id. Mirrors
+        // Java OpenFiscalReceipt/OpenVoidReceipt CASH_REGISTER branch ("1\t1\t\t0\t" / "1\t1\t\t1\t").
         const byte commandId = AccentCommandIds.OpenFiscalReceipt;
-        const string payload = "1,0000,1";
+        var commandName = request.Storno ? "OPEN_FISCAL_RECEIPT(void)" : "OPEN_FISCAL_RECEIPT";
+        var payload = request.Storno ? "1\t1\t\t1\t" : "1\t1\t\t0\t";
 
         var blockedResponse = ValidatePrintExecution(
             commandName,
@@ -173,8 +176,10 @@ public sealed class FiscalBridgeService(
         string? printConfirmationHeader,
         CancellationToken cancellationToken)
     {
-        const string commandName = "CLOSE_FISCAL_RECEIPT";
+        // CASH REGISTER: close always uses CLOSE_FISCAL_RECEIPT (0x38), no payload, for both normal and
+        // storno receipts — the void was established by the open flag. (The 0x56 void-close is printer-only.)
         const byte commandId = AccentCommandIds.CloseFiscalReceipt;
+        var commandName = request.Storno ? "CLOSE_FISCAL_RECEIPT(void)" : "CLOSE_FISCAL_RECEIPT";
 
         var blockedResponse = ValidatePrintExecution(
             commandName,
@@ -188,6 +193,50 @@ public sealed class FiscalBridgeService(
         }
 
         return ExecuteReadOnlyCommandAsync(commandName, commandId, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteCancelReceiptAsync(
+        CancelReceiptRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "CANCEL_FISCAL_RECEIPT";
+        const byte commandId = AccentCommandIds.CancelFiscalReceipt;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to cancel a real fiscal receipt.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteRawCommandAsync(
+        byte commandId,
+        string commandName,
+        string? payloadText,
+        bool confirmPrint,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            confirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to send a real raw command.");
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, payloadText, cancellationToken);
     }
 
     public Task<FiscalRealCommandResponse> ExecuteCashInAsync(
@@ -274,6 +323,54 @@ public sealed class FiscalBridgeService(
 
         LogZReportCommand(response);
         return response;
+    }
+
+    public async Task<FiscalRealCommandResponse> ExecuteFmDateReportAsync(
+        DateTime fromDate,
+        DateTime toDate,
+        bool detailed,
+        bool confirmPrint,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        // CASH REGISTER: both short and detailed date-range FM reports use DETAILED_FM_REPORT_DATE
+        // (0x5E); the leading flag selects short ("0") vs detailed ("1"). Payload:
+        //   <flag>\t<from dd-MM-yy>\t<to dd-MM-yy>\t   — mirrors Java Short/DetailPeriodReport.
+        const string commandName = "DETAILED_FM_REPORT_DATE";
+        const byte commandId = AccentCommandIds.DetailedFmReportDate;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            confirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to print a real fiscal-memory report.");
+        if (blockedResponse is not null)
+        {
+            LogFmReportCommand(blockedResponse);
+            return blockedResponse;
+        }
+
+        var flag = detailed ? "1" : "0";
+        var payload = string.Concat(
+            flag, "\t",
+            fromDate.ToString("dd-MM-yy", CultureInfo.InvariantCulture), "\t",
+            toDate.ToString("dd-MM-yy", CultureInfo.InvariantCulture), "\t");
+
+        var response = await ExecuteReadOnlyCommandAsync(commandName, commandId, payload, cancellationToken);
+
+        LogFmReportCommand(response);
+        return response;
+    }
+
+    private void LogFmReportCommand(FiscalRealCommandResponse response)
+    {
+        logger.LogInformation(
+            "FM date report command completed. Command={Command} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs}",
+            response.CommandName,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs);
     }
 
     public Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
@@ -738,69 +835,56 @@ public sealed class FiscalBridgeService(
 
     private static string BuildRegisterSalePayload(FiscalReceiptItemDto item, ICollection<string> warnings)
     {
-        var description = FormatPrinterDescription(item.ProductName, warnings);
-        var vatGroup = ParseVatGroup(item.VatGroup);
-        var macedonianMarker = item.IsMacedonian ? "@" : string.Empty;
+        // CASH REGISTER item line (see BuildRegisterSalePayload(ReceiptSaleRequest) for the format).
+        _ = warnings;
+        var description = TranslateToCyrillicLikeJava((item.ProductName ?? string.Empty).ToUpper(CultureInfo.CurrentCulture));
+        var taxGroup = ToCashRegisterVatGroup(ParseVatGroup(item.VatGroup));
+        var macFlag = item.IsMacedonian ? "1" : "0";
 
         return string.Concat(
-            description,
-            "\t",
-            macedonianMarker,
-            AccentProtocol.ToVatChar(vatGroup),
-            AccentProtocol.FormatPrice(item.UnitPrice),
-            "*",
-            AccentProtocol.FormatQuantity(item.Quantity));
+            description, "\t",
+            taxGroup, "\t",
+            AccentProtocol.FormatPrice(item.UnitPrice), "\t",
+            AccentProtocol.FormatQuantity(item.Quantity), "\t",
+            macFlag, "\t\t\t");
     }
 
     private static string BuildRegisterSalePayload(ReceiptSaleRequest request)
     {
-        var description = FormatPrinterDescriptionLikeJava(request.Description!);
-        var vatGroup = ParseVatGroup(request.VatGroup);
-        var correctionType = ParsePriceCorrectionType(request.PriceCorrectionType);
-        var macedonianMarker = request.MacedonianItem ? "@" : string.Empty;
+        // CASH REGISTER item line (no price-correction case), mirrors Java ReceiptItem.toIntList():
+        //   DESC(UPPER, cyrillic) \t taxGroupNum \t price(0.00) \t quantity(0.000) \t macFlag \t \t \t
+        // The two trailing empty fields are the correction-type / correction-value slots.
+        var description = TranslateToCyrillicLikeJava(request.Description!.ToUpper(CultureInfo.CurrentCulture));
+        var taxGroup = ToCashRegisterVatGroup(ParseVatGroup(request.VatGroup));
+        var macFlag = request.MacedonianItem ? "1" : "0";
 
         return string.Concat(
-            description,
-            "\t",
-            macedonianMarker,
-            AccentProtocol.ToVatChar(vatGroup),
-            AccentProtocol.FormatPrice(request.Price),
-            "*",
-            AccentProtocol.FormatQuantity(request.Quantity),
-            FormatPrinterCorrection(correctionType, request.PriceCorrectionValue));
+            description, "\t",
+            taxGroup, "\t",
+            AccentProtocol.FormatPrice(request.Price), "\t",
+            AccentProtocol.FormatQuantity(request.Quantity), "\t",
+            macFlag, "\t\t\t");
     }
 
     private static string BuildReceiptPaymentPayload(ReceiptPaymentRequest request)
     {
-        var paymentMethod = ParseOptionalPayment(request.PaymentMethod);
-        var payload = new List<string>();
-        var infoLine1 = request.InfoLine1?.Trim();
-        var infoLine2 = request.InfoLine2?.Trim();
+        // CASH REGISTER payment, mirrors Java PaymentMethod.toIntList():
+        //   payTypeNumber \t amount(0.00 when > 0, else empty) \t
+        var payType = ToCashRegisterPaymentType(ParseOptionalPayment(request.PaymentMethod));
+        var amount = request.Amount > 0 ? AccentProtocol.FormatPrice(request.Amount) : string.Empty;
 
-        if (!string.IsNullOrEmpty(infoLine1))
+        return string.Concat(payType, "\t", amount, "\t");
+    }
+
+    private static string ToCashRegisterPaymentType(AccentPaymentMethod? paymentMethod)
+    {
+        // Java PaymentMethod CASH_REGISTER branch: DEBIT -> "1", CREDIT -> "2"; CASH/CHECK/unset -> "0".
+        return paymentMethod switch
         {
-            payload.Add(infoLine1);
-        }
-
-        if (!string.IsNullOrEmpty(infoLine2))
-        {
-            payload.Add("\n");
-            payload.Add(infoLine2);
-        }
-
-        payload.Add("\t");
-
-        if (paymentMethod is null)
-        {
-            payload.Add("\t");
-        }
-        else if (request.Amount > 0)
-        {
-            payload.Add(AccentProtocol.ToPaymentChar(paymentMethod.Value).ToString());
-            payload.Add(AccentProtocol.FormatPrice(request.Amount));
-        }
-
-        return string.Concat(payload);
+            AccentPaymentMethod.Debit => "1",
+            AccentPaymentMethod.Credit => "2",
+            _ => "0"
+        };
     }
 
     private static string BuildCashInOutPayload(decimal signedAmount)

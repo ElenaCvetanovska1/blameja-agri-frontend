@@ -43,8 +43,26 @@ public interface IFiscalBridgeService
         XReportRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteCancelReceiptAsync(
+        CancelReceiptRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteRawCommandAsync(
+        byte commandId,
+        string commandName,
+        string? payloadText,
+        bool confirmPrint,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteZReportAsync(
         ZReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteFmDateReportAsync(
+        DateTime fromDate,
+        DateTime toDate,
+        bool detailed,
+        bool confirmPrint,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
