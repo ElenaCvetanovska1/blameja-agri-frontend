@@ -851,19 +851,44 @@ public sealed class FiscalBridgeService(
 
     private static string BuildRegisterSalePayload(ReceiptSaleRequest request)
     {
-        // CASH REGISTER item line (no price-correction case), mirrors Java ReceiptItem.toIntList():
-        //   DESC(UPPER, cyrillic) \t taxGroupNum \t price(0.00) \t quantity(0.000) \t macFlag \t \t \t
-        // The two trailing empty fields are the correction-type / correction-value slots.
+        // CASH REGISTER item line, mirrors Java ReceiptItem.toIntList():
+        //   DESC(UPPER,cyrillic) \t taxGroupNum \t price(0.00) \t quantity(0.000) \t macFlag \t <corrType> \t <corrValue(0.00)> \t
+        // A price correction (discount/surcharge) is emitted ONLY when a type is set AND the value is
+        // non-zero; otherwise the correction-type/value fields are empty (two trailing tabs).
         var description = TranslateToCyrillicLikeJava(request.Description!.ToUpper(CultureInfo.CurrentCulture));
         var taxGroup = ToCashRegisterVatGroup(ParseVatGroup(request.VatGroup));
         var macFlag = request.MacedonianItem ? "1" : "0";
+        var correctionType = ParsePriceCorrectionType(request.PriceCorrectionType);
 
-        return string.Concat(
+        var line = string.Concat(
             description, "\t",
             taxGroup, "\t",
             AccentProtocol.FormatPrice(request.Price), "\t",
             AccentProtocol.FormatQuantity(request.Quantity), "\t",
-            macFlag, "\t\t\t");
+            macFlag, "\t");
+
+        if (correctionType is not AccentPriceCorrectionType.None && request.PriceCorrectionValue != 0m)
+        {
+            return string.Concat(
+                line,
+                ToCashRegisterCorrectionType(correctionType), "\t",
+                AccentProtocol.FormatPrice(request.PriceCorrectionValue), "\t");
+        }
+
+        return string.Concat(line, "\t\t");
+    }
+
+    private static string ToCashRegisterCorrectionType(AccentPriceCorrectionType type)
+    {
+        // Java ReceiptItem CASH_REGISTER correction-type numbers.
+        return type switch
+        {
+            AccentPriceCorrectionType.SurchargePercent => "1",
+            AccentPriceCorrectionType.DiscountPercent => "2",
+            AccentPriceCorrectionType.SurchargeValue => "3",
+            AccentPriceCorrectionType.DiscountValue => "4",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
     }
 
     private static string BuildReceiptPaymentPayload(ReceiptPaymentRequest request)
