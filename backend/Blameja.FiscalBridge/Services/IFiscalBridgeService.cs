@@ -47,6 +47,10 @@ public interface IFiscalBridgeService
         XReportRequest request,
         string? printConfirmationHeader,
         CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteZReportAsync(
+        ZReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteProgramArticleAsync(
         ProgramArticleRequest request,
         string? programmingConfirmationHeader,

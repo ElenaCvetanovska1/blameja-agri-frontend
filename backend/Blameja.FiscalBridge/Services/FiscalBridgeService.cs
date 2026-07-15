@@ -16,6 +16,7 @@ public sealed class FiscalBridgeService(
 {
     private const string PrintConfirmationHeaderValue = "I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT";
     private const string CashRegisterXReportPayload = "X\t";
+    private const string CashRegisterZReportPayload = "Z\t";
     private const byte SetAndReadItemsCommandId = 0x6B;
     private const byte CashInOutCommandId = 0x46;
     private readonly FiscalBridgeOptions _options = options.Value;
@@ -269,6 +270,36 @@ public sealed class FiscalBridgeService(
             cancellationToken);
 
         LogXReportCommand(response);
+        return response;
+    }
+
+    public async Task<FiscalRealCommandResponse> ExecuteZReportAsync(
+        ZReportRequest request,
+        string? printConfirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "DAILY_FINANCIAL_REPORT";
+        const byte commandId = AccentCommandIds.DailyFinancialReport;
+
+        var blockedResponse = ValidatePrintExecution(
+            commandName,
+            commandId,
+            request.ConfirmPrint,
+            printConfirmationHeader,
+            "Set confirmPrint=true in the request body to print a real Z report.");
+        if (blockedResponse is not null)
+        {
+            LogZReportCommand(blockedResponse);
+            return blockedResponse;
+        }
+
+        var response = await ExecuteReadOnlyCommandAsync(
+            commandName,
+            commandId,
+            BuildZReportPayload(DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS),
+            cancellationToken);
+
+        LogZReportCommand(response);
         return response;
     }
 
@@ -615,6 +646,16 @@ public sealed class FiscalBridgeService(
             response.ElapsedMs);
     }
 
+    private void LogZReportCommand(FiscalRealCommandResponse response)
+    {
+        logger.LogInformation(
+            "Z report command completed. Command={Command} RequestHex={RequestHex} ResponseHex={ResponseHex} ElapsedMs={ElapsedMs}",
+            response.CommandName,
+            response.RequestHex,
+            response.ResponseHex,
+            response.ElapsedMs);
+    }
+
     private async Task<FiscalRealCommandResponse> ExecuteCashMovementAsync(
         CashMovementRequest request,
         string movementType,
@@ -803,6 +844,16 @@ public sealed class FiscalBridgeService(
         {
             DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS => CashRegisterXReportPayload,
             DailyClosureReportOptionEnum.REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS => CashRegisterXReportPayload,
+            _ => throw new ArgumentOutOfRangeException(nameof(option), option, null)
+        };
+    }
+
+    private static string BuildZReportPayload(DailyClosureReportOptionEnum option)
+    {
+        return option switch
+        {
+            DailyClosureReportOptionEnum.FISCAL_CLOSURE_WITH_REGISTERS => CashRegisterZReportPayload,
+            DailyClosureReportOptionEnum.FISCAL_CLOSURE_WO_REGISTERS => CashRegisterZReportPayload,
             _ => throw new ArgumentOutOfRangeException(nameof(option), option, null)
         };
     }
@@ -1073,6 +1124,8 @@ public sealed class FiscalBridgeService(
 
     private enum DailyClosureReportOptionEnum
     {
+        FISCAL_CLOSURE_WO_REGISTERS = 48,
+        FISCAL_CLOSURE_WITH_REGISTERS = 49,
         REPORT_WO_FISCAL_CLOSURE_WO_REGISTERS = 50,
         REPORT_WO_FISCAL_CLOSURE_WITH_REGISTERS = 51
     }

@@ -211,6 +211,19 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return IsBlocked(response) ? Conflict(response) : Ok(response);
     }
 
+    [HttpPost("reports/z")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> ZReport(
+        [FromBody] ZReportRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteZReportAsync(
+            request ?? new ZReportRequest(),
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpPost("receipt/open")]
     public async Task<ActionResult<FiscalRealCommandResponse>> OpenReceipt(
         [FromBody] ReceiptOpenRequest? request,
