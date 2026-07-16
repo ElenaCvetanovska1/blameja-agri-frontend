@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { FiCreditCard, FiDollarSign, FiCheck, FiRotateCcw } from 'react-icons/fi';
+import { FiCreditCard, FiDollarSign, FiCheck } from 'react-icons/fi';
 import type { Totals } from '../types';
 import { priceNum, sanitizePriceInput } from '../utils';
 
@@ -18,8 +17,6 @@ type Props = {
 	cashReceivedStr: string;
 	onCashReceivedStrChange: (v: string) => void;
 	onSubmit: () => void;
-	/** Рачно сторно на тековната кошничка (void сметка за оригинал што го нема во базата). */
-	onManualStorno?: () => void;
 	fiscalWarnings?: string[];
 };
 
@@ -30,14 +27,12 @@ export const TotalsPanel = ({
 	note,
 	onNoteChange,
 	onSubmit,
-	onManualStorno,
 	paymentMethod,
 	onPaymentMethodChange,
 	cashReceivedStr,
 	onCashReceivedStrChange,
 	fiscalWarnings = [],
 }: Props) => {
-	const [stornoConfirm, setStornoConfirm] = useState(false);
 	const cashNum = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 	const change = Math.max(0, cashNum - totals.total);
 	const notEnoughCash = paymentMethod === 'CASH' && cashReceivedStr.trim().length > 0 && cashNum < totals.total;
@@ -203,46 +198,6 @@ export const TotalsPanel = ({
 					</>
 				)}
 			</button>
-
-			{/* ─── Рачно сторно (void за оригинал што го нема во базата) ─── */}
-			{onManualStorno &&
-				(!stornoConfirm ? (
-					<button
-						type="button"
-						onClick={() => setStornoConfirm(true)}
-						disabled={busy || cartEmpty}
-						className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<FiRotateCcw className="h-4 w-4" />
-						Рачно сторно (void)
-					</button>
-				) : (
-					<div className="rounded-xl border border-red-200 bg-red-50 p-3">
-						<div className="mb-2 text-xs font-semibold text-red-700">
-							Печати СТОРНО (поврат) сметка за ставките во кошничката? Ова е за оригинал што го нема во базата.
-						</div>
-						<div className="flex gap-2">
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() => {
-									setStornoConfirm(false);
-									onManualStorno();
-								}}
-								className="flex-1 rounded-lg border border-red-300 bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
-							>
-								{busy ? 'Обработка...' : 'Потврди сторно'}
-							</button>
-							<button
-								type="button"
-								onClick={() => setStornoConfirm(false)}
-								className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
-							>
-								Откажи
-							</button>
-						</div>
-					</div>
-				))}
 		</div>
 	);
 };

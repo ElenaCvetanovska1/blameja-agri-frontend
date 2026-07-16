@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { ManualStornoPanel } from './components/ManualStornoPanel';
 import { useFiscalReceipts, type FiscalReceiptRow } from './hooks/useFiscalReceipts';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,179 +72,189 @@ export default function FiscalReceiptsPage() {
 	const handleRowClick = (id: string) => navigate(`/fiscal-receipts/${id}`);
 
 	return (
-		<div className="space-y-5">
+		<div className="flex h-full min-h-0 flex-col gap-4">
 			{/* Page header */}
-			<div>
+			<div className="shrink-0">
 				<h1 className="text-xl font-bold text-slate-800">Фискални сметки</h1>
-				<p className="mt-1 text-sm text-slate-500">Архива на издадени фискални сметки</p>
+				<p className="mt-1 text-sm text-slate-500">Архива · и рачно сторно за сметки што ги нема во базата</p>
 			</div>
 
-			{/* Filters */}
-			<div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4">
-				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-					{/* Period */}
-					<div>
-						<label
-							className="block text-xs font-medium text-slate-600"
-							htmlFor="fr-days"
-						>
-							Период
-						</label>
-						<select
-							id="fr-days"
-							value={days}
-							onChange={(e) => setDays(Number(e.target.value))}
-							className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-						>
-							<option value={7}>7 дена</option>
-							<option value={30}>30 дена</option>
-							<option value={90}>90 дена</option>
-							<option value={365}>1 година</option>
-						</select>
+			<div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
+				{/* ЛЕВО: листа фискални сметки */}
+				<div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
+					{/* Filters */}
+					<div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4">
+						<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							{/* Period */}
+							<div>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="fr-days"
+								>
+									Период
+								</label>
+								<select
+									id="fr-days"
+									value={days}
+									onChange={(e) => setDays(Number(e.target.value))}
+									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								>
+									<option value={7}>7 дена</option>
+									<option value={30}>30 дена</option>
+									<option value={90}>90 дена</option>
+									<option value={365}>1 година</option>
+								</select>
+							</div>
+
+							{/* Status */}
+							<div>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="fr-status"
+								>
+									Статус
+								</label>
+								<select
+									id="fr-status"
+									value={statusFilter}
+									onChange={(e) => setStatusFilter(e.target.value)}
+									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								>
+									<option value="">Сите статуси</option>
+									<option value="success">Успешно</option>
+									<option value="failed">Неуспешно</option>
+									<option value="offline">Офлајн</option>
+								</select>
+							</div>
+
+							{/* Store */}
+							<div>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="fr-store"
+								>
+									Продавница
+								</label>
+								<select
+									id="fr-store"
+									value={storeFilter}
+									onChange={(e) => setStoreFilter(e.target.value)}
+									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								>
+									<option value="">Сите продавници</option>
+									<option value="20">Продавница 20</option>
+									<option value="30">Продавница 30</option>
+								</select>
+							</div>
+
+							{/* Slip number search */}
+							<div>
+								<label
+									className="block text-xs font-medium text-slate-600"
+									htmlFor="fr-slip"
+								>
+									Бр. сметка
+								</label>
+								<input
+									id="fr-slip"
+									value={slipSearch}
+									onChange={(e) => setSlipSearch(e.target.value)}
+									placeholder="пр. 42"
+									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
+								/>
+							</div>
+						</div>
 					</div>
 
-					{/* Status */}
-					<div>
-						<label
-							className="block text-xs font-medium text-slate-600"
-							htmlFor="fr-status"
-						>
-							Статус
-						</label>
-						<select
-							id="fr-status"
-							value={statusFilter}
-							onChange={(e) => setStatusFilter(e.target.value)}
-							className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-						>
-							<option value="">Сите статуси</option>
-							<option value="success">Успешно</option>
-							<option value="failed">Неуспешно</option>
-							<option value="offline">Офлајн</option>
-						</select>
-					</div>
+					{/* Table */}
+					<div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+						{query.isLoading && <div className="px-6 py-10 text-center text-sm text-slate-500">Се вчитува...</div>}
 
-					{/* Store */}
-					<div>
-						<label
-							className="block text-xs font-medium text-slate-600"
-							htmlFor="fr-store"
-						>
-							Продавница
-						</label>
-						<select
-							id="fr-store"
-							value={storeFilter}
-							onChange={(e) => setStoreFilter(e.target.value)}
-							className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-						>
-							<option value="">Сите продавници</option>
-							<option value="20">Продавница 20</option>
-							<option value="30">Продавница 30</option>
-						</select>
-					</div>
+						{query.isError && (
+							<div className="px-6 py-10 text-center text-sm text-red-500">
+								Грешка при вчитување: {query.error instanceof Error ? query.error.message : 'непозната грешка'}
+							</div>
+						)}
 
-					{/* Slip number search */}
-					<div>
-						<label
-							className="block text-xs font-medium text-slate-600"
-							htmlFor="fr-slip"
-						>
-							Бр. сметка
-						</label>
-						<input
-							id="fr-slip"
-							value={slipSearch}
-							onChange={(e) => setSlipSearch(e.target.value)}
-							placeholder="пр. 42"
-							className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
-						/>
-					</div>
-				</div>
-			</div>
+						{!query.isLoading && !query.isError && visible.length === 0 && (
+							<div className="px-6 py-10 text-center text-sm text-slate-500">Нема фискални сметки за избраните филтери.</div>
+						)}
 
-			{/* Table */}
-			<div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
-				{query.isLoading && <div className="px-6 py-10 text-center text-sm text-slate-500">Се вчитува...</div>}
-
-				{query.isError && (
-					<div className="px-6 py-10 text-center text-sm text-red-500">
-						Грешка при вчитување: {query.error instanceof Error ? query.error.message : 'непозната грешка'}
-					</div>
-				)}
-
-				{!query.isLoading && !query.isError && visible.length === 0 && (
-					<div className="px-6 py-10 text-center text-sm text-slate-500">Нема фискални сметки за избраните филтери.</div>
-				)}
-
-				{!query.isLoading && !query.isError && visible.length > 0 && (
-					<div className="overflow-x-auto">
-						<table className="w-full text-sm">
-							<thead>
-								<tr className="bg-slate-50 border-b border-slate-100 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-									<th className="px-4 py-3">Датум</th>
-									<th className="px-4 py-3">Сметка бр.</th>
-									<th className="px-4 py-3">Тип</th>
-									<th className="px-4 py-3">Статус</th>
-									<th className="px-4 py-3">Плаќање</th>
-									<th className="px-4 py-3 text-right">Вкупно</th>
-									<th className="px-4 py-3 text-center">Продавница</th>
-									<th className="px-4 py-3 text-center">Акција</th>
-								</tr>
-							</thead>
-							<tbody className="divide-y divide-slate-100">
-								{visible.map((row) => (
-									<tr
-										key={row.id}
-										onClick={() => handleRowClick(row.id)}
-										className="hover:bg-slate-50 cursor-pointer transition-colors"
-									>
-										<td className="px-4 py-3 text-slate-700 whitespace-nowrap">{fmtDate(row.fiscalized_at ?? row.created_at)}</td>
-										<td className="px-4 py-3 font-mono font-semibold text-slate-800">
-											{row.fiscal_slip_no ?? <span className="text-slate-400">—</span>}
-										</td>
-										<td className="px-4 py-3">
-											<TypeBadge type={row.receipt_type} />
-										</td>
-										<td className="px-4 py-3">
-											<StatusBadge status={row.fiscal_status} />
-										</td>
-										<td className="px-4 py-3">
-											<PaymentBadge payment={row.payment} />
-										</td>
-										<td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{mkd(row.total)}</td>
-										<td className="px-4 py-3 text-center text-slate-600">{row.store_no ?? '—'}</td>
-										<td className="px-4 py-3 text-center">
-											<button
-												type="button"
-												onClick={(e) => {
-													e.stopPropagation();
-													handleRowClick(row.id);
-												}}
-												className="rounded-full bg-blamejaGreen px-3 py-1 text-xs font-semibold text-white hover:bg-blamejaGreen/90 transition-colors"
+						{!query.isLoading && !query.isError && visible.length > 0 && (
+							<div className="overflow-x-auto">
+								<table className="w-full text-sm">
+									<thead>
+										<tr className="bg-slate-50 border-b border-slate-100 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+											<th className="px-4 py-3">Датум</th>
+											<th className="px-4 py-3">Сметка бр.</th>
+											<th className="px-4 py-3">Тип</th>
+											<th className="px-4 py-3">Статус</th>
+											<th className="px-4 py-3">Плаќање</th>
+											<th className="px-4 py-3 text-right">Вкупно</th>
+											<th className="px-4 py-3 text-center">Продавница</th>
+											<th className="px-4 py-3 text-center">Акција</th>
+										</tr>
+									</thead>
+									<tbody className="divide-y divide-slate-100">
+										{visible.map((row) => (
+											<tr
+												key={row.id}
+												onClick={() => handleRowClick(row.id)}
+												className="hover:bg-slate-50 cursor-pointer transition-colors"
 											>
-												Прегледај
-											</button>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
+												<td className="px-4 py-3 text-slate-700 whitespace-nowrap">{fmtDate(row.fiscalized_at ?? row.created_at)}</td>
+												<td className="px-4 py-3 font-mono font-semibold text-slate-800">
+													{row.fiscal_slip_no ?? <span className="text-slate-400">—</span>}
+												</td>
+												<td className="px-4 py-3">
+													<TypeBadge type={row.receipt_type} />
+												</td>
+												<td className="px-4 py-3">
+													<StatusBadge status={row.fiscal_status} />
+												</td>
+												<td className="px-4 py-3">
+													<PaymentBadge payment={row.payment} />
+												</td>
+												<td className="px-4 py-3 text-right font-semibold text-slate-800 whitespace-nowrap">{mkd(row.total)}</td>
+												<td className="px-4 py-3 text-center text-slate-600">{row.store_no ?? '—'}</td>
+												<td className="px-4 py-3 text-center">
+													<button
+														type="button"
+														onClick={(e) => {
+															e.stopPropagation();
+															handleRowClick(row.id);
+														}}
+														className="rounded-full bg-blamejaGreen px-3 py-1 text-xs font-semibold text-white hover:bg-blamejaGreen/90 transition-colors"
+													>
+														Прегледај
+													</button>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							</div>
+						)}
 					</div>
-				)}
-			</div>
 
-			{/* Footer count */}
-			{!query.isLoading && !query.isError && (
-				<div className="flex flex-wrap gap-2 text-[11px]">
-					<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-						Прикажани: <b>{visible.length}</b>
-					</span>
-					<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
-						Вкупно во периодот: <b>{rows.length}</b>
-					</span>
+					{/* Footer count */}
+					{!query.isLoading && !query.isError && (
+						<div className="flex flex-wrap gap-2 text-[11px]">
+							<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+								Прикажани: <b>{visible.length}</b>
+							</span>
+							<span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">
+								Вкупно во периодот: <b>{rows.length}</b>
+							</span>
+						</div>
+					)}
 				</div>
-			)}
+
+				{/* ДЕСНО: рачно сторно (како продажба) */}
+				<div className="min-h-0">
+					<ManualStornoPanel onStornoDone={() => void query.refetch()} />
+				</div>
+			</div>
 		</div>
 	);
 }
