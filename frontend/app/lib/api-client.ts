@@ -24,11 +24,72 @@ export const tokenStorage = {
 	},
 };
 
+// ── Token refresh ──────────────────────────────────────────────────────────
+
+export type RefreshResult = 'ok' | 'invalid' | 'network';
+
+/**
+ * ⚠️ Supabase ги РОТИРА refresh токените: секој смее да се употреби само еднаш.
+ * Два паралелни refresh повика (два таба, StrictMode двоен ефект, повеќе 401 одеднаш)
+ * значат дека вториот користи веќе потрошен токен → Supabase ја укинува целата сесија.
+ * Затоа: single-flight во табот + Web Locks заклучување низ сите табови.
+ */
+const doRefresh = async (): Promise<RefreshResult> => {
+	// Друг таб можеби веќе обновил додека чекавме на бравата — тогаш сме готови.
+	if (isTokenValid()) return 'ok';
+
+	const refreshToken = tokenStorage.getRefreshToken();
+	if (!refreshToken) return 'invalid';
+
+	try {
+		const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ refreshToken }),
+		});
+
+		if (!res.ok) return 'invalid';
+
+		const data = await res.json();
+		tokenStorage.setTokens(data.access_token, data.refresh_token);
+		return 'ok';
+	} catch {
+		return 'network';
+	}
+};
+
+let inflightRefresh: Promise<RefreshResult> | null = null;
+
+/**
+ * Exchange the stored refresh token for a fresh access/refresh pair.
+ *  - 'ok'      → new tokens stored (или друг таб/повик веќе обновил)
+ *  - 'invalid' → refresh token rejected (session really expired)
+ *  - 'network' → backend unreachable — tokens are KEPT so the session
+ *                survives a backend restart / network blip
+ */
+export const tryRefreshTokens = (): Promise<RefreshResult> => {
+	if (inflightRefresh) return inflightRefresh;
+
+	const withCrossTabLock = async (): Promise<RefreshResult> => {
+		let result: RefreshResult = 'network';
+		await navigator.locks.request('blameja-token-refresh', async () => {
+			result = await doRefresh();
+		});
+		return result;
+	};
+
+	const run: Promise<RefreshResult> = typeof navigator !== 'undefined' && 'locks' in navigator ? withCrossTabLock() : doRefresh();
+
+	const flight = run.finally(() => {
+		inflightRefresh = null;
+	});
+	inflightRefresh = flight;
+	return flight;
+};
+
 // ── Core fetch wrapper ─────────────────────────────────────────────────────
 
 class ApiClient {
-	private refreshing: Promise<boolean> | null = null;
-
 	private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		const token = tokenStorage.getAccessToken();
 
@@ -42,18 +103,19 @@ class ApiClient {
 		});
 
 		if (res.status === 401) {
-			// Attempt a single token refresh, then retry
-			if (!this.refreshing) {
-				this.refreshing = this.attemptRefresh();
-			}
-			const refreshed = await this.refreshing;
-			this.refreshing = null;
+			// Attempt a single token refresh, then retry (single-flight + cross-tab lock)
+			const refreshed = await tryRefreshTokens();
 
-			if (!refreshed) {
+			if (refreshed === 'invalid') {
+				// Сесијата реално истекла — исчисти и покажи најава.
 				tokenStorage.clear();
-				// Trigger a full page reload so AuthGate shows the login screen
 				window.location.reload();
 				throw new Error('Session expired.');
+			}
+
+			if (refreshed === 'network') {
+				// Бекендот е недостапен — НЕ ја уништувај сесијата, само пријави грешка.
+				throw new Error('Серверот не е достапен. Обиди се повторно.');
 			}
 
 			// Retry the original request once with the new token
@@ -74,27 +136,6 @@ class ApiClient {
 		}
 
 		return res.json() as Promise<T>;
-	}
-
-	private async attemptRefresh(): Promise<boolean> {
-		const refreshToken = tokenStorage.getRefreshToken();
-		if (!refreshToken) return false;
-
-		try {
-			const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ refreshToken }),
-			});
-
-			if (!res.ok) return false;
-
-			const data = await res.json();
-			tokenStorage.setTokens(data.access_token, data.refresh_token);
-			return true;
-		} catch {
-			return false;
-		}
 	}
 
 	// ── HTTP methods ─────────────────────────────────────────────────────

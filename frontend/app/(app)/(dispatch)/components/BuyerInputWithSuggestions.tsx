@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useListNav } from 'app/lib/useListNav';
 import type { BuyerRow } from '../types';
 
 type Props = {
@@ -67,6 +68,27 @@ export default function BuyerInputWithSuggestions({
 		return `Прикажани ${Math.min(filtered.length, maxVisible)} од ${all.length}`;
 	}, [loading, filtered.length, all.length, maxVisible]);
 
+	const pick = (row: BuyerRow) => {
+		onPick(row);
+		setOpen(false);
+		inputRef.current?.focus();
+	};
+
+	/* Тастатурна навигација низ листата (стрелки + Enter/Escape) */
+	const { activeIndex, listRef, onInputKeyDown } = useListNav({
+		itemCount: visible.length,
+		isOpen: open && !loading && visible.length > 0,
+		resetKey: value,
+		onPick: (i) => {
+			const row = visible[i];
+			if (row) pick(row);
+		},
+		onClose: () => setOpen(false),
+		onOpen: () => setOpen(true),
+		// Enter додека листата е отворена (без обележан) → затвори, не поднесувај форма.
+		onEnterNoSelection: open ? () => setOpen(false) : undefined,
+	});
+
 	return (
 		<div
 			ref={wrapRef}
@@ -90,9 +112,10 @@ export default function BuyerInputWithSuggestions({
 					}}
 					onFocus={() => setOpen(true)}
 					onClick={() => setOpen(true)}
-					onKeyDown={(e) => {
-						if (e.key === 'Escape') setOpen(false);
-					}}
+					onKeyDown={onInputKeyDown}
+					role="combobox"
+					aria-expanded={open}
+					aria-autocomplete="list"
 					className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm
             focus:border-blamejaGreen focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30"
 					placeholder={placeholder}
@@ -105,7 +128,11 @@ export default function BuyerInputWithSuggestions({
 
 			{open && (
 				<div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-					<div className="max-h-72 overflow-auto">
+					<div
+						ref={listRef}
+						role="listbox"
+						className="max-h-72 overflow-auto"
+					>
 						{loading && <div className="px-3 py-2 text-xs text-slate-500">Се вчитува…</div>}
 
 						{!loading && all.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема купувачи.</div>}
@@ -113,17 +140,19 @@ export default function BuyerInputWithSuggestions({
 						{!loading && all.length > 0 && filtered.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
 
 						{!loading &&
-							visible.map((s) => (
+							visible.map((s, i) => (
 								<button
 									key={s.key}
 									type="button"
+									role="option"
+									aria-selected={i === activeIndex}
+									data-nav-index={i}
+									tabIndex={-1}
 									onMouseDown={(e) => e.preventDefault()}
-									onClick={() => {
-										onPick(s);
-										setOpen(false);
-										inputRef.current?.focus();
-									}}
-									className="w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-slate-50 last:border-b-0"
+									onClick={() => pick(s)}
+									className={`w-full border-b border-slate-100 px-3 py-2 text-left last:border-b-0 ${
+										i === activeIndex ? 'bg-blamejaGreenSoft' : 'hover:bg-slate-50'
+									}`}
 								>
 									<div className="min-w-0">
 										<div className="truncate text-sm font-semibold text-slate-900">{s.name}</div>

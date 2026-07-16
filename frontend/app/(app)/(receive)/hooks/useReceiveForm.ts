@@ -20,7 +20,8 @@ export const useReceiveForm = () => {
 	const [unitCost, setUnitCost] = useState('');
 	const [sellingPrice, setSellingPrice] = useState('');
 	const [details, setDetails] = useState('');
-	const [taxGroup, setTaxGroup] = useState<TaxGroup>('18');
+	// Дифолт ДДВ група: 5%
+	const [taxGroup, setTaxGroup] = useState<TaxGroup>('5');
 	const [unit, setUnit] = useState<Unit>('пар');
 	const [isMacedonian, setIsMacedonian] = useState(false);
 
@@ -48,7 +49,7 @@ export const useReceiveForm = () => {
 		setUnitCost('');
 		setSellingPrice('');
 		setDetails('');
-		setTaxGroup('18');
+		setTaxGroup('5');
 		setUnit('пар');
 		setIsMacedonian(false);
 	};

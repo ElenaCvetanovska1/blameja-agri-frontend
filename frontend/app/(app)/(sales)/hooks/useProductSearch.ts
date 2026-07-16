@@ -11,7 +11,14 @@ const searchProducts = async (term: string, storeNo: 20 | 30, limit = 8): Promis
 
 	const rows = await api.get<ProductStockRow[]>(`/api/sales/products/search?q=${encodeURIComponent(t0)}&storeNo=${storeNo}&limit=${limit}`);
 
-	return (rows ?? []).sort((a, b) => num(b.qty_on_hand) - num(a.qty_on_hand));
+	// Точен PLU погодок секогаш прв (пр. „50" → производот со PLU 50 на врв), потоа по залиха.
+	const pluExact = /^\d+$/.test(t0) ? t0 : null;
+	return (rows ?? []).sort((a, b) => {
+		const aExact = pluExact != null && String(a.plu ?? '') === pluExact ? 0 : 1;
+		const bExact = pluExact != null && String(b.plu ?? '') === pluExact ? 0 : 1;
+		if (aExact !== bExact) return aExact - bExact;
+		return num(b.qty_on_hand) - num(a.qty_on_hand);
+	});
 };
 
 export const useProductSearch = (code: string, storeNo: 20 | 30) => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { CartItem } from '../types';
-import { clampFinalToBase, discountPercentFromBaseFinal, discountPerUnitFromBaseFinal, num, priceNum, round2 } from '../utils';
+import { discountPercentFromBaseFinal, discountPerUnitFromBaseFinal, num, priceNum, round2 } from '../utils';
 
 type Props = {
 	item: CartItem;
@@ -12,9 +12,11 @@ type Props = {
 	onQtyChange: (nextQty: number) => void;
 	onFinalPriceChange: (raw: string) => void;
 	onFinalPriceBlur: () => void;
+	/** Enter/Escape во „Кол."/„Цена" → готово со линијата (обично: врати фокус на пребарување). */
+	onLineDone?: () => void;
 };
 
-export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, onFinalPriceChange, onFinalPriceBlur }: Props) => {
+export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, onFinalPriceChange, onFinalPriceBlur, onLineDone }: Props) => {
 	const qtyRef = useRef<HTMLInputElement | null>(null);
 
 	// Локален string за количината → дозволува пишување децимали (пр. "1.6") без да „снапнува" точката.
@@ -39,22 +41,43 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 		}
 	};
 
+	// ArrowUp/ArrowDown во „Кол." → ±1 (не под 1 при намалување).
+	const stepQty = (delta: 1 | -1) => {
+		const parsed = Number(qtyStr.replace(',', '.'));
+		const current = Number.isFinite(parsed) && parsed > 0 ? parsed : item.qty;
+		const next = Math.round(Math.max(delta > 0 ? current + 1 : Math.max(1, current - 1), 0.001) * 1000) / 1000;
+		setQtyStr(String(next));
+		onQtyChange(next);
+	};
+
+	const fieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Enter' || e.key === 'Escape') {
+			e.preventDefault();
+			e.currentTarget.blur(); // blur ги нормализира/клампа вредностите
+			onLineDone?.();
+		}
+	};
+
 	useEffect(() => {
 		if (!autoFocusQty) return;
 		const el = qtyRef.current;
 		if (!el) return;
 
-		el.focus();
-		el.select();
+		// rAF — фокус/селекција откако вредноста ќе се стабилизира (пр. 1 → 2 при повторно додавање).
+		const raf = requestAnimationFrame(() => {
+			el.focus();
+			el.select();
 
-		try {
-			el.setSelectionRange(0, el.value.length);
-		} catch {}
+			try {
+				el.setSelectionRange(0, el.value.length);
+			} catch {}
+		});
+		return () => cancelAnimationFrame(raf);
 	}, [autoFocusQty]);
 
 	const base = num(item.product.selling_price);
-	const finalRaw = priceNum(item.finalPriceStr);
-	const final = clampFinalToBase(finalRaw, base);
+	// Дозволена е и повисока цена од основната — попустот тогаш е 0 (никогаш не оди во минус).
+	const final = priceNum(item.finalPriceStr);
 
 	const disc = discountPerUnitFromBaseFinal(base, final);
 	const discPct = discountPercentFromBaseFinal(base, final);
@@ -106,6 +129,19 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 						value={qtyStr}
 						onChange={(e) => onQtyInput(e.target.value)}
 						onBlur={onQtyBlur}
+						onKeyDown={(e) => {
+							if (e.key === 'ArrowUp') {
+								e.preventDefault();
+								stepQty(1);
+								return;
+							}
+							if (e.key === 'ArrowDown') {
+								e.preventDefault();
+								stepQty(-1);
+								return;
+							}
+							fieldKeyDown(e);
+						}}
 						className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/30"
 						disabled={busy}
 					/>
@@ -140,6 +176,7 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 						value={item.finalPriceStr}
 						onChange={(e) => onFinalPriceChange(e.target.value)}
 						onBlur={onFinalPriceBlur}
+						onKeyDown={fieldKeyDown}
 						placeholder={base > 0 ? base.toFixed(2) : '0.00'}
 						className="h-10 w-full rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/30"
 						disabled={busy}

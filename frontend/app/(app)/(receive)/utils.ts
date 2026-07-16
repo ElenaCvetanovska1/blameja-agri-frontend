@@ -23,5 +23,6 @@ export const parseNumOrNull = (value: string) => {
 
 export const normalizeTaxGroup = (v: unknown): TaxGroup => {
 	const tg = String(Math.trunc(num(v))) as TaxGroup;
-	return tg === '5' || tg === '10' || tg === '18' ? tg : '18';
+	// Дифолт ДДВ група: 5% (кога производот нема валидна вредност)
+	return tg === '5' || tg === '10' || tg === '18' ? tg : '5';
 };

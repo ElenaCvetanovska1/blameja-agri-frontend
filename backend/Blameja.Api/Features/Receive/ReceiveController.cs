@@ -38,6 +38,10 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         // Parse categoryId to Guid (nullable)
         Guid? catGuid = catId is not null && Guid.TryParse(catId, out var g) ? g : null;
 
+        // Same matching logic as the POS sales search: barcode/name/PLU with
+        // exact-PLU match ranked first (a digit query like "50" surfaces PLU 50 on top).
+        var pluExact = q.Trim() is { Length: > 0 } t && t.All(char.IsDigit) ? t : null;
+
         const string sql = """
             SELECT
                 p.id,
@@ -53,10 +57,17 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
             WHERE p.is_active = true
-              AND p.name ILIKE '%' || @q || '%'
+              AND (
+                    p.barcode ILIKE '%' || @q || '%'
+                 OR p.name    ILIKE '%' || @q || '%'
+                 OR p.plu     ILIKE '%' || @q || '%'
+                 OR (@pluExact IS NOT NULL AND p.plu = @pluExact)
+              )
               AND (@catId IS NULL OR p.category_id = @catId)
               AND (@storeNo IS NULL OR p.store_no = @storeNo)
-            ORDER BY p.name ASC
+            ORDER BY
+                CASE WHEN @pluExact IS NOT NULL AND p.plu = @pluExact THEN 0 ELSE 1 END,
+                p.name ASC
             LIMIT @limit;
             """;
 
@@ -64,6 +75,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         var rows = await conn.QueryAsync<ReceiveProductChoiceDto>(sql, new
         {
             q      = q.Trim(),
+            pluExact,
             catId  = catGuid,
             storeNo,
             limit,
@@ -103,6 +115,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
     [HttpGet("products/lookup")]
     public async Task<IActionResult> LookupProduct(
         [FromQuery] string code,
+        [FromQuery] int?   storeNo,
         CancellationToken  ct = default)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -111,17 +124,24 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         var trimmed  = code.Trim();
         var pluExact = trimmed.All(char.IsDigit) ? trimmed : null;
 
+        // PLU match wins over barcode match (same rule as the POS sales lookup).
+        // NOTE: `subcategory_id` не постои во базата — не смее да се селектира (500).
         const string sql = """
             SELECT id, plu, barcode, name, description, unit, selling_price,
-                   tax_group, category_id, subcategory_id
+                   tax_group, category_id
             FROM products
-            WHERE barcode = @trimmed
-               OR (@pluExact IS NOT NULL AND plu = @pluExact)
+            WHERE is_active = true
+              AND (@storeNo IS NULL OR store_no = @storeNo)
+              AND (
+                    barcode = @trimmed
+                 OR (@pluExact IS NOT NULL AND plu = @pluExact)
+              )
+            ORDER BY CASE WHEN @pluExact IS NOT NULL AND plu = @pluExact THEN 0 ELSE 1 END
             LIMIT 1;
             """;
 
         using var conn = db.CreateConnection();
-        var row = await conn.QuerySingleOrDefaultAsync<ProductLookupDto>(sql, new { trimmed, pluExact });
+        var row = await conn.QuerySingleOrDefaultAsync<ProductLookupDto>(sql, new { trimmed, pluExact, storeNo });
 
         if (row is not null)
         {

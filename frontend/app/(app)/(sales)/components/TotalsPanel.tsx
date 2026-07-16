@@ -10,8 +10,6 @@ type Props = {
 	totals: Totals;
 	busy: boolean;
 	cartEmpty: boolean;
-	note: string;
-	onNoteChange: (v: string) => void;
 	paymentMethod: PaymentMethod;
 	onPaymentMethodChange: (v: PaymentMethod) => void;
 	cashReceivedStr: string;
@@ -24,8 +22,6 @@ export const TotalsPanel = ({
 	totals,
 	busy,
 	cartEmpty,
-	note,
-	onNoteChange,
 	onSubmit,
 	paymentMethod,
 	onPaymentMethodChange,
@@ -33,11 +29,13 @@ export const TotalsPanel = ({
 	onCashReceivedStrChange,
 	fiscalWarnings = [],
 }: Props) => {
+	const cashEntered = cashReceivedStr.trim().length > 0;
 	const cashNum = priceNum(sanitizePriceInput(cashReceivedStr || '0'));
 	const change = Math.max(0, cashNum - totals.total);
-	const notEnoughCash = paymentMethod === 'CASH' && cashReceivedStr.trim().length > 0 && cashNum < totals.total;
+	const notEnoughCash = paymentMethod === 'CASH' && cashEntered && cashNum < totals.total;
 
-	const submitDisabled = busy || cartEmpty || (paymentMethod === 'CASH' && cashNum < totals.total);
+	// „Прима готово" е опционално — блокира само ако Е внесено, а не покрива.
+	const submitDisabled = busy || cartEmpty || notEnoughCash;
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -92,6 +90,13 @@ export const TotalsPanel = ({
 						inputMode="decimal"
 						value={cashReceivedStr}
 						onChange={(e) => onCashReceivedStrChange(sanitizePriceInput(e.target.value))}
+						onKeyDown={(e) => {
+							// Enter во „Прима готово" → директно зачувај ја продажбата
+							if (e.key === 'Enter' && !submitDisabled) {
+								e.preventDefault();
+								onSubmit();
+							}
+						}}
 						placeholder={totals.total > 0 ? totals.total.toFixed(2) : '0.00'}
 						className={`w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition-colors
 							focus:ring-2 focus:ring-blamejaGreen/20 focus:border-blamejaGreen
@@ -107,7 +112,7 @@ export const TotalsPanel = ({
 							{notEnoughCash ? `Недоволно (треба ${totals.total.toFixed(2)})` : 'Кусур'}
 						</span>
 						<span className={`font-bold tabular-nums ${notEnoughCash ? 'text-red-700' : 'text-slate-800'}`}>
-							{notEnoughCash ? '—' : `${change.toFixed(2)} ден.`}
+							{notEnoughCash || !cashEntered ? '—' : `${change.toFixed(2)} ден.`}
 						</span>
 					</div>
 				</div>
@@ -134,25 +139,6 @@ export const TotalsPanel = ({
 						<span className="text-base font-semibold text-slate-500 ml-1">ден.</span>
 					</span>
 				</div>
-			</div>
-
-			{/* ─── Note ─── */}
-			<div>
-				<label
-					className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5"
-					htmlFor="sales-note"
-				>
-					Забелешка (опц.)
-				</label>
-				<input
-					id="sales-note"
-					value={note}
-					onChange={(e) => onNoteChange(e.target.value)}
-					placeholder="Белешка за продажбата…"
-					className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
-						focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/20"
-					disabled={busy}
-				/>
 			</div>
 
 			{/* ─── Fiscal warnings ─── */}

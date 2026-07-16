@@ -16,5 +16,4 @@ public sealed record ProductLookupDto
     public decimal SellingPrice  { get; init; }
     public int?    TaxGroup      { get; init; }
     public Guid?   CategoryId    { get; init; }
-    public Guid?   SubcategoryId { get; init; }
 }

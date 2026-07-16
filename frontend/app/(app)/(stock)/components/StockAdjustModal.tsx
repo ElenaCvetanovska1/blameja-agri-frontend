@@ -12,6 +12,7 @@ import { useUpdateProductMutation, type Unit } from '../hooks/useUpdateProductMu
 // ✅ existing scanner modal
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { ScannerModal } from 'app/(app)/(sales)/components/ScannerModal';
+import { useModalKeyboard } from 'app/lib/useModalKeyboard';
 
 const clampQty = (value: string) => {
 	const cleaned = value.replace(',', '.');
@@ -60,6 +61,10 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 	// scanner
 	const [scanOpen, setScanOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
+
+	// Escape затвора, Tab останува во дијалогот, фокус се враќа по затворање.
+	// Додека скенерот е отворен, неговиот Escape има предност (enabled: !scanOpen).
+	const { containerRef, initialFocusRef } = useModalKeyboard({ open, onClose, enabled: !scanOpen });
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional – only re-run when product id or open state changes
 	useEffect(() => {
@@ -151,8 +156,17 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 
 	return (
 		<>
-			<div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
-				<div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl overflow-hidden">
+			<div
+				className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Корекција на производ и залиха"
+			>
+				<div
+					ref={containerRef}
+					tabIndex={-1}
+					className="w-full max-w-2xl rounded-2xl bg-white shadow-xl overflow-hidden outline-none"
+				>
 					<div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
 						<div>
 							<div className="text-sm font-semibold">Корекција (производ + залиха)</div>
@@ -188,6 +202,9 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 								</label>
 								<input
 									id="stock-modal-name"
+									ref={(el) => {
+										initialFocusRef.current = el;
+									}}
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm

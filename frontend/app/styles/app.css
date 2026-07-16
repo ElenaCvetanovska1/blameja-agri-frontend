@@ -78,6 +78,16 @@
 	body {
 		@apply bg-background text-foreground;
 	}
+
+	/* ─── Видлив фокус за тастатурна навигација (инпутите имаат свои ring стилови) ─── */
+	button:focus-visible,
+	a:focus-visible,
+	select:focus-visible,
+	tr[tabindex]:focus-visible,
+	[role='option']:focus-visible {
+		outline: 2px solid var(--blameja-green);
+		outline-offset: 1px;
+	}
 }
 
 /* ─────────────────────────────────────────────

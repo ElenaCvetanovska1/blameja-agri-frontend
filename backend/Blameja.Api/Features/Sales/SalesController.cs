@@ -41,35 +41,46 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         // If the query is all-digits, also attempt an exact PLU match
         var pluExact = q.Trim() is { } t && t.Length > 0 && t.All(char.IsDigit) ? t : null;
 
+        // Exact PLU match is ranked first (before LIMIT), so a digit query like "50"
+        // always surfaces the PLU-50 product even when many barcodes/names contain "50".
         const string sql = """
-            SELECT DISTINCT ON (product_id)
-                product_id,
-                plu,
-                barcode,
-                name,
-                selling_price,
-                qty_on_hand,
-                category_name,
-                store_no,
-                tax_group,
-                is_macedonian
-            FROM product_stock
-            WHERE store_no = @storeNo
-              AND (
-                    barcode ILIKE '%' || @q || '%'
-                 OR name    ILIKE '%' || @q || '%'
-                 OR plu     ILIKE '%' || @q || '%'
-                 OR (@pluExact IS NOT NULL AND plu = @pluExact)
-              )
-            ORDER BY product_id, qty_on_hand DESC NULLS LAST
+            SELECT *
+            FROM (
+                SELECT DISTINCT ON (product_id)
+                    product_id,
+                    plu,
+                    barcode,
+                    name,
+                    selling_price,
+                    qty_on_hand,
+                    category_name,
+                    store_no,
+                    tax_group,
+                    is_macedonian
+                FROM product_stock
+                WHERE store_no = @storeNo
+                  AND (
+                        barcode ILIKE '%' || @q || '%'
+                     OR name    ILIKE '%' || @q || '%'
+                     OR plu     ILIKE '%' || @q || '%'
+                     OR (@pluExact IS NOT NULL AND plu = @pluExact)
+                  )
+                ORDER BY product_id, qty_on_hand DESC NULLS LAST
+            ) t
+            ORDER BY
+                CASE WHEN @pluExact IS NOT NULL AND plu = @pluExact THEN 0 ELSE 1 END,
+                qty_on_hand DESC NULLS LAST
             LIMIT @limit;
             """;
 
         using var conn = db.CreateConnection();
         var rows = await conn.QueryAsync<ProductStockDto>(sql, new { q = q.Trim(), storeNo, pluExact, limit });
 
-        // Re-sort by qty_on_hand descending (mirrors frontend deduplication sort)
-        var sorted = rows.OrderByDescending(r => r.QtyOnHand).Take(limit);
+        // Re-sort: exact PLU match first, then by qty_on_hand descending
+        var sorted = rows
+            .OrderBy(r => pluExact != null && r.Plu == pluExact ? 0 : 1)
+            .ThenByDescending(r => r.QtyOnHand)
+            .Take(limit);
         return Ok(sorted);
     }
 
@@ -90,6 +101,8 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         var trimmed  = code.Trim();
         var pluExact = trimmed.All(char.IsDigit) ? trimmed : null;
 
+        // PLU match wins over barcode match: typing "50" + Enter must add PLU 50,
+        // even if some other product's barcode happens to be exactly "50".
         const string sql = """
             SELECT
                 product_id,
@@ -108,6 +121,7 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                     barcode = @trimmed
                  OR (@pluExact IS NOT NULL AND plu = @pluExact)
               )
+            ORDER BY CASE WHEN @pluExact IS NOT NULL AND plu = @pluExact THEN 0 ELSE 1 END
             LIMIT 1;
             """;
 
@@ -141,13 +155,10 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         if (request.Payment is not ("CASH" or "CARD"))
             throw new ApiException("Invalid payment method.");
 
-        if (request.Payment == "CASH")
-        {
-            var cash = request.CashReceived ?? 0;
-            if (cash < request.Total)
-                throw new ApiException(
-                    $"Недоволно готово. Вкупно: {request.Total:F2} / Дава: {cash:F2}.");
-        }
+        // "Прима готово" е опционално (null = точен износ); валидирај само ако е внесено.
+        if (request.Payment == "CASH" && request.CashReceived is { } cash && cash < request.Total)
+            throw new ApiException(
+                $"Недоволно готово. Вкупно: {request.Total:F2} / Дава: {cash:F2}.");
 
         using var conn = db.CreateConnection();
 
@@ -176,13 +187,10 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         if (request.Payment is not ("CASH" or "CARD"))
             throw new ApiException("Невалиден начин на плаќање.");
 
-        if (request.Payment == "CASH")
-        {
-            var cash = request.CashReceived ?? 0;
-            if (cash < request.Total)
-                throw new ApiException(
-                    $"Недоволно готово. Вкупно: {request.Total:F2} / Дава: {cash:F2}.");
-        }
+        // "Прима готово" е опционално (null = точен износ); валидирај само ако е внесено.
+        if (request.Payment == "CASH" && request.CashReceived is { } cash2 && cash2 < request.Total)
+            throw new ApiException(
+                $"Недоволно готово. Вкупно: {request.Total:F2} / Дава: {cash2:F2}.");
 
         using var tx = conn.BeginTransaction();
 

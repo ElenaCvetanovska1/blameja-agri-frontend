@@ -13,7 +13,6 @@ export type ProductLookup = {
 	selling_price: number;
 	tax_group: number | null;
 	category_id: string | null;
-	subcategory_id: string | null;
 };
 
 const normalizeUnit = (v: unknown): Unit => {
@@ -23,11 +22,14 @@ const normalizeUnit = (v: unknown): Unit => {
 
 export const useProductLookup = () => {
 	const mutation = useMutation({
-		mutationFn: async (code: string) => {
+		mutationFn: async ({ code, storeNo }: { code: string; storeNo?: number }) => {
 			const trimmed = code.trim();
 			if (!trimmed) throw new Error('Внеси баркод или PLU.');
 
-			const data = await api.get<ProductLookup | null>(`/api/receive/products/lookup?code=${encodeURIComponent(trimmed)}`);
+			const params = new URLSearchParams({ code: trimmed });
+			if (typeof storeNo === 'number') params.set('storeNo', String(storeNo));
+
+			const data = await api.get<ProductLookup | null>(`/api/receive/products/lookup?${params}`);
 
 			if (!data) return null;
 
@@ -39,7 +41,7 @@ export const useProductLookup = () => {
 	});
 
 	return {
-		lookup: (code: string) => mutation.mutateAsync(code),
+		lookup: (code: string, storeNo?: number) => mutation.mutateAsync({ code, storeNo }),
 		isLoading: mutation.isPending,
 		error: mutation.isError ? (mutation.error as Error) : null,
 	};

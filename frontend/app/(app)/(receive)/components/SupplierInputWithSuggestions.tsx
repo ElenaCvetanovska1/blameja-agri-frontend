@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useListNav } from 'app/lib/useListNav';
 import type { SupplierRow } from '../hooks/useSupplierChoices';
 
 type Props = {
@@ -60,6 +61,38 @@ export const SupplierInputWithSuggestions = ({
 		return `${suggestions.length} резултати`;
 	}, [loading, openAll, suggestions.length]);
 
+	const pick = (row: SupplierRow) => {
+		onPick(row);
+		setOpen(false);
+		onCloseAll();
+	};
+
+	/* Тастатурна навигација низ листата (стрелки + Enter/Escape) */
+	const { activeIndex, listRef, onInputKeyDown } = useListNav({
+		itemCount: suggestions.length,
+		isOpen: open && !loading && suggestions.length > 0,
+		resetKey: value,
+		onPick: (i) => {
+			const row = suggestions[i];
+			if (row) pick(row);
+		},
+		onClose: () => {
+			setOpen(false);
+			onCloseAll();
+		},
+		onOpen: () => {
+			setOpen(true);
+			if (!value.trim()) onOpenAll();
+		},
+		// Enter додека листата е отворена (без обележан) → затвори, не поднесувај форма.
+		onEnterNoSelection: open
+			? () => {
+					setOpen(false);
+					onCloseAll();
+				}
+			: undefined,
+	});
+
 	return (
 		<div
 			ref={wrapRef}
@@ -92,12 +125,10 @@ export const SupplierInputWithSuggestions = ({
 						setOpen(true);
 						if (!value.trim()) onOpenAll();
 					}}
-					onKeyDown={(e) => {
-						if (e.key === 'Escape') {
-							setOpen(false);
-							onCloseAll();
-						}
-					}}
+					onKeyDown={onInputKeyDown}
+					role="combobox"
+					aria-expanded={open}
+					aria-autocomplete="list"
 					className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm
                      focus:border-blamejaGreen focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30"
 					placeholder={placeholder}
@@ -112,22 +143,28 @@ export const SupplierInputWithSuggestions = ({
 
 			{open && (
 				<div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-					<div className="max-h-72 overflow-auto">
+					<div
+						ref={listRef}
+						role="listbox"
+						className="max-h-72 overflow-auto"
+					>
 						{loading && <div className="px-3 py-2 text-xs text-slate-500">Се вчитува…</div>}
 
 						{!loading && suggestions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
 
 						{!loading &&
-							suggestions.map((s) => (
+							suggestions.map((s, i) => (
 								<button
 									key={s.id}
 									type="button"
-									onClick={() => {
-										onPick(s);
-										setOpen(false);
-										onCloseAll();
-									}}
-									className="w-full border-b border-slate-100 px-3 py-2 text-left hover:bg-slate-50 last:border-b-0"
+									role="option"
+									aria-selected={i === activeIndex}
+									data-nav-index={i}
+									tabIndex={-1}
+									onClick={() => pick(s)}
+									className={`w-full border-b border-slate-100 px-3 py-2 text-left last:border-b-0 ${
+										i === activeIndex ? 'bg-blamejaGreenSoft' : 'hover:bg-slate-50'
+									}`}
 								>
 									<div className="min-w-0">
 										<div className="truncate text-sm font-semibold text-slate-900">{s.name}</div>

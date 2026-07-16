@@ -3,6 +3,7 @@
 import { toast } from 'sonner';
 import type { StockRow } from '../hooks/useStock';
 import { useDeactivateProductMutation } from '../hooks/useDeactivateProductMutation';
+import { useModalKeyboard } from 'app/lib/useModalKeyboard';
 
 type Props = {
 	open: boolean;
@@ -19,6 +20,9 @@ const fmtQty = (n: number) => (Number.isFinite(n) ? n.toFixed(3).replace(/\.?0+$
 
 export function DeleteProductModal({ open, row, onClose }: Props) {
 	const deactivateProduct = useDeactivateProductMutation();
+
+	// Escape затвора; почетен фокус на „Откажи" (безбедно за деструктивна акција).
+	const { containerRef, initialFocusRef } = useModalKeyboard({ open, onClose });
 
 	if (!open || !row) return null;
 
@@ -48,8 +52,17 @@ export function DeleteProductModal({ open, row, onClose }: Props) {
 	const isBusy = deactivateProduct.isPending;
 
 	return (
-		<div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center px-4">
-			<div className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+		<div
+			className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center px-4"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Потврда за бришење"
+		>
+			<div
+				ref={containerRef}
+				tabIndex={-1}
+				className="w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden outline-none"
+			>
 				<div className="border-b border-slate-200 px-4 py-3">
 					<div className="text-sm font-semibold text-slate-900">Потврда за бришење</div>
 					<div className="text-xs text-slate-500 mt-1">Дали сте сигурни дека сакате да го избришете овој производ?</div>
@@ -83,6 +96,9 @@ export function DeleteProductModal({ open, row, onClose }: Props) {
 				<div className="border-t border-slate-200 px-4 py-3 flex items-center justify-end gap-2">
 					<button
 						type="button"
+						ref={(el) => {
+							initialFocusRef.current = el;
+						}}
 						onClick={onClose}
 						disabled={isBusy}
 						className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"

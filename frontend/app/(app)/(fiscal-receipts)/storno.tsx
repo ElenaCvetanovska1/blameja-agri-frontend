@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useFiscalReceiptDetail, type FiscalReceiptItem } from './hooks/useFiscalReceiptDetail';
 import { useStornoFlow } from './hooks/useStornoFlow';
@@ -89,6 +89,7 @@ const SelectionTable = ({
 							<td className="px-3 py-2.5 text-right font-semibold text-slate-800">{item.remaining_qty}</td>
 							<td className="px-3 py-2.5 text-right">
 								<input
+									id={`storno-qty-${item.id}`}
 									type="number"
 									min="0"
 									max={item.remaining_qty}
@@ -96,6 +97,13 @@ const SelectionTable = ({
 									disabled={!canReturn || !sel.checked}
 									value={sel.checked ? sel.qty : ''}
 									onChange={(e) => onChange(item.id, 'qty', e.target.value)}
+									onKeyDown={(e) => {
+										// Enter → директно кон „Прегледај" (ако има избрани ставки)
+										if (e.key === 'Enter') {
+											e.preventDefault();
+											document.getElementById('storno-proceed')?.focus();
+										}
+									}}
 									className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-right text-xs disabled:opacity-40 focus:border-blamejaGreen focus:outline-none"
 								/>
 							</td>
@@ -149,6 +157,26 @@ export default function StornoPage() {
 	const [step, setStep] = useState<Step>('select');
 	const [selection, setSelection] = useState<SelectionMap>({});
 	const [error, setError] = useState<string | null>(null);
+
+	const confirmingRef = useRef(false);
+	const reviewBackBtnRef = useRef<HTMLButtonElement | null>(null);
+
+	// Escape → чекор назад (review → select → детали). Никогаш за време на обработка.
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (e.key !== 'Escape' || step === 'processing') return;
+			e.preventDefault();
+			if (step === 'review') setStep('select');
+			else navigate(`/fiscal-receipts/${id}`);
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [step, id, navigate]);
+
+	// Во review: почетен фокус на „Назад" — Потврди (неповратно печатење) бара намерен Tab/клик.
+	useEffect(() => {
+		if (step === 'review') reviewBackBtnRef.current?.focus();
+	}, [step]);
 
 	// ── Loading / Error / Not-found guards ────────────────────────────────────
 
@@ -228,6 +256,17 @@ export default function StornoPage() {
 			}
 			return { ...prev, [itemId]: { ...current, qty: value as string } };
 		});
+
+		// По штиклирање → фокус на „Враќам кол." за брза корекција на количината.
+		if (field === 'checked' && value === true) {
+			requestAnimationFrame(() => {
+				const el = document.getElementById(`storno-qty-${itemId}`);
+				if (el instanceof HTMLInputElement) {
+					el.focus();
+					el.select();
+				}
+			});
+		}
 	};
 
 	// Build selected lines for review
@@ -265,6 +304,8 @@ export default function StornoPage() {
 	// ── Confirm handler ───────────────────────────────────────────────────────
 
 	const handleConfirm = async () => {
+		if (confirmingRef.current) return; // спречи двојно извршување (двоен Enter/клик)
+		confirmingRef.current = true;
 		setStep('processing');
 		setError(null);
 		try {
@@ -290,6 +331,7 @@ export default function StornoPage() {
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 			setStep('review');
+			confirmingRef.current = false;
 		}
 	};
 
@@ -334,6 +376,7 @@ export default function StornoPage() {
 								Вкупно за враќање: <b className="text-lg">{mkd(stornoTotal)}</b>
 							</span>
 							<button
+								id="storno-proceed"
 								type="button"
 								onClick={() => {
 									const err = validationError();
@@ -387,6 +430,7 @@ export default function StornoPage() {
 					<div className="flex items-center gap-3 justify-end">
 						<button
 							type="button"
+							ref={reviewBackBtnRef}
 							onClick={() => setStep('select')}
 							className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
 						>

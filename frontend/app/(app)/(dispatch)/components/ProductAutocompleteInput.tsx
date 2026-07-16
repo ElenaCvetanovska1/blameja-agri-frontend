@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useListNav } from 'app/lib/useListNav';
 import type { ProductSuggestion } from '../types';
 
 type Props = {
@@ -43,6 +44,28 @@ export const ProductAutocompleteInput = ({
 
 	const show = open && (loading || suggestions.length > 0);
 
+	const pick = (s: ProductSuggestion) => {
+		onPick(s);
+		setOpen(false);
+		inputRef.current?.focus();
+	};
+
+	/* Тастатурна навигација низ предлозите (стрелки + Enter/Escape) */
+	const { activeIndex, listRef, onInputKeyDown } = useListNav({
+		itemCount: suggestions.length,
+		isOpen: open && suggestions.length > 0,
+		resetKey: value,
+		onPick: (i) => {
+			const s = suggestions[i];
+			if (s) pick(s);
+		},
+		onClose: () => setOpen(false),
+		onOpen: () => setOpen(true),
+		// Enter додека листата е отворена (без обележан предлог) → само затвори,
+		// за да не се активира ненамерно поднесување на формата.
+		onEnterNoSelection: open ? () => setOpen(false) : undefined,
+	});
+
 	return (
 		<div
 			ref={wrapRef}
@@ -52,6 +75,9 @@ export const ProductAutocompleteInput = ({
 				ref={inputRef}
 				value={value}
 				disabled={disabled}
+				role="combobox"
+				aria-expanded={show}
+				aria-autocomplete="list"
 				onChange={(e) => {
 					onChange(e.target.value);
 					if (e.target.value.trim().length > 0) setOpen(true);
@@ -59,31 +85,35 @@ export const ProductAutocompleteInput = ({
 				onFocus={() => {
 					if (value.trim().length > 0) setOpen(true);
 				}}
-				onKeyDown={(e) => {
-					if (e.key === 'Escape') setOpen(false);
-				}}
+				onKeyDown={onInputKeyDown}
 				placeholder={placeholder}
 				className="w-full rounded-md border border-slate-200 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 			/>
 
 			{show && (
 				<div className="absolute left-0 right-0 top-full mt-2 z-40 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-					<div className="max-h-34 overflow-auto">
+					<div
+						ref={listRef}
+						role="listbox"
+						className="max-h-34 overflow-auto"
+					>
 						{loading && <div className="px-3 py-2 text-xs text-slate-500">Се пребарува...</div>}
 
 						{!loading && suggestions.length === 0 && <div className="px-3 py-2 text-xs text-slate-500">Нема резултати.</div>}
 
-						{suggestions.map((s) => (
+						{suggestions.map((s, i) => (
 							<button
 								key={s.id}
 								type="button"
+								role="option"
+								aria-selected={i === activeIndex}
+								data-nav-index={i}
+								tabIndex={-1}
 								onMouseDown={(e) => e.preventDefault()}
-								onClick={() => {
-									onPick(s);
-									setOpen(false);
-									inputRef.current?.focus();
-								}}
-								className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
+								onClick={() => pick(s)}
+								className={`w-full text-left px-3 py-2 border-b border-slate-100 last:border-b-0 ${
+									i === activeIndex ? 'bg-blamejaGreenSoft' : 'hover:bg-slate-50'
+								}`}
 							>
 								<div className="flex items-start justify-between gap-3">
 									<div className="min-w-0">

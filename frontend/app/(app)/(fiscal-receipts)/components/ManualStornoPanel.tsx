@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FiRotateCcw, FiSearch } from 'react-icons/fi';
+import { useListNav } from 'app/lib/useListNav';
 import { CartItemCard } from '../../(sales)/components/CartItemCard';
 import { useCart } from '../../(sales)/hooks/useCart';
 import { useManualStorno } from '../../(sales)/hooks/useManualStorno';
@@ -33,11 +34,51 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 
 	const cartEmpty = cart.length === 0;
 
+	const searchInputRef = useRef<HTMLInputElement | null>(null);
+	const stornoBtnRef = useRef<HTMLButtonElement | null>(null);
+	const cancelConfirmBtnRef = useRef<HTMLButtonElement | null>(null);
+
 	const addProduct = async (row: ProductStockRow) => {
 		await addToCartFromRow(row);
 		setCode('');
 		setSuggestOpen(false);
+		searchInputRef.current?.focus();
 	};
+
+	/* Тастатурна навигација низ предлозите (стрелки + Enter/Escape) */
+	const {
+		activeIndex,
+		listRef,
+		onInputKeyDown,
+	} = useListNav({
+		itemCount: suggestions.length,
+		isOpen: suggestOpen && suggestions.length > 0,
+		resetKey: code,
+		onPick: (i) => {
+			const row = suggestions[i];
+			if (row) void addProduct(row);
+		},
+		onClose: () => setSuggestOpen(false),
+		// Enter без обележан предлог → земи го првиот резултат.
+		onEnterNoSelection: () => {
+			if (suggestions.length > 0) void addProduct(suggestions[0]);
+		},
+		onEscapeClosed: () => setCode(''),
+	});
+
+	/* Потврда: фокус на „Откажи" (безбедно), Escape ја откажува. */
+	useEffect(() => {
+		if (!confirm) return;
+		cancelConfirmBtnRef.current?.focus();
+		const handler = (e: KeyboardEvent) => {
+			if (e.key !== 'Escape') return;
+			e.preventDefault();
+			setConfirm(false);
+			requestAnimationFrame(() => stornoBtnRef.current?.focus());
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [confirm]);
 
 	const doStorno = async () => {
 		setConfirm(false);
@@ -76,20 +117,36 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 					<div className="relative flex-1">
 						<FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 						<input
+							ref={searchInputRef}
 							value={code}
 							onChange={(e) => setCode(e.target.value)}
 							onFocus={() => suggestions.length > 0 && setSuggestOpen(true)}
+							onKeyDown={onInputKeyDown}
+							role="combobox"
+							aria-expanded={suggestOpen && suggestions.length > 0}
+							aria-autocomplete="list"
 							placeholder="Пребарај производ (име / PLU / баркод)…"
 							className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30"
 						/>
 						{suggestOpen && suggestions.length > 0 && (
-							<div className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-								{suggestions.map((row) => (
+							<div
+								ref={listRef}
+								role="listbox"
+								className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+							>
+								{suggestions.map((row, i) => (
 									<button
 										type="button"
 										key={row.product_id}
+										role="option"
+										aria-selected={i === activeIndex}
+										data-nav-index={i}
+										tabIndex={-1}
+										onMouseDown={(e) => e.preventDefault()}
 										onClick={() => void addProduct(row)}
-										className="flex w-full items-center justify-between gap-3 border-b border-slate-50 px-3 py-2 text-left last:border-0 hover:bg-slate-50"
+										className={`flex w-full items-center justify-between gap-3 border-b border-slate-50 px-3 py-2 text-left last:border-0 ${
+											i === activeIndex ? 'bg-blamejaGreenSoft' : 'hover:bg-slate-50'
+										}`}
 									>
 										<div className="min-w-0">
 											<div className="truncate text-sm font-medium text-slate-900">{row.name ?? '—'}</div>
@@ -123,6 +180,7 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 							onQtyChange={(q) => changeQty(item.product.id, q)}
 							onFinalPriceChange={(raw) => patchFinalPrice(item.product.id, raw)}
 							onFinalPriceBlur={() => clampFinalPriceOnBlur(item.product.id)}
+							onLineDone={() => searchInputRef.current?.focus()}
 						/>
 					))
 				)}
@@ -156,6 +214,7 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 				{!confirm ? (
 					<button
 						type="button"
+						ref={stornoBtnRef}
 						onClick={() => setConfirm(true)}
 						disabled={busy || cartEmpty}
 						className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
@@ -179,7 +238,11 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 							</button>
 							<button
 								type="button"
-								onClick={() => setConfirm(false)}
+								ref={cancelConfirmBtnRef}
+								onClick={() => {
+									setConfirm(false);
+									requestAnimationFrame(() => stornoBtnRef.current?.focus());
+								}}
 								className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
 							>
 								Откажи

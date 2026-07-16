@@ -15,7 +15,7 @@ import {
 	truncateFiscalName,
 } from 'app/lib/fiscal-bridge';
 import type { CartItem, Totals } from '../types';
-import { clampFinalToBase, num, priceNum, round2 } from '../utils';
+import { priceNum, round2 } from '../utils';
 
 type ManualStornoArgs = {
 	cart: CartItem[];
@@ -23,10 +23,9 @@ type ManualStornoArgs = {
 	paymentMethod: 'CASH' | 'CARD';
 };
 
-/** Финална (нето) единечна цена по ставка — што реално се сторнира. */
+/** Финална (нето) единечна цена по ставка — што реално се сторнира (може и над основната). */
 const finalUnitPrice = (item: CartItem): number => {
-	const base = num(item.product.selling_price);
-	return clampFinalToBase(priceNum(item.finalPriceStr), base);
+	return priceNum(item.finalPriceStr);
 };
 
 const toDeviceLine = (item: CartItem): FiscalSaleLine => ({

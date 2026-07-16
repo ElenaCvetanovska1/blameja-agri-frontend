@@ -3,21 +3,23 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { CartItem, ProductStockRow, Totals } from '../types';
-import { num, priceNum, round2, safeText, clampPrice, sanitizePriceInput, clampFinalToBase, discountPerUnitFromBaseFinal } from '../utils';
+import { num, priceNum, round2, safeText, clampPrice, sanitizePriceInput, discountPerUnitFromBaseFinal } from '../utils';
 
 export const useCart = () => {
 	const [cart, setCart] = useState<CartItem[]>([]);
 
 	const totals: Totals = useMemo(() => {
+		// Цената смее да е и НАД основната (поскапување во кошничка) — тогаш таа е ефективната
+		// единечна цена, а попустот е 0 (никогаш негативен/+ процент).
 		const subtotal = cart.reduce((sum, item) => {
 			const base = num(item.product.selling_price);
-			return sum + item.qty * base;
+			const final = priceNum(item.finalPriceStr);
+			return sum + item.qty * Math.max(base, final);
 		}, 0);
 
 		const discountTotal = cart.reduce((sum, item) => {
 			const base = num(item.product.selling_price);
-			const finalRaw = priceNum(item.finalPriceStr);
-			const final = clampFinalToBase(finalRaw, base);
+			const final = priceNum(item.finalPriceStr);
 			const discPerUnit = discountPerUnitFromBaseFinal(base, final);
 			return sum + item.qty * discPerUnit;
 		}, 0);
@@ -53,9 +55,8 @@ export const useCart = () => {
 		const item = cart.find((c) => c.product.id === productId);
 		if (!item) return;
 
-		const base = num(item.product.selling_price);
-		const finalRaw = priceNum(item.finalPriceStr);
-		const final = clampFinalToBase(finalRaw, base);
+		// Нормализирај на blur (2 децимали, ≥ 0) — повисока цена од основната е ДОЗВОЛЕНА.
+		const final = priceNum(item.finalPriceStr);
 
 		updateItem(productId, { finalPriceStr: clampPrice(String(final)) });
 	};

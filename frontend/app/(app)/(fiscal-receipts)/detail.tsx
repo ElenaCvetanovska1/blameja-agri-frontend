@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useFiscalReceiptDetail, type FiscalReceiptItem } from './hooks/useFiscalReceiptDetail';
 import { useFiscalReceipts } from './hooks/useFiscalReceipts';
@@ -123,6 +123,19 @@ export default function FiscalReceiptDetailPage() {
 	const query = useFiscalReceiptDetail(id);
 	// Load all receipts (last 365 days) to find storno receipts linked to this one
 	const allReceipts = useFiscalReceipts(365);
+
+	// Escape → назад кон листата (нема инпути на оваа страница).
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (e.key !== 'Escape') return;
+			const t = document.activeElement;
+			if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+			e.preventDefault();
+			navigate('/fiscal-receipts');
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [navigate]);
 
 	if (query.isLoading) {
 		return <div className="flex items-center justify-center py-20 text-sm text-slate-500">Се вчитува фискална сметка...</div>;

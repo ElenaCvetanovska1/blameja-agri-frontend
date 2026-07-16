@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ManualStornoPanel } from './components/ManualStornoPanel';
 import { useFiscalReceipts, type FiscalReceiptRow } from './hooks/useFiscalReceipts';
@@ -70,6 +70,43 @@ export default function FiscalReceiptsPage() {
 	}, [rows, statusFilter, storeFilter, slipSearch]);
 
 	const handleRowClick = (id: string) => navigate(`/fiscal-receipts/${id}`);
+
+	// F4 → фокус на пребарување по бр. сметка (конзистентно со Продажба).
+	const slipInputRef = useRef<HTMLInputElement | null>(null);
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === 'F4') {
+				e.preventDefault();
+				slipInputRef.current?.focus();
+				slipInputRef.current?.select();
+			}
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, []);
+
+	// Тастатурна навигација низ редовите: ↑/↓ движење, Home/End прв/последен, Enter/Space отвора.
+	const handleRowKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>, id: string) => {
+		const row = e.currentTarget;
+		const focusRow = (el: Element | null | undefined) => {
+			if (el instanceof HTMLElement) {
+				e.preventDefault();
+				el.focus();
+			}
+		};
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			handleRowClick(id);
+		} else if (e.key === 'ArrowDown') {
+			focusRow(row.nextElementSibling);
+		} else if (e.key === 'ArrowUp') {
+			focusRow(row.previousElementSibling);
+		} else if (e.key === 'Home') {
+			focusRow(row.parentElement?.firstElementChild);
+		} else if (e.key === 'End') {
+			focusRow(row.parentElement?.lastElementChild);
+		}
+	};
 
 	return (
 		<div className="flex h-full min-h-0 flex-col gap-4">
@@ -157,8 +194,21 @@ export default function FiscalReceiptsPage() {
 								</label>
 								<input
 									id="fr-slip"
+									ref={slipInputRef}
 									value={slipSearch}
 									onChange={(e) => setSlipSearch(e.target.value)}
+									onKeyDown={(e) => {
+										// Enter → ако филтерот остави точно една сметка, отвори ја директно
+										if (e.key === 'Enter' && visible.length === 1) {
+											e.preventDefault();
+											handleRowClick(visible[0].id);
+										}
+										// Escape → исчисти го пребарувањето
+										if (e.key === 'Escape' && slipSearch) {
+											e.preventDefault();
+											setSlipSearch('');
+										}
+									}}
 									placeholder="пр. 42"
 									className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blamejaGreen/30 focus:border-blamejaGreen"
 								/>
@@ -199,8 +249,10 @@ export default function FiscalReceiptsPage() {
 										{visible.map((row) => (
 											<tr
 												key={row.id}
+												tabIndex={0}
 												onClick={() => handleRowClick(row.id)}
-												className="hover:bg-slate-50 cursor-pointer transition-colors"
+												onKeyDown={(e) => handleRowKeyDown(e, row.id)}
+												className="hover:bg-slate-50 cursor-pointer transition-colors focus:bg-slate-50"
 											>
 												<td className="px-4 py-3 text-slate-700 whitespace-nowrap">{fmtDate(row.fiscalized_at ?? row.created_at)}</td>
 												<td className="px-4 py-3 font-mono font-semibold text-slate-800">
@@ -220,6 +272,7 @@ export default function FiscalReceiptsPage() {
 												<td className="px-4 py-3 text-center">
 													<button
 														type="button"
+														tabIndex={-1}
 														onClick={(e) => {
 															e.stopPropagation();
 															handleRowClick(row.id);

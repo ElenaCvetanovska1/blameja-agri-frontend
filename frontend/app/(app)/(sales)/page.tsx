@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { toast } from 'sonner';
 import { api } from 'app/lib/api-client';
-import { FiSearch, FiCamera, FiX, FiShoppingCart, FiClock, FiPlus, FiZap, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiCamera, FiX, FiShoppingCart, FiPlus, FiRefreshCw } from 'react-icons/fi';
 import { fiscalInfo } from 'app/lib/fiscal-bridge';
+import { useListNav } from 'app/lib/useListNav';
 
 import type { ProductStockRow } from './types';
 import { num } from './utils';
@@ -18,29 +19,6 @@ import { useFiscalStatus } from './hooks/useFiscalStatus';
 import { CartItemCard } from './components/CartItemCard';
 import { ScannerModal } from './components/ScannerModal';
 import { TotalsPanel } from './components/TotalsPanel';
-
-/* ─── Quick / Recent Products (localStorage) ─── */
-const RECENT_KEY = 'blameja_recent_products';
-const MAX_RECENT = 12;
-
-function loadRecentProducts(): ProductStockRow[] {
-	try {
-		const raw = localStorage.getItem(RECENT_KEY);
-		return raw ? (JSON.parse(raw) as ProductStockRow[]) : [];
-	} catch {
-		return [];
-	}
-}
-
-function saveRecentProduct(row: ProductStockRow) {
-	try {
-		const existing = loadRecentProducts();
-		const filtered = existing.filter((r) => r.product_id !== row.product_id);
-		localStorage.setItem(RECENT_KEY, JSON.stringify([row, ...filtered].slice(0, MAX_RECENT)));
-	} catch {
-		/* ignore */
-	}
-}
 
 /* ─── API ─── */
 const fetchProductByCode = async (code: string, storeNo: 20 | 30): Promise<ProductStockRow | null> => {
@@ -74,7 +52,6 @@ function ProductInitials({ name }: { name: string | null }) {
 ═══════════════════════════════════════ */
 const SalesPage = () => {
 	const [code, setCode] = useState('');
-	const [note, setNote] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [scannerOpen, setScannerOpen] = useState(false);
 	const [scanError, setScanError] = useState<string | null>(null);
@@ -82,7 +59,6 @@ const SalesPage = () => {
 	const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD'>('CASH');
 	const [cashReceivedStr, setCashReceivedStr] = useState('');
 	const [storeNo, setStoreNo] = useState<20 | 30>(20);
-	const [recentProducts, setRecentProducts] = useState<ProductStockRow[]>(loadRecentProducts);
 
 	const wrapRef = useRef<HTMLDivElement | null>(null);
 	const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -95,9 +71,13 @@ const SalesPage = () => {
 
 	useOutsideClick(wrapRef, () => setSuggestOpen(false));
 
+	const focusSearch = useCallback(() => {
+		searchInputRef.current?.focus();
+		searchInputRef.current?.select();
+	}, []);
+
 	const resetSale = useCallback(() => {
 		setCode('');
-		setNote('');
 		resetCart();
 		setScanError(null);
 		setSuggestions([]);
@@ -105,14 +85,20 @@ const SalesPage = () => {
 		setFocusProductId(null);
 		setPaymentMethod('CASH');
 		setCashReceivedStr('');
-	}, [resetCart, setSuggestOpen, setSuggestions]);
+		// Готово за следна муштерија — фокус назад на пребарување/скенер.
+		focusSearch();
+	}, [focusSearch, resetCart, setSuggestOpen, setSuggestions]);
+
+	// При влез на Продажба — пребарувањето е веднаш фокусирано, спремно за шифра/скен.
+	useEffect(() => {
+		focusSearch();
+	}, [focusSearch]);
 
 	const addProductToCart = async (row: ProductStockRow) => {
 		if (num(row.qty_on_hand) <= 0) toast.warning(`Внимание: залиха ${num(row.qty_on_hand)}. Ќе дозволи продажба во минус.`);
 		const addedId = await addToCartFromRow(row);
+		// Фокус на „Кол." од додадената ставка (селектирано — пишуваш бројка или оставаш 1).
 		if (addedId) setFocusProductId(addedId);
-		saveRecentProduct(row);
-		setRecentProducts(loadRecentProducts());
 		return addedId;
 	};
 
@@ -129,6 +115,7 @@ const SalesPage = () => {
 				toast.error(`Не е пронајден производ во продавница ${storeNo}.`);
 				return;
 			}
+			// Тек: код → Enter → фокус на „Кол." → (бројка или дифолт 1) → Enter → назад на пребарување.
 			await addProductToCart(row);
 			setCode('');
 			setSuggestions([]);
@@ -144,7 +131,7 @@ const SalesPage = () => {
 	const handleSubmitSale = useCallback(async () => {
 		setBusy(true);
 		try {
-			const { receiptId } = await submitSale({ cart, totals, note, paymentMethod, cashReceivedStr, onSuccess: resetSale });
+			const { receiptId } = await submitSale({ cart, totals, paymentMethod, cashReceivedStr, onSuccess: resetSale });
 
 			// Fresh status check right before fiscal action
 			try {
@@ -170,24 +157,68 @@ const SalesPage = () => {
 		} finally {
 			setBusy(false);
 		}
-	}, [cart, cashReceivedStr, note, paymentMethod, refreshFiscalStatus, resetSale, runFiscalSale, submitSale, totals]);
+	}, [cart, cashReceivedStr, paymentMethod, refreshFiscalStatus, resetSale, runFiscalSale, submitSale, totals]);
 
 	/* Global keyboard shortcuts */
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
+			if (scannerOpen) return; // додека е отворен скенер-дијалогот, кратенките мируваат
 			if (e.key === 'F4') {
 				e.preventDefault();
-				searchInputRef.current?.focus();
-				searchInputRef.current?.select();
+				focusSearch();
 			}
 			if (e.key === 'F9') {
 				e.preventDefault();
+				if (busy) return; // спречи двоен submit со повторен F9
 				void handleSubmitSale();
 			}
 		};
 		window.addEventListener('keydown', handler);
 		return () => window.removeEventListener('keydown', handler);
-	}, [handleSubmitSale]);
+	}, [busy, focusSearch, handleSubmitSale, scannerOpen]);
+
+	/* Скенер-пријателски: куцање/скенирање било каде на страницата оди во пребарувањето.
+	   (Скенерите се тастатури — ако фокусот е на копче или никаде, знаците би се изгубиле.) */
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (scannerOpen) return;
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
+			if (e.key.length !== 1) return; // само печатливи знаци
+			const t = document.activeElement;
+			if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement) return;
+			if (t instanceof HTMLElement && t.isContentEditable) return;
+			searchInputRef.current?.focus();
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [scannerOpen]);
+
+	/* Тастатурна навигација низ предлозите (стрелки + Enter/Escape) */
+	const pickSuggestion = async (s: ProductStockRow) => {
+		setSuggestOpen(false);
+		await addProductToCart(s); // намерен избор по име → фокус на „Кол." за брза корекција
+		setCode('');
+		setSuggestions([]);
+	};
+
+	const {
+		activeIndex,
+		listRef: suggestListRef,
+		onInputKeyDown: onSearchKeyDown,
+	} = useListNav({
+		itemCount: suggestions.length,
+		isOpen: suggestOpen,
+		resetKey: code,
+		onPick: (i) => {
+			const s = suggestions[i];
+			if (s) void pickSuggestion(s);
+		},
+		onClose: () => setSuggestOpen(false),
+		// Enter без обележан предлог = точен barcode/PLU lookup (скенерски тек).
+		onEnterNoSelection: () => void handleAddByCode(),
+		// Escape врз затворена листа → чисти го внесот.
+		onEscapeClosed: () => setCode(''),
+	});
 
 	const handleScan = (detected: IDetectedBarcode[]) => {
 		if (!detected?.length) return;
@@ -240,6 +271,10 @@ const SalesPage = () => {
 								<input
 									ref={searchInputRef}
 									id="sales-search"
+									role="combobox"
+									aria-expanded={suggestOpen}
+									aria-controls="sales-suggest-list"
+									aria-autocomplete="list"
 									value={code}
 									onChange={(e) => {
 										setCode(e.target.value);
@@ -249,13 +284,7 @@ const SalesPage = () => {
 									onFocus={() => {
 										if (code.trim().length > 0) setSuggestOpen(true);
 									}}
-									onKeyDown={(e) => {
-										if (e.key === 'Enter') {
-											e.preventDefault();
-											void handleAddByCode();
-										}
-										if (e.key === 'Escape') setSuggestOpen(false);
-									}}
+									onKeyDown={onSearchKeyDown}
 									placeholder="Баркод, PLU или назив…"
 									className="w-full h-10 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none
 										focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/20"
@@ -291,21 +320,27 @@ const SalesPage = () => {
 						{/* Suggestions dropdown */}
 						{(suggestOpen || suggestLoading) && (
 							<div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-								<div className="max-h-72 overflow-auto">
+								<div
+									ref={suggestListRef}
+									id="sales-suggest-list"
+									role="listbox"
+									className="max-h-72 overflow-auto"
+								>
 									{suggestLoading && <div className="px-4 py-3 text-xs text-slate-500">Се пребарува...</div>}
 									{!suggestLoading && suggestions.length === 0 && <div className="px-4 py-3 text-xs text-slate-500">Нема резултати.</div>}
-									{suggestions.map((s) => (
+									{suggestions.map((s, i) => (
 										<button
 											key={s.product_id}
 											type="button"
+											role="option"
+											aria-selected={i === activeIndex}
+											data-nav-index={i}
+											tabIndex={-1}
 											onMouseDown={(e) => e.preventDefault()}
-											onClick={async () => {
-												setSuggestOpen(false);
-												await addProductToCart(s);
-												setCode('');
-												setSuggestions([]);
-											}}
-											className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors"
+											onClick={() => void pickSuggestion(s)}
+											className={`w-full text-left px-4 py-3 border-b border-slate-100 last:border-b-0 transition-colors ${
+												i === activeIndex ? 'bg-blamejaGreenSoft' : 'hover:bg-slate-50'
+											}`}
 										>
 											<div className="flex items-center gap-3">
 												<ProductInitials name={s.name ?? null} />
@@ -397,72 +432,8 @@ const SalesPage = () => {
 
 			{/* ── BODY: left content + right cart (flex-1, no outer scroll) ── */}
 			<div className="flex gap-3 flex-1 min-h-0">
-				{/* ── LEFT: Quick products + cart items ── */}
+				{/* ── LEFT: cart items ── */}
 				<div className="flex-1 min-w-0 flex flex-col gap-3 min-h-0">
-					{/* Quick products — shrink-0, fixed height */}
-					<div className="card px-4 py-3 shrink-0">
-						<div className="flex items-center justify-between mb-2.5">
-							<div className="flex items-center gap-2">
-								{recentProducts.length > 0 ? (
-									<>
-										<FiClock className="w-3.5 h-3.5 text-slate-400" />
-										<span className="text-xs font-semibold text-slate-600">Последно користени</span>
-									</>
-								) : (
-									<>
-										<FiZap className="w-3.5 h-3.5 text-slate-400" />
-										<span className="text-xs font-semibold text-slate-600">Брзи производи</span>
-									</>
-								)}
-							</div>
-							{recentProducts.length > 0 && (
-								<button
-									type="button"
-									onClick={() => {
-										localStorage.removeItem(RECENT_KEY);
-										setRecentProducts([]);
-									}}
-									className="text-[11px] text-slate-400 hover:text-slate-600 transition-colors"
-								>
-									Избриши историја
-								</button>
-							)}
-						</div>
-
-						{recentProducts.length === 0 ? (
-							<div className="py-3 text-center text-xs text-slate-400">Производите кои ги додадете ќе се прикажат тука за брз пристап.</div>
-						) : (
-							<div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2">
-								{recentProducts.map((p) => {
-									const qoh = num(p.qty_on_hand);
-									const isZero = qoh <= 0;
-									const isLow = qoh > 0 && qoh <= 3;
-									return (
-										<button
-											key={p.product_id}
-											type="button"
-											disabled={busy}
-											onClick={() => void addProductToCart(p)}
-											className={`relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border text-center
-												transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0
-												disabled:opacity-50 disabled:cursor-not-allowed
-												${isZero ? 'border-red-100 bg-red-50/40' : isLow ? 'border-amber-100 bg-amber-50/40' : 'border-slate-100 bg-white hover:border-blamejaGreen/30'}`}
-										>
-											<ProductInitials name={p.name ?? null} />
-											<div className="w-full min-w-0">
-												<div className="text-[11px] font-semibold text-slate-800 truncate leading-tight">{p.name ?? '—'}</div>
-												<div className="text-[10px] text-slate-500 tabular-nums">{num(p.selling_price).toFixed(2)} ден.</div>
-											</div>
-											<div
-												className={`absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full ${isZero ? 'bg-red-400' : isLow ? 'bg-amber-400' : 'bg-emerald-400'}`}
-											/>
-										</button>
-									);
-								})}
-							</div>
-						)}
-					</div>
-
 					{/* Cart items — flex-1, internal scroll */}
 					<div className="card flex flex-col flex-1 min-h-0 overflow-hidden">
 						{/* Cart header — shrink-0 */}
@@ -518,6 +489,11 @@ const SalesPage = () => {
 												patchFinalPrice(item.product.id, raw);
 											}}
 											onFinalPriceBlur={() => clampFinalPriceOnBlur(item.product.id)}
+											onLineDone={() => {
+												// Готово со линијата → назад на пребарување за следен производ.
+												setFocusProductId(null);
+												focusSearch();
+											}}
 										/>
 									))}
 								</div>
@@ -534,8 +510,6 @@ const SalesPage = () => {
 								totals={totals}
 								busy={busy}
 								cartEmpty={cart.length === 0}
-								note={note}
-								onNoteChange={setNote}
 								onSubmit={() => void handleSubmitSale()}
 								paymentMethod={paymentMethod}
 								onPaymentMethodChange={setPaymentMethod}

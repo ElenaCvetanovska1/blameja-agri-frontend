@@ -14,7 +14,7 @@ import {
 	truncateFiscalName,
 } from 'app/lib/fiscal-bridge';
 import type { CartItem, Totals } from '../types';
-import { num, priceNum, clampFinalToBase } from '../utils';
+import { num, priceNum } from '../utils';
 
 type FiscalSaleArgs = {
 	receiptId: string;
@@ -43,15 +43,18 @@ const saveFiscalResult = async (
 /** Кошничка ставка → фискална ставка (каса формат преку FiscalBridge). */
 const toFiscalLine = (item: CartItem): FiscalSaleLine => {
 	const base = num(item.product.selling_price);
-	const finalRaw = priceNum(item.finalPriceStr);
-	const finalPrice = clampFinalToBase(finalRaw, base);
+	const finalPrice = priceNum(item.finalPriceStr);
+	// ⚠️ НИКОГАШ поскапување (+ процент) на фискалната:
+	//  - финална > основна → повисоката цена оди директно како цена на ставката (БЕЗ корекција)
+	//  - финална < основна → основна цена + DISCOUNT_VALUE корекција (попуст)
+	const unitPrice = Math.max(base, finalPrice);
 	// Попуст како ИЗНОС за целата ставка: (основна − финална) × количина.
 	const discountAmount = base > finalPrice ? Math.round((base - finalPrice) * item.qty * 100) / 100 : 0;
 
 	return {
 		description: truncateFiscalName(item.product.name, 20),
 		vatGroup: taxPercentToVatGroup(item.product.tax_group),
-		price: base,
+		price: unitPrice,
 		quantity: item.qty,
 		macedonianItem: item.product.is_macedonian === true,
 		...(discountAmount > 0 ? { priceCorrectionType: 'DISCOUNT_VALUE', priceCorrectionValue: discountAmount } : {}),

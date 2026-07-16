@@ -31,7 +31,8 @@
 				"noUnusedImports": "error"
 			},
 			"a11y": {
-				"useButtonType": "warn"
+				"useButtonType": "warn",
+				"useSemanticElements": "off"
 			},
 			"style": {
 				"noNonNullAssertion": "off",

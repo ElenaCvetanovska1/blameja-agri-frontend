@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { isTokenValid, tokenStorage } from '../lib/api-client';
+import { isTokenValid, tokenStorage, tryRefreshTokens } from '../lib/api-client';
 import { AuthPage } from './AuthPage';
 
 type AuthGateProps = {
@@ -11,20 +11,40 @@ export const AuthGate = ({ children }: AuthGateProps) => {
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		// Check if a valid (non-expired) access token is present in localStorage.
-		// Token refresh on expiry is handled transparently by the api-client on
-		// any API call that returns 401. No Supabase SDK needed here.
-		const valid = isTokenValid();
+		let cancelled = false;
 
-		if (!valid) {
-			// Token missing or expired — clear stale tokens and show login
-			tokenStorage.clear();
-			setAuthenticated(false);
-		} else {
-			setAuthenticated(true);
-		}
+		const check = async () => {
+			// Валиден (неистечен) access токен → директно внатре.
+			if (isTokenValid()) {
+				if (!cancelled) {
+					setAuthenticated(true);
+					setLoading(false);
+				}
+				return;
+			}
 
-		setLoading(false);
+			// Access токенот е истечен, но refresh токенот може уште да важи —
+			// пробај ТИВКО обновување наместо да ја уништиш сесијата.
+			// (Порано тука се бришеа двата токени → непотребна одјава по >1ч неактивност.)
+			const result = await tryRefreshTokens();
+
+			if (cancelled) return;
+
+			if (result === 'ok') {
+				setAuthenticated(true);
+			} else {
+				// 'invalid' → сесијата реално истекла; 'network' → бекенд недостапен,
+				// но токените ги ЧУВАМЕ за да преживее сесијата рестарт на серверот.
+				if (result === 'invalid') tokenStorage.clear();
+				setAuthenticated(false);
+			}
+			setLoading(false);
+		};
+
+		void check();
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	if (loading) {

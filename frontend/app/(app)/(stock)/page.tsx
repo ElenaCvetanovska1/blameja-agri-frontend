@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FiDatabase, FiSearch, FiFilter, FiArrowUp, FiArrowDown, FiAlertTriangle, FiPackage, FiRefreshCw } from 'react-icons/fi';
 import { useStock, type StockRow } from './hooks/useStock';
 import { StockTable } from './components/StockTable';
@@ -30,6 +30,22 @@ export default function StockPage() {
 
 	const stockQuery = useStock(search);
 	const rows = stockQuery.data ?? [];
+
+	// F4 → фокус на пребарување (конзистентно со Продажба). Не додека е отворен модал.
+	const searchInputRef = useRef<HTMLInputElement | null>(null);
+	const modalOpen = selected != null || toDelete != null;
+	useEffect(() => {
+		if (modalOpen) return;
+		const handler = (e: KeyboardEvent) => {
+			if (e.key === 'F4') {
+				e.preventDefault();
+				searchInputRef.current?.focus();
+				searchInputRef.current?.select();
+			}
+		};
+		window.addEventListener('keydown', handler);
+		return () => window.removeEventListener('keydown', handler);
+	}, [modalOpen]);
 
 	const stats = useMemo(() => {
 		const total = rows.length;
@@ -156,8 +172,16 @@ export default function StockPage() {
 							<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
 							<input
 								id="stock-search"
+								ref={searchInputRef}
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
+								onKeyDown={(e) => {
+									// Escape → исчисти го пребарувањето
+									if (e.key === 'Escape' && search) {
+										e.preventDefault();
+										setSearch('');
+									}
+								}}
 								placeholder="Баркод, PLU или назив…"
 								className="form-input pl-9"
 							/>
