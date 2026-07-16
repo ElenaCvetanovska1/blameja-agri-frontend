@@ -40,7 +40,9 @@ export const useCart = () => {
 	};
 
 	const changeQty = (productId: string, nextQty: number) => {
-		updateItem(productId, { qty: Math.max(1, Math.floor(nextQty || 1)) });
+		// Дозволи децимална количина (пр. 1.6 кг), заокружено на 3 децимали како фискалниот формат.
+		const q = Number.isFinite(nextQty) && nextQty > 0 ? Math.round(nextQty * 1000) / 1000 : 1;
+		updateItem(productId, { qty: q });
 	};
 
 	const patchFinalPrice = (productId: string, raw: string) => {

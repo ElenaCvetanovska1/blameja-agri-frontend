@@ -153,6 +153,16 @@ export const fiscalInfo = {
 		});
 		return assertCommandSuccess(res);
 	},
+
+	/** POST /paper/feed — PAPER_FEED (0x2C): извлекува лента за да се откине ливче. Не-фискална. */
+	feedPaper: async (): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/paper/feed', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: '{}',
+		});
+		return assertCommandSuccess(res);
+	},
 };
 
 /** Парсирај фискален датум/час "DD-MM-YY hh:mm:ss" → Date, или null. */
@@ -324,6 +334,20 @@ export function taxPercentToVatGroup(taxPercent: number | null | undefined): Vat
 	}
 }
 
+/** ДДВ процент (products.tax_group: 18/5/10/null) → фискален код 1-4 (за fiscal_receipt_items). */
+export function taxPercentToFiscalCode(taxPercent: number | null | undefined): 1 | 2 | 3 | 4 {
+	switch (taxPercent) {
+		case 18:
+			return 1;
+		case 5:
+			return 2;
+		case 10:
+			return 3;
+		default:
+			return 4;
+	}
+}
+
 /** Фискален код 1-4 (fiscal_receipt_items.tax_group) → фискална група. */
 export function taxCodeToVatGroup(taxCode: number | null | undefined): VatGroupLetter {
 	switch (taxCode) {
@@ -451,6 +475,18 @@ export function parseSlipNumber(res: FiscalCommandResult | null | undefined): nu
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+
+/**
+ * Знаци што фискалниот уред ги резервира како маркери во линијата на ставка
+ * (попуст/надомест/количина). Ако се во името/описот, ставката „тивко пропаѓа"
+ * на сметка (не се печати). Затоа ги забрануваме во имињата на производи.
+ */
+const FISCAL_RESERVED_CHARS = /[+*@;\t\r\n]/g;
+
+/** Отстрани резервирани фискални знаци од текст додека корисникот пишува. */
+export function stripFiscalReservedChars(text: string): string {
+	return text.replace(FISCAL_RESERVED_CHARS, '');
+}
 
 /** Truncate product name to 32 chars (SY55 PluName limit per Command 49h). */
 export function truncateFiscalName(name: string, maxLen = 32): string {

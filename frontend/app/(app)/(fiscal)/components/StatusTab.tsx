@@ -427,6 +427,30 @@ const DateTimeCard = () => {
 	);
 };
 
+const PaperCard = () => {
+	const feed = useMutation({
+		mutationFn: () => fiscalInfo.feedPaper(),
+		onSuccess: () => toast.success('Лентата е извлечена — може да ја откинеш.'),
+		onError: (err) => toast.error(`Извлекување лента неуспешно: ${fiscalErrorMessage(err)}`),
+	});
+
+	return (
+		<Card
+			title="Лента"
+			sub="Извлечи ја лентата за да откинеш заглавено/недовршено ливче (не-фискална команда)."
+		>
+			<button
+				type="button"
+				disabled={feed.isPending}
+				onClick={() => feed.mutate()}
+				className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition disabled:opacity-50"
+			>
+				{feed.isPending ? 'Извлекување...' : 'Извлечи лента'}
+			</button>
+		</Card>
+	);
+};
+
 // ─── Tab ──────────────────────────────────────────────────────────────────────
 
 export const StatusTab = () => {
@@ -453,6 +477,7 @@ export const StatusTab = () => {
 				<DeviceStatusCard />
 				<DiagnosticCard />
 				<DateTimeCard />
+				<PaperCard />
 			</div>
 		</div>
 	);

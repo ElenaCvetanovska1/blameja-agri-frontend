@@ -279,25 +279,81 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
         [FromBody] UpdateFiscalRequest request,
         CancellationToken ct)
     {
-        const string sql = """
-            UPDATE sales_receipts
-            SET    fiscal_slip_no  = @slipNo,
-                   fiscal_status   = @status,
-                   fiscal_synced_at = @syncedAt,
-                   fiscal_error    = @error
-            WHERE  id = @receiptId;
-            """;
-
         using var conn = db.CreateConnection();
-        await conn.ExecuteAsync(sql, new
-        {
-            receiptId,
-            slipNo   = request.FiscalSlipNo,
-            status   = request.FiscalStatus,
-            syncedAt = request.FiscalSyncedAt,
-            error    = request.FiscalError,
-        });
+        conn.Open();
+        using var tx = conn.BeginTransaction();
 
+        // ── 1. Update the sales_receipts fiscal fields ─────────────────────────
+        await conn.ExecuteAsync(
+            """
+            UPDATE sales_receipts
+            SET    fiscal_slip_no   = @slipNo,
+                   fiscal_status    = @status,
+                   fiscal_synced_at = @syncedAt,
+                   fiscal_error     = @error
+            WHERE  id = @receiptId;
+            """,
+            new
+            {
+                receiptId,
+                slipNo   = request.FiscalSlipNo,
+                status   = request.FiscalStatus,
+                syncedAt = request.FiscalSyncedAt,
+                error    = request.FiscalError,
+            },
+            tx);
+
+        // ── 2. On SUCCESS, materialise a fiscal_receipts archive row (+ items) ─
+        //    so the receipt appears in Сторно and can be reversed. Idempotent:
+        //    a second PATCH (or re-sync) won't create a duplicate.
+        if (request.FiscalStatus == "success")
+        {
+            var exists = await conn.ExecuteScalarAsync<Guid?>(
+                "SELECT id FROM fiscal_receipts WHERE sales_receipt_id = @receiptId AND receipt_type = 'sale' LIMIT 1;",
+                new { receiptId }, tx);
+
+            if (exists is null)
+            {
+                var frId = Guid.NewGuid();
+                var now  = DateTime.UtcNow;
+
+                // Header — copied from the sale.
+                await conn.ExecuteAsync(
+                    """
+                    INSERT INTO fiscal_receipts (
+                        id, sales_receipt_id, receipt_type, fiscal_slip_no, fiscal_status, fiscal_error,
+                        store_no, payment, total, cash_received, created_by, fiscalized_at, created_at
+                    )
+                    SELECT
+                        @frId, sr.id, 'sale', @slipNo, 'success', NULL,
+                        sr.store_no, sr.payment, sr.total, sr.cash_received, sr.created_by, @now, @now
+                    FROM sales_receipts sr
+                    WHERE sr.id = @receiptId;
+                    """,
+                    new { frId, slipNo = request.FiscalSlipNo, now, receiptId }, tx);
+
+                // Items — from sales_items joined with products. tax_group (percent) → fiscal code 1-4.
+                await conn.ExecuteAsync(
+                    """
+                    INSERT INTO fiscal_receipt_items (
+                        fiscal_receipt_id, sales_item_id, product_id, plu, fiscal_plu, product_name,
+                        quantity, unit_price, line_total, discount, base_price,
+                        tax_group, tax_percent, is_macedonian, unit, barcode, created_at
+                    )
+                    SELECT
+                        @frId, si.id, si.product_id, p.plu, p.fiscal_plu, COALESCE(p.name, 'Производ'),
+                        si.qty, si.price, si.price * si.qty, si.discount, si.base_price,
+                        CASE p.tax_group WHEN 18 THEN 1 WHEN 5 THEN 2 WHEN 10 THEN 3 ELSE 4 END,
+                        p.tax_group, COALESCE(p.is_macedonian, false), p.unit, p.barcode, @now
+                    FROM sales_items si
+                    JOIN products p ON p.id = si.product_id
+                    WHERE si.receipt_id = @receiptId;
+                    """,
+                    new { frId, now, receiptId }, tx);
+            }
+        }
+
+        tx.Commit();
         return NoContent();
     }
 }

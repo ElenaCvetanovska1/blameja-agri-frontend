@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CartItem } from '../types';
 import { clampFinalToBase, discountPercentFromBaseFinal, discountPerUnitFromBaseFinal, num, priceNum, round2 } from '../utils';
 
@@ -16,6 +16,28 @@ type Props = {
 
 export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, onFinalPriceChange, onFinalPriceBlur }: Props) => {
 	const qtyRef = useRef<HTMLInputElement | null>(null);
+
+	// Локален string за количината → дозволува пишување децимали (пр. "1.6") без да „снапнува" точката.
+	const [qtyStr, setQtyStr] = useState(String(item.qty));
+	useEffect(() => {
+		// Ресинхронизирај само кога qty се менува ОДВОР (пр. повторно додавање) — не додека куцаш децимала.
+		setQtyStr((prev) => (Number(prev.replace(',', '.')) === item.qty ? prev : String(item.qty)));
+	}, [item.qty]);
+
+	const onQtyInput = (raw: string) => {
+		setQtyStr(raw);
+		const parsed = Number(raw.replace(',', '.'));
+		if (Number.isFinite(parsed) && parsed > 0) onQtyChange(parsed);
+	};
+
+	const onQtyBlur = () => {
+		const parsed = Number(qtyStr.replace(',', '.'));
+		if (!Number.isFinite(parsed) || parsed <= 0) {
+			setQtyStr(String(item.qty)); // врати валидна вредност ако полето е празно/невалидно
+		} else {
+			setQtyStr(String(Math.round(parsed * 1000) / 1000));
+		}
+	};
 
 	useEffect(() => {
 		if (!autoFocusQty) return;
@@ -79,10 +101,11 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 					<input
 						id={`cart-qty-${item.product.id}`}
 						ref={qtyRef}
-						type="number"
-						min={1}
-						value={item.qty}
-						onChange={(e) => onQtyChange(Number(e.target.value) || 1)}
+						type="text"
+						inputMode="decimal"
+						value={qtyStr}
+						onChange={(e) => onQtyInput(e.target.value)}
+						onBlur={onQtyBlur}
 						className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/30"
 						disabled={busy}
 					/>

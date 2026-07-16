@@ -14,6 +14,7 @@ import { useProductSearch } from './hooks/useProductSearch';
 import { useCart } from './hooks/useCart';
 import { useSalesSubmit } from './hooks/useSalesSubmit';
 import { useFiscalSaleFlow } from './hooks/useFiscalSaleFlow';
+import { useManualStorno } from './hooks/useManualStorno';
 import { useFiscalStatus } from './hooks/useFiscalStatus';
 import { CartItemCard } from './components/CartItemCard';
 import { ScannerModal } from './components/ScannerModal';
@@ -90,6 +91,7 @@ const SalesPage = () => {
 	const { cart, totals, resetCart, removeItem, changeQty, addToCartFromRow, patchFinalPrice, clampFinalPriceOnBlur } = useCart();
 	const { submitSale } = useSalesSubmit();
 	const { runFiscalSale } = useFiscalSaleFlow();
+	const { runManualStorno } = useManualStorno();
 	const { status: fiscalStatus, warnings: fiscalWarnings, refresh: refreshFiscalStatus } = useFiscalStatus();
 	const { suggestions, suggestOpen, setSuggestOpen, suggestLoading, setSuggestions } = useProductSearch(code, storeNo);
 
@@ -171,6 +173,17 @@ const SalesPage = () => {
 			setBusy(false);
 		}
 	}, [cart, cashReceivedStr, note, paymentMethod, refreshFiscalStatus, resetSale, runFiscalSale, submitSale, totals]);
+
+	const handleManualStorno = useCallback(async () => {
+		setBusy(true);
+		try {
+			const ok = await runManualStorno({ cart, totals, paymentMethod });
+			refreshFiscalStatus();
+			if (ok) resetSale();
+		} finally {
+			setBusy(false);
+		}
+	}, [cart, totals, paymentMethod, runManualStorno, refreshFiscalStatus, resetSale]);
 
 	/* Global keyboard shortcuts */
 	useEffect(() => {
@@ -537,6 +550,7 @@ const SalesPage = () => {
 								note={note}
 								onNoteChange={setNote}
 								onSubmit={() => void handleSubmitSale()}
+								onManualStorno={() => void handleManualStorno()}
 								paymentMethod={paymentMethod}
 								onPaymentMethodChange={setPaymentMethod}
 								cashReceivedStr={cashReceivedStr}

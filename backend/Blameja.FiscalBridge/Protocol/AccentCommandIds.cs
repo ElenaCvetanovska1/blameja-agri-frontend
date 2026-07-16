@@ -14,6 +14,8 @@ public static class AccentCommandIds
     public const byte DailyFinancialReport = 0x45;
     public const byte ShortFmReportDate = 0x4F;
     public const byte DetailedFmReportDate = 0x5E;
+    public const byte PaperFeed = 0x2C;
+    public const byte CutPaper = 0x2D;
     public const byte GetDateTime = 0x3E;
     public const byte SetDateTime = 0x3D;
     public const byte PrintDuplicate = 0x6D;
@@ -32,6 +34,8 @@ public static class AccentCommandIds
         "DAILY_FINANCIAL_REPORT",
         "SHORT_FM_REPORT_DATE",
         "DETAILED_FM_REPORT_DATE",
+        "PAPER_FEED",
+        "CUT_PAPER",
         "GET_DATE_TIME",
         "SET_DATE_TIME",
         "PRINT_DUPLICATE"

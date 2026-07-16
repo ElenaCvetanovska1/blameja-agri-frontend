@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { type FiscalArticle, VAT_GROUP_LABELS, fiscalErrorMessage } from 'app/lib/fiscal-bridge';
+import { type FiscalArticle, VAT_GROUP_LABELS, fiscalErrorMessage, stripFiscalReservedChars } from 'app/lib/fiscal-bridge';
 import { useFiscalArticles } from '../hooks/useFiscalArticles';
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ const AddArticleRow = () => {
 						maxLength={20}
 						placeholder="нпр. РОБА"
 						value={name}
-						onChange={(e) => setName(e.target.value)}
+						onChange={(e) => setName(stripFiscalReservedChars(e.target.value))}
 						className={cellInput}
 					/>
 				</div>
@@ -340,7 +340,7 @@ export const FiscalArticlesTab = () => {
 													maxLength={20}
 													value={e.name}
 													disabled={busyRow}
-													onChange={(ev) => setEdit(a.plu, { name: ev.target.value }, e)}
+													onChange={(ev) => setEdit(a.plu, { name: stripFiscalReservedChars(ev.target.value) }, e)}
 													className={cellInput}
 													aria-label={`Име за PLU ${a.plu}`}
 												/>

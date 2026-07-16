@@ -98,6 +98,24 @@ public sealed class FiscalBridgeService(
         return ExecuteReadOnlyCommandAsync("GET_DATE_TIME", AccentCommandIds.GetDateTime, null, cancellationToken);
     }
 
+    public Task<FiscalRealCommandResponse> ExecutePaperFeedAsync(
+        string? confirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "PAPER_FEED";
+        const byte commandId = AccentCommandIds.PaperFeed;
+
+        // Печати на лентата → бара RealSerialEnabled + confirmation header (како артикли/датум).
+        var blockedResponse = ValidateProgrammingExecution(commandName, commandId, true, confirmationHeader, string.Empty);
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        // Java MovePaper: движи лента за N линии — payload "6\t" (0x36 0x09). Не-фискална команда.
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, "6\t", cancellationToken);
+    }
+
     public Task<FiscalRealCommandResponse> ExecuteSetDateTimeAsync(
         FiscalSetDateTimeRequest? request,
         string? confirmationHeader,
@@ -864,7 +882,7 @@ public sealed class FiscalBridgeService(
     {
         // CASH REGISTER item line (see BuildRegisterSalePayload(ReceiptSaleRequest) for the format).
         _ = warnings;
-        var description = TranslateToCyrillicLikeJava((item.ProductName ?? string.Empty).ToUpper(CultureInfo.CurrentCulture));
+        var description = TranslateToCyrillicLikeJava(SanitizeFiscalDescription(item.ProductName).ToUpper(CultureInfo.CurrentCulture));
         var taxGroup = ToCashRegisterVatGroup(ParseVatGroup(item.VatGroup));
         var macFlag = item.IsMacedonian ? "1" : "0";
 
@@ -876,13 +894,29 @@ public sealed class FiscalBridgeService(
             macFlag, "\t\t\t");
     }
 
+    // Знаци што фискалниот уред ги резервира како маркери во линијата на ставка (попуст/надомест/
+    // количина/поле-сепаратор). Ако се во ОПИСОТ, линијата „тивко пропаѓа" (ставката не се печати).
+    // Ги вадиме за да не се крши сметката (safety net за постоечки имиња со пр. '+').
+    private static readonly char[] FiscalReservedChars = ['+', '*', '@', ';', '\t', '\r', '\n'];
+
+    private static string SanitizeFiscalDescription(string? description)
+    {
+        if (string.IsNullOrEmpty(description))
+        {
+            return string.Empty;
+        }
+
+        var cleaned = new string(description.Select(c => FiscalReservedChars.Contains(c) ? ' ' : c).ToArray());
+        return System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ").Trim();
+    }
+
     private static string BuildRegisterSalePayload(ReceiptSaleRequest request)
     {
         // CASH REGISTER item line, mirrors Java ReceiptItem.toIntList():
         //   DESC(UPPER,cyrillic) \t taxGroupNum \t price(0.00) \t quantity(0.000) \t macFlag \t <corrType> \t <corrValue(0.00)> \t
         // A price correction (discount/surcharge) is emitted ONLY when a type is set AND the value is
         // non-zero; otherwise the correction-type/value fields are empty (two trailing tabs).
-        var description = TranslateToCyrillicLikeJava(request.Description!.ToUpper(CultureInfo.CurrentCulture));
+        var description = TranslateToCyrillicLikeJava(SanitizeFiscalDescription(request.Description).ToUpper(CultureInfo.CurrentCulture));
         var taxGroup = ToCashRegisterVatGroup(ParseVatGroup(request.VatGroup));
         var macFlag = request.MacedonianItem ? "1" : "0";
         var correctionType = ParsePriceCorrectionType(request.PriceCorrectionType);

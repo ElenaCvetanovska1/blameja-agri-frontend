@@ -44,6 +44,17 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
     }
 
+    // PAPER_FEED (0x2C) — извлекува лента неколку линии (за да се откине заглавено ливче). Не-фискална.
+    [HttpPost("paper/feed")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> PaperFeed(CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecutePaperFeedAsync(
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     // SET_DATE_TIME (0x3D) — поставува датум/час на уредот; празно тело = системско време.
     [HttpPost("date-time/set")]
     public async Task<ActionResult<FiscalRealCommandResponse>> SetDateTime(

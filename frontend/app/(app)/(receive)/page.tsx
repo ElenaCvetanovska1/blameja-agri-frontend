@@ -3,6 +3,7 @@
 import type { FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { stripFiscalReservedChars } from 'app/lib/fiscal-bridge';
 import { api } from 'app/lib/api-client';
 import { FiPackage, FiFileText, FiCamera, FiRotateCcw, FiSave, FiTag, FiBarChart2, FiHash } from 'react-icons/fi';
 
@@ -421,7 +422,7 @@ const ReceivePage = () => {
 							<ProductNameWithSuggestions
 								value={form.name}
 								onChange={(v) => {
-									form.setName(v);
+									form.setName(stripFiscalReservedChars(v));
 									setSelectedProductId(null);
 								}}
 								placeholder={form.categoryId ? 'Почни да куцаш (во избрана категорија)…' : 'Почни да куцаш (ќе се пополни категорија)…'}

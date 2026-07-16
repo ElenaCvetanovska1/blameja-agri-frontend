@@ -15,6 +15,9 @@ public interface IFiscalBridgeService
     Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecutePaperFeedAsync(
+        string? confirmationHeader,
+        CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteSetDateTimeAsync(
         FiscalSetDateTimeRequest? request,
         string? confirmationHeader,

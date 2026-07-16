@@ -349,6 +349,141 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
         }
     }
 
+    // ── POST /api/fiscal-receipts/manual-storno ────────────────────────────
+    /// <summary>
+    /// Standalone storno for a receipt that is NOT in the database (manual/ad-hoc).
+    /// Records a fiscal_receipts (storno) with no original link and restores stock on success.
+    /// </summary>
+    [HttpPost("manual-storno")]
+    public async Task<IActionResult> CreateManualStorno(
+        [FromBody] ManualStornoRequestDto req,
+        CancellationToken ct = default)
+    {
+        if (req.FiscalStatus is not ("success" or "failed" or "offline"))
+            return BadRequest(new { message = "Invalid fiscal status." });
+
+        if (req.Payment is not ("CASH" or "CARD"))
+            return BadRequest(new { message = "Invalid payment method." });
+
+        if (req.Items is null || req.Items.Count == 0)
+            return BadRequest(new { message = "Мора да се внесат ставки за сторно." });
+
+        foreach (var it in req.Items)
+        {
+            if (it.Quantity <= 0)
+                return BadRequest(new { message = "Количината мора да биде поголема од 0." });
+            if (it.TaxGroup is < 1 or > 4)
+                return BadRequest(new { message = "Невалидна ДДВ група." });
+            if (string.IsNullOrWhiteSpace(it.ProductName))
+                return BadRequest(new { message = "Ставката мора да има назив." });
+        }
+
+        var currentUserId = User.FindFirst("sub")?.Value;
+        var total = req.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+        using var conn = db.CreateConnection();
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        try
+        {
+            var newId = Guid.NewGuid();
+            var now   = DateTime.UtcNow;
+
+            await conn.ExecuteAsync(
+                """
+                INSERT INTO fiscal_receipts (
+                    id, sales_receipt_id, receipt_type, fiscal_slip_no, fiscal_status, fiscal_error,
+                    store_no, payment, total, created_by, bridge_response,
+                    fiscalized_at, created_at, original_fiscal_receipt_id
+                ) VALUES (
+                    @Id, NULL, 'storno', @FiscalSlipNo, @FiscalStatus, @FiscalError,
+                    @StoreNo, @Payment::payment_method, @Total, @CreatedBy, @BridgeResponse::jsonb,
+                    @FiscalizedAt, @CreatedAt, NULL
+                );
+                """,
+                new
+                {
+                    Id           = newId,
+                    req.FiscalSlipNo,
+                    req.FiscalStatus,
+                    req.FiscalError,
+                    StoreNo      = req.StoreNo,
+                    req.Payment,
+                    Total        = total,
+                    CreatedBy    = currentUserId,
+                    req.BridgeResponse,
+                    FiscalizedAt = req.FiscalStatus == "success" ? now : (DateTime?)null,
+                    CreatedAt    = now,
+                },
+                tx);
+
+            foreach (var it in req.Items)
+            {
+                await conn.ExecuteAsync(
+                    """
+                    INSERT INTO fiscal_receipt_items (
+                        id, fiscal_receipt_id, product_id, plu, product_name,
+                        quantity, unit_price, line_total, discount, base_price,
+                        tax_group, tax_percent, is_macedonian, unit, created_at
+                    ) VALUES (
+                        gen_random_uuid(), @FiscalReceiptId, @ProductId, @Plu, @ProductName,
+                        @Quantity, @UnitPrice, @LineTotal, 0, @UnitPrice,
+                        @TaxGroup, @TaxPercent, @IsMacedonian, @Unit, @CreatedAt
+                    );
+                    """,
+                    new
+                    {
+                        FiscalReceiptId = newId,
+                        it.ProductId,
+                        it.Plu,
+                        it.ProductName,
+                        it.Quantity,
+                        it.UnitPrice,
+                        LineTotal = it.UnitPrice * it.Quantity,
+                        it.TaxGroup,
+                        it.TaxPercent,
+                        it.IsMacedonian,
+                        it.Unit,
+                        CreatedAt = now,
+                    },
+                    tx);
+            }
+
+            // Врати ја залихата (IN движење) за успешно сторно — вратената стока се враќа на полица.
+            // Залихата смее да оди и во минус (системот толерира несовршена залиха, како кај продажбите).
+            var stockItems = req.FiscalStatus == "success"
+                ? req.Items.Where(i => i.ProductId.HasValue).ToList()
+                : [];
+
+            if (stockItems.Count > 0)
+            {
+                var slip = req.FiscalSlipNo?.ToString() ?? newId.ToString()[..8];
+                var movementId = await conn.ExecuteScalarAsync<Guid>(
+                    "INSERT INTO stock_movements (type, note) VALUES ('IN', @note) RETURNING id;",
+                    new { note = $"Рачно сторно #{slip}" }, tx);
+
+                foreach (var it in stockItems)
+                {
+                    await conn.ExecuteAsync(
+                        """
+                        INSERT INTO stock_movement_items (movement_id, product_id, qty, unit_cost, unit_price)
+                        VALUES (@movementId, @productId, @qty, 0, @unitPrice);
+                        """,
+                        new { movementId, productId = it.ProductId!.Value, qty = it.Quantity, unitPrice = it.UnitPrice },
+                        tx);
+                }
+            }
+
+            tx.Commit();
+            return Ok(new { id = newId });
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
+    }
+
     // ── Private projection records ─────────────────────────────────────────
 
     private sealed record OriginalReceiptRow(
