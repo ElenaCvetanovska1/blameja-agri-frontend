@@ -44,6 +44,29 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
     }
 
+    // SET_DATE_TIME (0x3D) — поставува датум/час на уредот; празно тело = системско време.
+    [HttpPost("date-time/set")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> SetDateTime(
+        [FromBody] FiscalSetDateTimeRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request?.DateTimeText)
+            && !DateTime.TryParse(request.DateTimeText, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+        {
+            return BadRequest(new ValidationProblemDetails(new Dictionary<string, string[]>
+            {
+                ["dateTimeText"] = ["dateTimeText must be a valid date/time (e.g. 2026-07-16T14:30:00)."]
+            }));
+        }
+
+        var response = await fiscalBridge.ExecuteSetDateTimeAsync(
+            request,
+            Request.Headers["X-Fiscal-Print-Confirmation"].FirstOrDefault(),
+            cancellationToken);
+
+        return IsBlocked(response) ? Conflict(response) : Ok(response);
+    }
+
     [HttpPost("articles/program")]
     public async Task<ActionResult<FiscalRealCommandResponse>> ProgramArticle(
         [FromBody] ProgramArticleRequest? request,

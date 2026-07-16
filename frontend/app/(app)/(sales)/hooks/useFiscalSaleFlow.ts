@@ -2,7 +2,17 @@
 
 import { api } from 'app/lib/api-client';
 import { toast } from 'sonner';
-import { fiscalBridge, FiscalBridgeOfflineError, toFiscalTaxCode, toFiscalPaymentMode, truncateFiscalName } from 'app/lib/fiscal-bridge';
+import {
+	FiscalBridgeOfflineError,
+	type FiscalSaleLine,
+	fiscalErrorMessage,
+	fiscalInfo,
+	fiscalReceipt,
+	isDeviceStatusClean,
+	parseSlipNumber,
+	taxPercentToVatGroup,
+	truncateFiscalName,
+} from 'app/lib/fiscal-bridge';
 import type { CartItem, Totals } from '../types';
 import { num, priceNum, clampFinalToBase } from '../utils';
 
@@ -13,10 +23,7 @@ type FiscalSaleArgs = {
 	paymentMethod: 'CASH' | 'CARD';
 };
 
-/**
- * Persists fiscal device result to the backend (previously wrote directly to Supabase).
- * Now calls PATCH /api/sales/{receiptId}/fiscal
- */
+/** Persists fiscal device result to the backend: PATCH /api/sales/{receiptId}/fiscal */
 const saveFiscalResult = async (
 	receiptId: string,
 	patch: {
@@ -33,93 +40,88 @@ const saveFiscalResult = async (
 	});
 };
 
+/** Кошничка ставка → фискална ставка (каса формат преку FiscalBridge). */
+const toFiscalLine = (item: CartItem): FiscalSaleLine => {
+	const base = num(item.product.selling_price);
+	const finalRaw = priceNum(item.finalPriceStr);
+	const finalPrice = clampFinalToBase(finalRaw, base);
+	// Попуст како ИЗНОС за целата ставка: (основна − финална) × количина.
+	const discountAmount = base > finalPrice ? Math.round((base - finalPrice) * item.qty * 100) / 100 : 0;
+
+	return {
+		description: truncateFiscalName(item.product.name, 20),
+		vatGroup: taxPercentToVatGroup(item.product.tax_group),
+		price: base,
+		quantity: item.qty,
+		macedonianItem: item.product.is_macedonian === true,
+		...(discountAmount > 0 ? { priceCorrectionType: 'DISCOUNT_VALUE', priceCorrectionValue: discountAmount } : {}),
+	};
+};
+
 export const useFiscalSaleFlow = () => {
 	const runFiscalSale = async (args: FiscalSaleArgs): Promise<void> => {
 		const { receiptId, cart, totals, paymentMethod } = args;
+		const fiscalPayment = paymentMethod === 'CASH' ? 'Cash' : 'Debit';
 
-		// 1 ─ Check device is reachable ──────────────────────────────────────────
-		let status: Awaited<ReturnType<typeof fiscalBridge.getStatus>>;
+		// 1 ─ Провери дали уредот е достапен и спремен ───────────────────────────
+		let deviceStatus: Awaited<ReturnType<typeof fiscalInfo.getDeviceStatus>>;
 		try {
-			status = await fiscalBridge.getStatus();
+			deviceStatus = await fiscalInfo.getDeviceStatus();
 		} catch (err) {
 			if (err instanceof FiscalBridgeOfflineError) {
 				toast.warning('Продажбата е зачувана, но фискалниот уред е офлајн. Ќе треба рачна фискализација.', { duration: 8000 });
 				await saveFiscalResult(receiptId, { fiscal_status: 'offline', fiscal_error: 'bridge offline' });
 				return;
 			}
-			throw err;
-		}
-
-		if (!status.IsConnected) {
-			toast.warning('Фискалниот уред е исклучен. Продажбата е зачувана — фискализирај рачно.', { duration: 8000 });
-			await saveFiscalResult(receiptId, { fiscal_status: 'offline', fiscal_error: 'device not connected' });
+			toast.warning('Продажбата е зачувана, но фискалниот уред не е достапен. Ќе треба рачна фискализација.', { duration: 8000 });
+			await saveFiscalResult(receiptId, { fiscal_status: 'offline', fiscal_error: fiscalErrorMessage(err) });
 			return;
 		}
 
-		// 2 ─ Check for stale open receipt ───────────────────────────────────────
-		try {
-			const txStatus = await fiscalBridge.getTransactionStatus();
-			if (txStatus.IsOpen) {
-				await fiscalBridge.closeReceipt().catch(() => null);
-			}
-		} catch {
-			// Non-blocking — proceed
+		if (!deviceStatus.success) {
+			toast.warning('Фискалниот уред не одговара. Продажбата е зачувана — фискализирај рачно.', { duration: 8000 });
+			await saveFiscalResult(receiptId, {
+				fiscal_status: 'offline',
+				fiscal_error: deviceStatus.error || deviceStatus.responseStatus,
+			});
+			return;
+		}
+
+		// 2 ─ Pre-clean: заглавена отворена сметка → откажи (best effort, како Java pre-clean)
+		if (!isDeviceStatusClean(deviceStatus.statusBytes)) {
+			await fiscalReceipt.cancel();
 		}
 
 		try {
-			// 3 ─ Open receipt ────────────────────────────────────────────────────
-			const opened = await fiscalBridge.openReceipt({
-				opCode: '1',
-				opPwd: '0000',
-				storno: 0,
-			});
+			// 3 ─ Отвори сметка ──────────────────────────────────────────────────
+			await fiscalReceipt.open(false);
 
-			// 4 ─ Register all line items ─────────────────────────────────────────
+			// 4 ─ Ставки (позитивни; попуст преку correction) ────────────────────
 			for (const item of cart) {
-				const base = num(item.product.selling_price);
-				const finalRaw = priceNum(item.finalPriceStr);
-				const finalPrice = clampFinalToBase(finalRaw, base);
-				const discountAmount = base > finalPrice ? Math.round((base - finalPrice) * item.qty * 100) / 100 : undefined;
-
-				await fiscalBridge.registerSale({
-					pluName: truncateFiscalName(item.product.name),
-					taxCode: toFiscalTaxCode(item.product.tax_group),
-					price: base,
-					quantity: item.qty,
-					isMacedonian: item.product.is_macedonian ? 1 : 0,
-					...(discountAmount !== undefined ? { discountType: 4, discountValue: discountAmount } : {}),
-				});
+				await fiscalReceipt.sale(toFiscalLine(item));
 			}
 
-			// 5 ─ Subtotal (display only) ─────────────────────────────────────────
-			await fiscalBridge.subtotal({ print: 0, display: 1 }).catch(() => null);
+			// 5 ─ Плаќање ────────────────────────────────────────────────────────
+			await fiscalReceipt.payment(fiscalPayment, totals.total);
 
-			// 6 ─ Payment ─────────────────────────────────────────────────────────
-			await fiscalBridge.payment({
-				paidMode: toFiscalPaymentMode(paymentMethod),
-				amount: totals.total,
-			});
+			// 6 ─ Затвори ────────────────────────────────────────────────────────
+			const closed = await fiscalReceipt.close(false);
+			const slipNo = parseSlipNumber(closed);
 
-			// 7 ─ Close receipt ───────────────────────────────────────────────────
-			const closed = await fiscalBridge.closeReceipt();
-
-			const slipNo = closed.SlipNumber ?? opened.SlipNumber ?? null;
-
-			// 8 ─ Persist slip number to backend ──────────────────────────────────
-			await saveFiscalResult(receiptId, {
-				fiscal_slip_no: slipNo,
-				fiscal_status: 'success',
-			});
-
-			toast.success(`Фискален сметки #${slipNo ?? '—'} испечатен.`, { duration: 4000 });
+			// 7 ─ Зачувај резултат ───────────────────────────────────────────────
+			await saveFiscalResult(receiptId, { fiscal_slip_no: slipNo, fiscal_status: 'success' });
+			toast.success(`Фискална сметка${slipNo ? ` #${slipNo}` : ''} испечатена.`, { duration: 4000 });
 		} catch (err) {
+			// Recovery: не оставај полуотворена сметка на уредот (best effort).
+			await fiscalReceipt.cancel();
+
 			if (err instanceof FiscalBridgeOfflineError) {
-				toast.warning('Фискалниот уред се исклучи во текот на продажбата. Зачувана е во DB.', { duration: 8000 });
+				toast.warning('Фискалниот уред се исклучи во текот на продажбата. Зачувана е во базата.', { duration: 8000 });
 				await saveFiscalResult(receiptId, { fiscal_status: 'offline', fiscal_error: 'bridge disconnected mid-sale' });
 				return;
 			}
 
-			const msg = err instanceof Error ? err.message : String(err);
+			const msg = fiscalErrorMessage(err);
 			toast.error(`Грешка при фискализација: ${msg}. Продажбата е зачувана во базата.`, { duration: 10000 });
 			await saveFiscalResult(receiptId, { fiscal_status: 'failed', fiscal_error: msg });
 		}

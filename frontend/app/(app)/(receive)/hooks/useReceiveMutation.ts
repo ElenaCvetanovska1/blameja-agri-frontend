@@ -18,6 +18,8 @@ export type ReceivePayload = {
 	supplierId?: string | null;
 	unit: Unit | null;
 	storeNo: StoreNo;
+	/** МКД производ — задолжителен фискален атрибут при додавање. */
+	isMacedonian: boolean;
 };
 
 export const useReceiveMutation = () => {

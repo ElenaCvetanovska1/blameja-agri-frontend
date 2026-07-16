@@ -22,14 +22,20 @@ export const useReceiveForm = () => {
 	const [details, setDetails] = useState('');
 	const [taxGroup, setTaxGroup] = useState<TaxGroup>('18');
 	const [unit, setUnit] = useState<Unit>('пар');
+	const [isMacedonian, setIsMacedonian] = useState(false);
 
+	// Задолжителни полиња за фискална продажба: PLU, име, ДДВ (секогаш селектиран),
+	// продажна цена (> 0) и МКД производ (селект со експлицитна вредност).
+	// Количина е задолжителна за приемот; баркод/набавна/опис се опционални.
 	const isValid = useMemo(() => {
 		if (!name.trim()) return false;
 		if (!plu.trim()) return false;
 		if (!qty.trim()) return false;
 		if (!isValidUnit(unit)) return false;
+		const price = Number.parseFloat(sellingPrice);
+		if (!Number.isFinite(price) || price <= 0) return false;
 		return true;
-	}, [name, plu, qty, unit]);
+	}, [name, plu, qty, unit, sellingPrice]);
 
 	const reset = () => {
 		setStoreNo(20);
@@ -44,6 +50,7 @@ export const useReceiveForm = () => {
 		setDetails('');
 		setTaxGroup('18');
 		setUnit('пар');
+		setIsMacedonian(false);
 	};
 
 	return {
@@ -71,6 +78,8 @@ export const useReceiveForm = () => {
 		setTaxGroup,
 		unit,
 		setUnit,
+		isMacedonian,
+		setIsMacedonian,
 
 		isValid,
 		reset,

@@ -216,6 +216,7 @@ const ReceivePage = () => {
 				unit: form.unit,
 				supplierId,
 				storeNo,
+				isMacedonian: form.isMacedonian,
 			};
 			await receiveMutation.mutateAsync(payload);
 			toast.success('Приемот е успешно зачуван ✅');
@@ -484,6 +485,24 @@ const ReceivePage = () => {
 										setSelectedProductId(null);
 									}}
 								/>
+							</div>
+
+							<div className="sm:col-span-2">
+								<Field
+									label="МКД производ"
+									htmlFor="receive-macedonian"
+									required
+								>
+									<select
+										id="receive-macedonian"
+										value={form.isMacedonian ? '1' : '0'}
+										onChange={(e) => form.setIsMacedonian(e.target.value === '1')}
+										className="form-input"
+									>
+										<option value="0">Не</option>
+										<option value="1">Да</option>
+									</select>
+								</Field>
 							</div>
 
 							<div className="sm:col-span-2">

@@ -17,4 +17,5 @@ public sealed class StockRowDto
     public int      StoreNo         { get; init; }
     public int?     TaxGroup        { get; init; }
     public string?  LastMovementAt  { get; init; }
+    public bool     IsMacedonian    { get; init; }
 }

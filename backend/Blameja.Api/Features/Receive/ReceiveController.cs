@@ -199,13 +199,18 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
         if (existing == default)
         {
             // ── INSERT new product ─────────────────────────────────────────
+            // Задолжителни фискални атрибути при додавање НОВ производ:
+            // PLU, име, ДДВ (погоре) + продажна цена > 0 и МКД флаг (доаѓа од формата).
+            if (sellingPrice <= 0)
+                throw new ApiException("Продажна цена е задолжителна (> 0) за нов производ.");
+
             const string insertSql = """
                 INSERT INTO products
                     (plu, barcode, name, description, selling_price, tax_group,
-                     is_active, category_id, unit, store_no)
+                     is_active, category_id, unit, store_no, is_macedonian)
                 VALUES
                     (@plu, @barcode, @name, @description, @sellingPrice, @taxGroup,
-                     true, @categoryId, @unit, @storeNo)
+                     true, @categoryId, @unit, @storeNo, @isMacedonian)
                 RETURNING id;
                 """;
 
@@ -213,6 +218,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             {
                 plu, barcode, name, description,
                 sellingPrice, taxGroup, categoryId, unit, storeNo,
+                isMacedonian = request.IsMacedonian,
             }, tx);
         }
         else
@@ -242,6 +248,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
                        name          = @name,
                        unit          = @unit,
                        store_no      = @storeNo,
+                       is_macedonian = @isMacedonian,
                        {barcodeUpdate}
                        {descUpdate}
                        {priceUpdate}
@@ -253,6 +260,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             {
                 productId, categoryId, taxGroup, plu, name, unit, storeNo,
                 barcode, description, sellingPrice,
+                isMacedonian = request.IsMacedonian,
             }, tx);
         }
 

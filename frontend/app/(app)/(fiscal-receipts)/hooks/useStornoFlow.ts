@@ -2,7 +2,17 @@
 
 import { api } from 'app/lib/api-client';
 import { toast } from 'sonner';
-import { fiscalBridge, FiscalBridgeOfflineError, truncateFiscalName, toFiscalPaymentMode } from 'app/lib/fiscal-bridge';
+import {
+	FiscalBridgeOfflineError,
+	type FiscalSaleLine,
+	fiscalErrorMessage,
+	fiscalInfo,
+	fiscalReceipt,
+	isDeviceStatusClean,
+	parseSlipNumber,
+	taxCodeToVatGroup,
+	truncateFiscalName,
+} from 'app/lib/fiscal-bridge';
 
 export type StornoFlowItem = {
 	/** ID of the original fiscal_receipt_items row */
@@ -29,15 +39,19 @@ export type StornoFlowResult = {
 	fiscalSlipNo: number | null;
 };
 
-const toFiscalTaxCodeFromGroup = (taxGroup: number | null | undefined): 1 | 2 | 3 | 4 => {
-	// tax_group in DB is already the fiscal code (1=A/18%, 2=Б/5%, 3=В/10%, 4=Г/0%)
-	if (taxGroup === 1 || taxGroup === 2 || taxGroup === 3 || taxGroup === 4) return taxGroup;
-	return 4; // default to exempt
-};
+/** Сторно ставка од базата → фискална ставка (позитивни вредности, како Java void receipt). */
+const toFiscalLine = (item: StornoFlowItem): FiscalSaleLine => ({
+	description: truncateFiscalName(item.productName ?? 'Производ', 20),
+	vatGroup: taxCodeToVatGroup(item.taxGroup),
+	price: item.unitPrice,
+	quantity: item.quantity,
+	macedonianItem: item.isMacedonian,
+});
 
 export const useStornoFlow = () => {
 	const runStornoFlow = async (args: StornoFlowArgs): Promise<StornoFlowResult> => {
 		const { originalReceiptId, items, total, payment, storeNo, createdBy } = args;
+		const fiscalPayment = payment === 'CASH' ? 'Cash' : 'Debit';
 
 		// ── Helper to persist storno result to backend regardless of fiscal outcome ──
 		const saveStornoResult = async (
@@ -64,76 +78,62 @@ export const useStornoFlow = () => {
 			return { stornoReceiptId: result.id, fiscalSlipNo };
 		};
 
-		// ── 1. Check device reachability ──────────────────────────────────────────
-		let status: Awaited<ReturnType<typeof fiscalBridge.getStatus>>;
+		// ── 1. Провери уред ────────────────────────────────────────────────────────
+		let deviceStatus: Awaited<ReturnType<typeof fiscalInfo.getDeviceStatus>>;
 		try {
-			status = await fiscalBridge.getStatus();
+			deviceStatus = await fiscalInfo.getDeviceStatus();
 		} catch (err) {
 			if (err instanceof FiscalBridgeOfflineError) {
 				toast.warning('Сторно е зачувано, но фискалниот уред е офлајн. Ќе треба рачна фискализација.', { duration: 8000 });
 				return saveStornoResult('offline', null, 'bridge offline', null);
 			}
-			throw err;
+			toast.warning('Сторно е зачувано, но фискалниот уред не е достапен.', { duration: 8000 });
+			return saveStornoResult('offline', null, fiscalErrorMessage(err), null);
 		}
 
-		if (!status.IsConnected) {
-			toast.warning('Фискалниот уред е исклучен. Сторно е зачувано — фискализирај рачно.', { duration: 8000 });
-			return saveStornoResult('offline', null, 'device not connected', null);
+		if (!deviceStatus.success) {
+			toast.warning('Фискалниот уред не одговара. Сторно е зачувано — фискализирај рачно.', { duration: 8000 });
+			return saveStornoResult('offline', null, deviceStatus.error || deviceStatus.responseStatus, null);
 		}
 
-		// ── 2. Close any stale open receipt ───────────────────────────────────────
-		try {
-			const txStatus = await fiscalBridge.getTransactionStatus();
-			if (txStatus.IsOpen) {
-				await fiscalBridge.closeReceipt().catch(() => null);
-			}
-		} catch {
-			// Non-blocking — proceed
+		// ── 2. Pre-clean: заглавена отворена сметка → откажи (best effort) ─────────
+		if (!isDeviceStatusClean(deviceStatus.statusBytes)) {
+			await fiscalReceipt.cancel();
 		}
 
 		try {
-			// ── 3. Open storno receipt (storno: 1) ────────────────────────────────
-			const opened = await fiscalBridge.openReceipt({
-				opCode: '1',
-				opPwd: '0000',
-				storno: 1,
+			// ── 3. СТОРНО во еден оркестриран повик:
+			//       OPEN(void flag=1) → ставки (позитивни) → плаќање → CLOSE
+			const res = await fiscalReceipt.storno({
+				items: items.map(toFiscalLine),
+				paymentMethod: fiscalPayment,
+				amount: total,
 			});
 
-			// ── 4. Register each storno line item ─────────────────────────────────
-			for (const item of items) {
-				await fiscalBridge.registerSale({
-					pluName: truncateFiscalName(item.productName ?? 'Производ'),
-					taxCode: toFiscalTaxCodeFromGroup(item.taxGroup),
-					price: item.unitPrice,
-					quantity: item.quantity,
-					isMacedonian: item.isMacedonian ? 1 : 0,
-				});
-			}
+			const slipNo = parseSlipNumber(res.closeResult);
+			const bridgeResponse = JSON.stringify({
+				open: res.openResult?.responseStatus,
+				sales: res.saleResults.map((s) => s.responseStatus),
+				payment: res.paymentResult?.responseStatus,
+				close: res.closeResult?.responseStatus,
+				elapsedMs: res.elapsedMs,
+			});
 
-			// ── 5. Subtotal (display only) ────────────────────────────────────────
-			await fiscalBridge.subtotal({ print: 0, display: 1 }).catch(() => null);
-
-			// ── 6. Payment (refund) ───────────────────────────────────────────────
-			const paymentRes = await fiscalBridge.payment({ paidMode: toFiscalPaymentMode(payment), amount: total });
-
-			// ── 7. Close receipt ──────────────────────────────────────────────────
-			const closed = await fiscalBridge.closeReceipt();
-
-			const slipNo = closed.SlipNumber ?? opened.SlipNumber ?? null;
-			const bridgeResponse = JSON.stringify({ opened, paymentRes, closed });
-
-			// ── 8. Persist to backend ─────────────────────────────────────────────
+			// ── 4. Persist to backend ─────────────────────────────────────────────
 			const result = await saveStornoResult('success', slipNo, null, bridgeResponse);
 
-			toast.success(`Сторно сметка #${slipNo ?? '—'} испечатена.`, { duration: 4000 });
+			toast.success(`Сторно сметка${slipNo ? ` #${slipNo}` : ''} испечатена.`, { duration: 4000 });
 			return result;
 		} catch (err) {
+			// Recovery: не оставај полуотворена void сметка (best effort).
+			await fiscalReceipt.cancel();
+
 			if (err instanceof FiscalBridgeOfflineError) {
-				toast.warning('Фискалниот уред се исклучи при сторно. Зачувано во DB.', { duration: 8000 });
+				toast.warning('Фискалниот уред се исклучи при сторно. Зачувано во базата.', { duration: 8000 });
 				return saveStornoResult('offline', null, 'bridge disconnected mid-storno', null);
 			}
 
-			const msg = err instanceof Error ? err.message : String(err);
+			const msg = fiscalErrorMessage(err);
 			toast.error(`Грешка при сторно: ${msg}. Зачувано во базата.`, { duration: 10000 });
 			return saveStornoResult('failed', null, msg, null);
 		}

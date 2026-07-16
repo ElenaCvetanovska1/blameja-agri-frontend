@@ -13,6 +13,7 @@ public sealed record ReceivePayloadRequest(
     string  TaxGroup,        // "5" | "10" | "18"
     string? SupplierId,
     string? Unit,            // "пар" | "кг" | "м"
-    int     StoreNo);        // 20 | 30
+    int     StoreNo,         // 20 | 30
+    bool    IsMacedonian = false); // МКД производ — задолжителен избор при додавање (фискален атрибут)
 
 public sealed record ReceiveResult(Guid ProductId, Guid MovementId);

@@ -80,10 +80,7 @@ public sealed class FiscalBridgeService(
 
     public FiscalDryRunResponse BuildSetDateTimeDryRun(FiscalSetDateTimeRequest? request)
     {
-        var dateTime = ResolveDateTime(request);
-        var payload = dateTime.ToString("dd-MM-yy HH:mm:ss", CultureInfo.InvariantCulture);
-
-        return DryRun([Build("SET_DATE_TIME", AccentCommandIds.SetDateTime, payload)]);
+        return DryRun([Build("SET_DATE_TIME", AccentCommandIds.SetDateTime, BuildSetDateTimePayload(ResolveDateTime(request)))]);
     }
 
     public Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken)
@@ -99,6 +96,36 @@ public sealed class FiscalBridgeService(
     public Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken)
     {
         return ExecuteReadOnlyCommandAsync("GET_DATE_TIME", AccentCommandIds.GetDateTime, null, cancellationToken);
+    }
+
+    public Task<FiscalRealCommandResponse> ExecuteSetDateTimeAsync(
+        FiscalSetDateTimeRequest? request,
+        string? confirmationHeader,
+        CancellationToken cancellationToken)
+    {
+        const string commandName = "SET_DATE_TIME";
+        const byte commandId = AccentCommandIds.SetDateTime;
+
+        // Пишува во уредот → бара RealSerialEnabled + confirmation header (како артикли).
+        var blockedResponse = ValidateProgrammingExecution(
+            commandName,
+            commandId,
+            true,
+            confirmationHeader,
+            string.Empty);
+        if (blockedResponse is not null)
+        {
+            return Task.FromResult(blockedResponse);
+        }
+
+        // Без dateTime во барањето → серверско Now (FiscalBridge работи на истата машина = системски часовник).
+        return ExecuteReadOnlyCommandAsync(commandName, commandId, BuildSetDateTimePayload(ResolveDateTime(request)), cancellationToken);
+    }
+
+    private static string BuildSetDateTimePayload(DateTime dateTime)
+    {
+        // CASH REGISTER: "dd-MM-yy HH:mm:ss" + завршен TAB (Java SetDateTime cash-register гранка).
+        return string.Concat(dateTime.ToString("dd-MM-yy HH:mm:ss", CultureInfo.InvariantCulture), "\t");
     }
 
     public Task<FiscalRealCommandResponse> ExecuteOpenFiscalReceiptAsync(

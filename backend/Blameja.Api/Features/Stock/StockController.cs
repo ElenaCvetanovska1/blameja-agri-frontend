@@ -36,6 +36,7 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
                 category_name,
                 store_no,
                 tax_group,
+                is_macedonian,
                 last_movement_at
             FROM product_stock
             WHERE (

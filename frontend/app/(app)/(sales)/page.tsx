@@ -5,7 +5,7 @@ import type { IDetectedBarcode } from '@yudiel/react-qr-scanner';
 import { toast } from 'sonner';
 import { api } from 'app/lib/api-client';
 import { FiSearch, FiCamera, FiX, FiShoppingCart, FiClock, FiPlus, FiZap, FiRefreshCw } from 'react-icons/fi';
-import { fiscalBridge } from 'app/lib/fiscal-bridge';
+import { fiscalInfo } from 'app/lib/fiscal-bridge';
 
 import type { ProductStockRow } from './types';
 import { num } from './utils';
@@ -148,15 +148,15 @@ const SalesPage = () => {
 
 			// Fresh status check right before fiscal action
 			try {
-				const deviceStatus = await fiscalBridge.getStatus();
+				const deviceStatus = await fiscalInfo.getDeviceStatus();
 				refreshFiscalStatus(); // sync UI badge with the fresh result
-				if (!deviceStatus.IsConnected) {
-					toast.error('Продажбата е зачувана, но фискалната каса е офлајн — receipтот не е испечатен.');
+				if (!deviceStatus.success) {
+					toast.error('Продажбата е зачувана, но фискалната каса не одговара — сметката не е испечатена.');
 					return;
 				}
 			} catch {
 				refreshFiscalStatus();
-				toast.error('Продажбата е зачувана, но FiscalBridge не е достапен — receipтот не е испечатен.');
+				toast.error('Продажбата е зачувана, но FiscalBridge не е достапен — сметката не е испечатена.');
 				return;
 			}
 

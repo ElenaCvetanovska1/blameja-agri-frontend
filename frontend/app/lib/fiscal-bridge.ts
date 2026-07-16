@@ -22,214 +22,44 @@ export class FiscalBridgeError extends Error {
 	}
 }
 
-// ─── DTOs ─────────────────────────────────────────────────────────────────────
+// ═══ REAL FiscalBridge API (актуелен контракт) ═══════════════════════════════
+// Точни типови спрема Blameja.FiscalBridge (ASP.NET Core). JSON е camelCase.
+// Групa: Инфо / статус (read-only): /health /ports /status /diagnostic /date-time
 
-/** P=passed, F=failed, D=partial payment (still open), R=change due */
-export type ErrorStatus = 'P' | 'F' | 'D' | 'R';
-
-export type DeviceStatusResponse = {
-	IsConnected: boolean;
-	StatusBytes?: string;
-	// Byte 0
-	GeneralError?: boolean;
-	InvalidCommand?: boolean;
-	SyntaxError?: boolean;
-	// Byte 1
-	CommandNotPermitted?: boolean;
-	Overflow?: boolean;
-	// Byte 2
-	NonfiscalReceiptOpen?: boolean;
-	EjNearlyFull?: boolean;
-	FiscalReceiptOpen?: boolean;
-	EjFull?: boolean;
-	EndOfPaper?: boolean;
-	// Byte 4
-	FiscalMemoryFull?: boolean;
-	LessThan50Reports?: boolean;
-	SerialNumberSet?: boolean;
-	TaxNumberSet?: boolean;
-	ErrorWritingFm?: boolean;
-	// Byte 5
-	VatSet?: boolean;
-	EcrFiscalized?: boolean;
-	FmFormatted?: boolean;
+export type FiscalHealth = {
+	success: boolean;
+	dryRun: boolean;
+	deviceType: string;
+	comPort: string;
+	baudRate: number;
+	supportedCommands: string[];
 };
 
-export type TransactionStatusResponse = {
-	IsOpen: boolean;
-	SlipNumber?: number;
-	OperatorCode?: string;
+/** Одговор од секоја реална команда (FiscalRealCommandResponse). */
+export type FiscalCommandResult = {
+	success: boolean;
+	dryRun: boolean;
+	commandName: string;
+	commandIdHex: string;
+	comPort: string;
+	baudRate: number;
+	requestHex: string;
+	responseHex: string;
+	responseStatus: string;
+	dataText: string;
+	statusHex: string;
+	statusBytes: number[];
+	elapsedMs: number;
+	message?: string | null;
+	error?: string | null;
+	executedAt: string;
 };
 
-export type OpenReceiptRequest = {
-	opCode: string;
-	opPwd: string;
-	storno: number; // 0 = normal receipt, 1 = storno
-};
-
-export type OpenReceiptResponse = {
-	ErrorStatus: ErrorStatus;
-	SlipNumber: number;
-	Message?: string;
-};
-
-export type RegisterSaleRequest = {
-	pluName: string;
-	/** 1=A (standard), 2=Б, 3=В, 4=Г */
-	taxCode: 1 | 2 | 3 | 4;
-	price: number;
-	quantity: number;
-	isMacedonian?: number; // 1 = yes, 0 = no
-	/** discountType=4 means "discount sum" (absolute denar amount) */
-	discountType?: number;
-	/** Total discount in denars for the whole line (base - final) * qty */
-	discountValue?: number;
-};
-
-export type RegisterSaleResponse = {
-	ErrorStatus: ErrorStatus;
-	Message?: string;
-};
-
-export type SubtotalRequest = {
-	print: number; // 0 = don't print, 1 = print
-	display: number; // 0 = don't display, 1 = display
-};
-
-export type SubtotalResponse = {
-	ErrorStatus: ErrorStatus;
-	/** Running total of the receipt (string from device) */
-	Subtotal?: string;
-	Message?: string;
-};
-
-export type PaymentRequest = {
-	/** 0=cash, 1=card, 2=credit */
-	paidMode: 0 | 1 | 2;
-	amount: number;
-};
-
-export type PaymentResponse = {
-	ErrorStatus: ErrorStatus;
-	/** Remaining amount when D (partial), or change when R (overpaid) */
-	Amount?: string;
-	Message?: string;
-};
-
-export type CloseReceiptResponse = {
-	ErrorStatus: ErrorStatus;
-	SlipNumber?: number;
-	FiscalNumber?: string;
-	Message?: string;
-};
-
-export type CashOperationRequest = {
-	/** 0 = cash-in, 1 = cash-out */
-	type: 0 | 1;
-	amount: number;
-};
-
-export type CashOperationResponse = {
-	ErrorStatus: ErrorStatus;
-	Message?: string;
-};
-
-export type ReportType = 'X' | 'Z';
-
-export type ReportRequest = {
-	reportType: ReportType;
-};
-
-export type ReportResponse = {
-	ErrorStatus: ErrorStatus;
-	Message?: string;
-};
-
-/** Full item record returned by Command 107h (GET /items/all) */
-export type ItemDetail = {
-	Plu: number;
-	TaxGr: number;
-	Dep: number;
-	Group: number;
-	PriceType: number;
-	Price: string; // decimal serialised as string by the device
-	Turnover: string;
-	SoldQty: string;
-	StockQty: string;
-	Bar1?: string | null;
-	Bar2?: string | null;
-	Bar3?: string | null;
-	Bar4?: string | null;
-	Name: string;
-};
-
-export type FiscalItemsResponse = {
-	ErrorStatus: ErrorStatus;
-	Items: ItemDetail[];
-	Message?: string;
-};
-
-// ─── Datetime (61h / 62h) ─────────────────────────────────────────────────────
-
-export type SetDateTimeRequest = {
-	/** Format: "DD-MM-YY hh:mm:ss" — optionally append " DST" for summer time */
-	dateTime: string;
-};
-
-export type SetDateTimeResponse = {
-	ErrorStatus: ErrorStatus;
-	Message?: string;
-};
-
-export type DateTimeResponse = {
-	ErrorStatus: ErrorStatus;
-	/** Format: "DD-MM-YY hh:mm:ss [DST]" */
-	DateTime?: string;
-	Message?: string;
-};
-
-// ─── Last fiscal entry (64h) ──────────────────────────────────────────────────
-
-export type LastEntryResponse = {
-	ErrorStatus: ErrorStatus;
-	NRep?: string;
-	SumA?: string;
-	SumB?: string;
-	SumC?: string;
-	SumD?: string;
-	/** Format: "DD-MM-YY" */
-	Date?: string;
-	Message?: string;
-};
-
-// ─── Memory reports (94h / 95h) ───────────────────────────────────────────────
-
-export type MemoryReportByDateRequest = {
-	/** 0 = short, 1 = detailed */
-	type: 0 | 1;
-	/** DD-MM-YY. Default: date of fiscalisation */
-	start?: string;
-	/** DD-MM-YY. Default: current date */
-	end?: string;
-};
-
-export type MemoryReportByZRequest = {
-	/** 0 = short, 1 = detailed */
-	type: 0 | 1;
-	/** First Z-report number. Default: 1 */
-	first?: number;
-	/** Last Z-report number. Default: last Z */
-	last?: number;
-};
-
-export type MemoryReportResponse = {
-	ErrorStatus: ErrorStatus;
-	Message?: string;
-};
-
-// ─── HTTP helpers ─────────────────────────────────────────────────────────────
-
-async function fiscalFetch<T>(path: string, options?: RequestInit): Promise<T> {
+/**
+ * Fetch за реалниот API: офлајн → FiscalBridgeOfflineError; HTTP грешка (409/500) →
+ * FiscalBridgeError со читлива порака од телото (error/message/responseStatus).
+ */
+async function fiscalFetchReal<T>(path: string, options?: RequestInit): Promise<T> {
 	let res: Response;
 	try {
 		res = await fetch(`${FISCAL_BASE}${path}`, {
@@ -240,180 +70,389 @@ async function fiscalFetch<T>(path: string, options?: RequestInit): Promise<T> {
 		throw new FiscalBridgeOfflineError();
 	}
 
-	if (!res.ok) {
-		const text = await res.text().catch(() => '');
-		throw new FiscalBridgeError(`FiscalBridge HTTP ${res.status}: ${text}`, String(res.status));
+	const text = await res.text().catch(() => '');
+	let body: unknown = null;
+	try {
+		body = text ? JSON.parse(text) : null;
+	} catch {
+		body = null;
 	}
 
-	return res.json() as Promise<T>;
+	if (!res.ok) {
+		const cmd = body as Partial<FiscalCommandResult> | null;
+		// ASP.NET ValidationProblemDetails: { errors: { field: [пораки] } }
+		const validation = (body as { errors?: Record<string, string[]> } | null)?.errors;
+		const validationMsg = validation ? Object.values(validation).flat().join(' ') : null;
+		const msg = cmd?.error || cmd?.message || validationMsg || `FiscalBridge HTTP ${res.status}${text ? `: ${text.slice(0, 200)}` : ''}`;
+		throw new FiscalBridgeError(msg, cmd?.responseStatus ?? String(res.status));
+	}
+
+	return body as T;
 }
 
-function assertPassed(status: ErrorStatus, message?: string): void {
-	if (status === 'P') return;
-	const label = status === 'F' ? 'Неуспешно' : status === 'D' ? 'Делумна уплата' : status === 'R' ? 'Се врши кусур' : status;
-	throw new FiscalBridgeError(message ?? `Фискалната операција не успеа (${label})`, status);
+/** Една порака за секој вид фискална грешка — за toast/панел во UI. */
+export function fiscalErrorMessage(err: unknown): string {
+	if (err instanceof FiscalBridgeOfflineError) return err.message;
+	if (err instanceof FiscalBridgeError) return err.message;
+	if (err instanceof Error) return err.message;
+	return String(err);
 }
 
-// ─── API surface ──────────────────────────────────────────────────────────────
+/** Чист/спремен уред: првите 4 статус бајти се 0x80 (нема error/busy битови). */
+export function isDeviceStatusClean(statusBytes: number[]): boolean {
+	return statusBytes.length >= 4 && statusBytes.slice(0, 4).every((b) => b === 0x80);
+}
 
-export const fiscalBridge = {
-	/** GET /status — check device connectivity */
-	getStatus: () => fiscalFetch<DeviceStatusResponse>('/status'),
+export type DiagnosticInfo = {
+	model: string;
+	firmware: string;
+	checksum: string;
+	switches: string;
+	serialNumber: string;
+	raw: string;
+};
 
-	/** GET /transaction/status — check whether a receipt is already open */
-	getTransactionStatus: () => fiscalFetch<TransactionStatusResponse>('/transaction/status'),
+/** Парсирај diagnostic dataText: "SY55,354628 06Nov15 1800,5339,00000000,AC215101278". */
+export function parseDiagnosticText(dataText: string): DiagnosticInfo {
+	const parts = dataText.split(',').map((p) => p.trim());
+	return {
+		model: parts[0] ?? '',
+		firmware: parts[1] ?? '',
+		checksum: parts[2] ?? '',
+		switches: parts[3] ?? '',
+		serialNumber: parts[4] ?? '',
+		raw: dataText,
+	};
+}
 
-	/** POST /receipt/open — begin a new fiscal receipt */
-	openReceipt: async (req: OpenReceiptRequest): Promise<OpenReceiptResponse> => {
-		const res = await fiscalFetch<OpenReceiptResponse>('/receipt/open', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
+export const fiscalInfo = {
+	/** GET /health — конфигурација на FiscalBridge (без сериска комуникација). */
+	getHealth: () => fiscalFetchReal<FiscalHealth>('/health'),
 
-	/** POST /receipt/sale — register one line item */
-	registerSale: async (req: RegisterSaleRequest): Promise<RegisterSaleResponse> => {
-		const res = await fiscalFetch<RegisterSaleResponse>('/receipt/sale', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
+	/** GET /ports — достапни COM портови на машината. */
+	getPorts: () => fiscalFetchReal<string[]>('/ports'),
 
-	/** POST /receipt/subtotal — display/print running total */
-	subtotal: async (req: SubtotalRequest): Promise<SubtotalResponse> => {
-		const res = await fiscalFetch<SubtotalResponse>('/receipt/subtotal', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
+	/** GET /status — GET_STATUS_BYTES (0x4A) од уредот. */
+	getDeviceStatus: () => fiscalFetchReal<FiscalCommandResult>('/status'),
+
+	/** GET /diagnostic — GET_DIAGNOSTIC_INFORMATION (0x5A): модел/firmware/сериски. */
+	getDiagnostic: () => fiscalFetchReal<FiscalCommandResult>('/diagnostic'),
+
+	/** GET /date-time — GET_DATE_TIME (0x3E): датум/час на уредот (во dataText). */
+	getDeviceDateTime: () => fiscalFetchReal<FiscalCommandResult>('/date-time'),
 
 	/**
-	 * POST /receipt/payment — register payment.
-	 * D (partial) and R (change) are normal — returned as-is without throwing.
+	 * POST /date-time/set — SET_DATE_TIME (0x3D). Празно тело = FiscalBridge го користи
+	 * системското време на машината (иста машина = системски часовник) — идеално за синхронизација.
 	 */
-	payment: async (req: PaymentRequest): Promise<PaymentResponse> => {
-		const res = await fiscalFetch<PaymentResponse>('/receipt/payment', {
+	setDeviceDateTime: async (dateTimeText?: string): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/date-time/set', {
 			method: 'POST',
-			body: JSON.stringify(req),
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify(dateTimeText ? { dateTimeText } : {}),
 		});
-		if (res.ErrorStatus === 'D' || res.ErrorStatus === 'R') return res;
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** POST /receipt/close — finalise and print the receipt */
-	closeReceipt: async (): Promise<CloseReceiptResponse> => {
-		const res = await fiscalFetch<CloseReceiptResponse>('/receipt/close', {
-			method: 'POST',
-			body: '{}',
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** POST /cash — cash-in or cash-out operation */
-	cashOperation: async (req: CashOperationRequest): Promise<CashOperationResponse> => {
-		const res = await fiscalFetch<CashOperationResponse>('/cash', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** POST /reports — print X or Z report */
-	printReport: async (req: ReportRequest): Promise<ReportResponse> => {
-		const res = await fiscalFetch<ReportResponse>('/reports', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** GET /items/all — list all programmed fiscal items */
-	getAllItems: async (): Promise<ItemDetail[]> => {
-		const res = await fiscalFetch<FiscalItemsResponse>('/items/all');
-		assertPassed(res.ErrorStatus, res.Message);
-		return res.Items;
-	},
-
-	/** GET /datetime — read current fiscal device date/time (62h) */
-	getDateTime: () => fiscalFetch<DateTimeResponse>('/datetime'),
-
-	/** POST /datetime/set — set fiscal device date/time (61h) */
-	setDateTime: async (req: SetDateTimeRequest): Promise<SetDateTimeResponse> => {
-		const res = await fiscalFetch<SetDateTimeResponse>('/datetime/set', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** GET /lastentry — last fiscal entry info (64h). type 0-7, default 0 */
-	getLastEntry: (type = 0) => fiscalFetch<LastEntryResponse>(`/lastentry?type=${type}`),
-
-	/** POST /memory/report/date — fiscal memory report by date range (94h) */
-	memoryReportByDate: async (req: MemoryReportByDateRequest): Promise<MemoryReportResponse> => {
-		const res = await fiscalFetch<MemoryReportResponse>('/memory/report/date', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
-	},
-
-	/** POST /memory/report/znumber — fiscal memory report by Z-report range (95h) */
-	memoryReportByZ: async (req: MemoryReportByZRequest): Promise<MemoryReportResponse> => {
-		const res = await fiscalFetch<MemoryReportResponse>('/memory/report/znumber', {
-			method: 'POST',
-			body: JSON.stringify(req),
-		});
-		assertPassed(res.ErrorStatus, res.Message);
-		return res;
+		return assertCommandSuccess(res);
 	},
 };
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+/** Парсирај фискален датум/час "DD-MM-YY hh:mm:ss" → Date, или null. */
+export function parseFiscalDateTime(s: string): Date | null {
+	const m = s.match(/(\d{2})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+	if (!m) return null;
+	const [, dd, mm, yy, hh, min, ss] = m;
+	return new Date(2000 + Number(yy), Number(mm) - 1, Number(dd), Number(hh), Number(min), Number(ss));
+}
 
-/**
- * Map DB tax_group business percentage → FiscalBridge TaxCode (1-4).
- *   18 % → 1 (A)
- *    5 % → 2 (Б)
- *   10 % → 3 (В)
- *    0 / null / undefined → 4 (Г, exempt)
- * Throws on any other value to catch configuration mistakes early.
- */
-export function toFiscalTaxCode(taxPercent: number | null | undefined): 1 | 2 | 3 | 4 {
+// ─── Артикли (фискална меморија) ──────────────────────────────────────────────
+// GET /articles · GET /articles/read/{plu} · POST /articles/program · POST /articles/delete
+// Сите бараат потврден header (програмирање/читање на фискална меморија).
+
+export type FiscalArticle = {
+	plu: number;
+	name: string;
+	price: number;
+	vatGroup: string;
+	department: number;
+	group: number;
+	priceType: number;
+	quantity: number;
+	barcode1: string;
+	barcode2: string;
+	barcode3: string;
+	barcode4: string;
+	programmed: boolean;
+};
+
+export type ProgramArticleInput = {
+	plu: number;
+	name: string;
+	price: number;
+	/** A=18%, B=5%, V=10%, G=0% */
+	vatGroup: 'A' | 'B' | 'V' | 'G';
+	department?: number;
+	group?: number;
+	priceType?: number;
+	quantity?: number;
+	barcode1?: string;
+	barcode2?: string;
+	barcode3?: string;
+	barcode4?: string;
+};
+
+/** Ознаки за приказ на ДДВ групите од касата. */
+export const VAT_GROUP_LABELS: Record<string, string> = {
+	A: 'А (18%)',
+	B: 'Б (5%)',
+	V: 'В (10%)',
+	G: 'Г (0%)',
+};
+
+const CONFIRM_HEADERS = {
+	'Content-Type': 'application/json',
+	'X-Fiscal-Print-Confirmation': 'I_UNDERSTAND_THIS_PRINTS_A_REAL_FISCAL_RECEIPT',
+} as const;
+
+/** Команда што мора да успее — инаку читлива грешка од одговорот на уредот. */
+function assertCommandSuccess(res: FiscalCommandResult): FiscalCommandResult {
+	if (res.success) return res;
+	throw new FiscalBridgeError(res.error || res.message || `Командата не успеа (${res.responseStatus})`, res.responseStatus);
+}
+
+export const fiscalArticles = {
+	/** GET /articles — ги чита СИТЕ програмирани артикли (артикал по артикал преку сериска — може да потрае). */
+	getAll: () => fiscalFetchReal<FiscalArticle[]>('/articles', { headers: CONFIRM_HEADERS }),
+
+	/** GET /articles/read/{plu} — чита еден артикал по PLU. */
+	read: (plu: number) => fiscalFetchReal<FiscalArticle>(`/articles/read/${plu}`, { headers: CONFIRM_HEADERS }),
+
+	/** POST /articles/program — програмира (создава/ажурира) артикал во касата. */
+	program: async (input: ProgramArticleInput): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/articles/program', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmProgramming: true, ...input }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** POST /articles/delete — брише артикал по PLU. */
+	remove: async (plu: number): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/articles/delete', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmProgramming: true, plu }),
+		});
+		return assertCommandSuccess(res);
+	},
+};
+
+// ─── Извештаи + Кеш (реален контракт) ─────────────────────────────────────────
+// POST /reports/x · /reports/z · /reports/fm-date · /cash/in · /cash/out
+// Сите печатат на уредот → задолжителен confirmPrint + header.
+
+export const fiscalReports = {
+	/** POST /reports/x — контролен извештај (ПРОШИРЕН), без затворање на ден. */
+	printX: async (): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/reports/x', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** POST /reports/z — дневен фискален извештај (ЗАТВОРАЊЕ на ден, неповратно). */
+	printZ: async (): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/reports/z', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** POST /reports/fm-date — фискална меморија од дата до дата (краток/детален). */
+	printFmDate: async (input: { from: string; to: string; detailed: boolean }): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/reports/fm-date', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, ...input }),
+		});
+		return assertCommandSuccess(res);
+	},
+};
+
+export const fiscalCash = {
+	/** POST /cash/in — готово влезно (внес готовина). */
+	cashIn: async (amount: number, reason?: string): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/cash/in', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, amount, reason }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** POST /cash/out — готово излезно (изнес готовина). */
+	cashOut: async (amount: number, reason?: string): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/cash/out', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, amount, reason }),
+		});
+		return assertCommandSuccess(res);
+	},
+};
+
+// ─── Фискална сметка: продажба + сторно (реален контракт) ─────────────────────
+// POST /receipt/open · /receipt/sale · /receipt/payment · /receipt/close · /receipt/cancel
+// POST /receipt/storno (оркестрирано: void open → ставки → плаќање → close во еден повик)
+
+export type VatGroupLetter = 'A' | 'B' | 'V' | 'G';
+
+/** ДДВ процент од products (18/5/10/null) → фискална група. */
+export function taxPercentToVatGroup(taxPercent: number | null | undefined): VatGroupLetter {
 	switch (taxPercent) {
 		case 18:
-			return 1;
+			return 'A';
 		case 5:
-			return 2;
+			return 'B';
 		case 10:
-			return 3;
-		case 0:
-		case null:
-		case undefined:
-			return 4;
+			return 'V';
 		default:
-			throw new Error(`Непозната даночна стапка: ${taxPercent}`);
+			return 'G';
 	}
 }
+
+/** Фискален код 1-4 (fiscal_receipt_items.tax_group) → фискална група. */
+export function taxCodeToVatGroup(taxCode: number | null | undefined): VatGroupLetter {
+	switch (taxCode) {
+		case 1:
+			return 'A';
+		case 2:
+			return 'B';
+		case 3:
+			return 'V';
+		default:
+			return 'G';
+	}
+}
+
+export type FiscalSaleLine = {
+	description: string;
+	vatGroup: VatGroupLetter;
+	price: number;
+	quantity: number;
+	macedonianItem: boolean;
+	/** NONE | DISCOUNT_VALUE | DISCOUNT_PERCENT | SURCHARGE_VALUE | SURCHARGE_PERCENT */
+	priceCorrectionType?: string;
+	priceCorrectionValue?: number;
+};
+
+export type FiscalPaymentName = 'Cash' | 'Debit' | 'Credit' | 'Check';
+
+export type FiscalStornoResponse = {
+	openResult: FiscalCommandResult | null;
+	saleResults: FiscalCommandResult[];
+	paymentResult: FiscalCommandResult | null;
+	closeResult: FiscalCommandResult | null;
+	overallSuccess: boolean;
+	elapsedMs: number;
+};
+
+/** Најди ја пораката од првиот неуспешен чекор во оркестриран одговор. */
+function stornoFailureMessage(res: Partial<FiscalStornoResponse> | null): string {
+	const steps = [res?.openResult, ...(res?.saleResults ?? []), res?.paymentResult, res?.closeResult];
+	for (const s of steps) {
+		if (s && !s.success) return s.error || s.message || `Чекор ${s.commandName} не успеа (${s.responseStatus}).`;
+	}
+	return 'Сторно операцијата не успеа.';
+}
+
+export const fiscalReceipt = {
+	/** Отвори сметка (storno=true за void/сторно сметка). */
+	open: async (storno = false): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/receipt/open', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, storno }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** Регистрирај една ставка (позитивна цена/количина; попуст преку correction полињата). */
+	sale: async (line: FiscalSaleLine): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/receipt/sale', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, ...line }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** Плаќање: Cash=кеш, Debit=картичка, Credit, Check. */
+	payment: async (paymentMethod: FiscalPaymentName, amount: number): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/receipt/payment', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, paymentMethod, amount }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** Затвори сметка (иста команда за нормална и сторно на каса). */
+	close: async (storno = false): Promise<FiscalCommandResult> => {
+		const res = await fiscalFetchReal<FiscalCommandResult>('/receipt/close', {
+			method: 'POST',
+			headers: CONFIRM_HEADERS,
+			body: JSON.stringify({ confirmPrint: true, storno }),
+		});
+		return assertCommandSuccess(res);
+	},
+
+	/** Откажи заглавена/полуотворена сметка (recovery, 0x3C). Не фрла — best effort. */
+	cancel: async (): Promise<FiscalCommandResult | null> => {
+		try {
+			return await fiscalFetchReal<FiscalCommandResult>('/receipt/cancel', {
+				method: 'POST',
+				headers: CONFIRM_HEADERS,
+				body: JSON.stringify({ confirmPrint: true }),
+			});
+		} catch {
+			return null;
+		}
+	},
+
+	/** СТОРНО — цела void сметка во еден повик (open flag=1 → ставки → плаќање → close). */
+	storno: async (input: { items: FiscalSaleLine[]; paymentMethod: FiscalPaymentName; amount: number }): Promise<FiscalStornoResponse> => {
+		let res: Response;
+		try {
+			res = await fetch(`${FISCAL_BASE}/receipt/storno`, {
+				method: 'POST',
+				headers: CONFIRM_HEADERS,
+				body: JSON.stringify({ confirmPrint: true, ...input }),
+			});
+		} catch {
+			throw new FiscalBridgeOfflineError();
+		}
+
+		const body = (await res.json().catch(() => null)) as FiscalStornoResponse | null;
+		if (!res.ok || !body || !body.overallSuccess) {
+			throw new FiscalBridgeError(stornoFailureMessage(body), String(res.status));
+		}
+		return body;
+	},
+};
+
+/** Извади број на сметка (slip no) од close одговорот, ако уредот вратил. */
+export function parseSlipNumber(res: FiscalCommandResult | null | undefined): number | null {
+	const m = res?.dataText?.match(/\d{1,10}/);
+	return m ? Number.parseInt(m[0], 10) : null;
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 /** Truncate product name to 32 chars (SY55 PluName limit per Command 49h). */
 export function truncateFiscalName(name: string, maxLen = 32): string {
 	return name.length > maxLen ? name.slice(0, maxLen) : name;
-}
-
-/** Map app payment method → FiscalBridge PaymentMode. */
-export function toFiscalPaymentMode(method: 'CASH' | 'CARD'): 0 | 1 {
-	return method === 'CASH' ? 0 : 1;
 }
