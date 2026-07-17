@@ -53,6 +53,7 @@ export const ManualStornoPanel = ({ onStornoDone }: Props) => {
 	} = useListNav({
 		itemCount: suggestions.length,
 		isOpen: suggestOpen && suggestions.length > 0,
+		loading: suggestLoading,
 		resetKey: code,
 		onPick: (i) => {
 			const row = suggestions[i];

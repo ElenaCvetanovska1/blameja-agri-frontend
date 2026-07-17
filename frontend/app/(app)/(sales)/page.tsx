@@ -208,6 +208,7 @@ const SalesPage = () => {
 	} = useListNav({
 		itemCount: suggestions.length,
 		isOpen: suggestOpen,
+		loading: suggestLoading,
 		resetKey: code,
 		onPick: (i) => {
 			const s = suggestions[i];

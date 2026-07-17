@@ -19,6 +19,12 @@ type UseListNavOptions = {
 	onEscapeClosed?: () => void;
 	/** Кога се менува (обично вредноста на инпутот) — ресетирај го обележувањето. */
 	resetKey?: unknown;
+	/**
+	 * Дали резултатите сè уште се вчитуваат/чекаат (debounce/fetch).
+	 * Додека е `true`, првиот НЕ се обележува автоматски — така „шифра + брз Enter"
+	 * оди на точниот lookup (onEnterNoSelection), а не на застарен предлог.
+	 */
+	loading?: boolean;
 };
 
 /**
@@ -30,7 +36,17 @@ type UseListNavOptions = {
  * Ставките во листата треба да имаат `data-nav-index={i}` и `tabIndex={-1}`,
  * а скрол-контејнерот `ref={listRef}` за автоматско scroll-into-view.
  */
-export const useListNav = ({ itemCount, isOpen, onPick, onClose, onOpen, onEnterNoSelection, onEscapeClosed, resetKey }: UseListNavOptions) => {
+export const useListNav = ({
+	itemCount,
+	isOpen,
+	onPick,
+	onClose,
+	onOpen,
+	onEnterNoSelection,
+	onEscapeClosed,
+	resetKey,
+	loading = false,
+}: UseListNavOptions) => {
 	const [activeIndex, setActiveIndex] = useState(-1);
 	const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -43,6 +59,13 @@ export const useListNav = ({ itemCount, isOpen, onPick, onClose, onOpen, onEnter
 	useEffect(() => {
 		setActiveIndex(-1);
 	}, [resetKey]);
+
+	// Авто-обележи го ПРВИОТ штом резултатите се спремни (не додека се вчитува).
+	// Не ја прегазува рачната стрелка-селекција — само поместува од „ништо" на „прв".
+	useEffect(() => {
+		if (!isOpen || loading || itemCount <= 0) return;
+		setActiveIndex((i) => (i < 0 ? 0 : Math.min(i, itemCount - 1)));
+	}, [isOpen, loading, itemCount]);
 
 	// Обележаната ставка секогаш видлива во скролот.
 	useEffect(() => {

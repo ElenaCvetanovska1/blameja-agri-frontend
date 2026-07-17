@@ -472,7 +472,9 @@ const ReceivePage = () => {
 									form.setCategoryId('');
 								}}
 								placeholder="Почни да куцаш назив на производ…"
-								loading={choicesQuery.isFetching}
+								// „loading" = fetch ИЛИ debounce-период (старите резултати сè уште стојат) —
+								// за да не се обележи застарен прв предлог пред новите резултати.
+								loading={choicesQuery.isFetching || form.name.trim() !== debouncedName.trim()}
 								suggestions={normalizedChoices}
 								onPick={onPickProduct}
 								onEnterCode={(v) => void onEnterCode(v)}

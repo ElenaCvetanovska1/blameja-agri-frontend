@@ -60,6 +60,7 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 	const { activeIndex, listRef, onInputKeyDown } = useListNav({
 		itemCount: suggestions.length,
 		isOpen: open && suggestions.length > 0,
+		loading,
 		resetKey: value,
 		onPick: (i) => {
 			const row = suggestions[i];
