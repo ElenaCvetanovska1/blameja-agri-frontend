@@ -50,7 +50,9 @@ const inputCls =
 // ─── Tab ──────────────────────────────────────────────────────────────────────
 
 export const ReportsTab = () => {
-	const { printX, printZ, printFmDate, cashIn, cashOut } = useFiscalOperations();
+	const { readDailySums, printX, printZ, printFmDate, cashIn, cashOut } = useFiscalOperations();
+
+	const [dailySums, setDailySums] = useState<string | null>(null);
 
 	const [zConfirm, setZConfirm] = useState(false);
 	const [cashAmountStr, setCashAmountStr] = useState('');
@@ -68,6 +70,44 @@ export const ReportsTab = () => {
 
 	return (
 		<div className="space-y-5">
+			{/* Моментална состојба — /reports/daily-sums (GET_DAILY_SUMS 0x43) */}
+			<Section
+				title="Моментална состојба (тековен промет)"
+				sub="Само проверка на сумата на касата од последното Z затворање — не е X и не е Z, не печати ливче."
+			>
+				<div className="flex flex-wrap items-end gap-3">
+					<div className="flex flex-col gap-1">
+						<label className="text-xs font-medium text-slate-600" htmlFor="daily-sums-out">
+							Сума на касата
+						</label>
+						<input
+							id="daily-sums-out"
+							type="text"
+							readOnly
+							placeholder="—"
+							value={readDailySums.isPending ? 'Читање...' : (dailySums ?? '')}
+							className={`w-64 font-mono ${inputCls}`}
+						/>
+					</div>
+
+					<Btn
+						variant="primary"
+						disabled={readDailySums.isPending}
+						onClick={() =>
+							readDailySums.mutate(undefined, {
+								onSuccess: (res) => setDailySums(res.dataText?.trim() || '(празен одговор)'),
+								onError: () => setDailySums(null),
+							})
+						}
+					>
+						{readDailySums.isPending ? 'Читање...' : 'Провери состојба'}
+					</Btn>
+				</div>
+				<p className="mt-3 text-[11px] text-slate-400">
+					Го чита суровиот одговор од уредот (GET_DAILY_SUMS · 0x43). Форматот се потврдува со реалната каса.
+				</p>
+			</Section>
+
 			{/* Готово влезно / излезно — /cash/in · /cash/out */}
 			<Section
 				title="Готово влезно / излезно"

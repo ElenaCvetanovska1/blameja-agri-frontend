@@ -37,6 +37,16 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
         return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
     }
 
+    // GET_DAILY_SUMS (0x43) — моментална состојба на дневниот промет (акумулираните суми на
+    // издадени сметки од последното Z затворање). Не е X извештај и не е Z извештај: само чита,
+    // не печати ливче и не ресетира. Read-only, без потврда за печатење.
+    [HttpGet("reports/daily-sums")]
+    public async Task<ActionResult<FiscalRealCommandResponse>> DailySums(CancellationToken cancellationToken)
+    {
+        var response = await fiscalBridge.ExecuteDailySumsAsync(cancellationToken);
+        return response.ResponseStatus == "REAL_SERIAL_DISABLED" ? Conflict(response) : Ok(response);
+    }
+
     [HttpGet("date-time")]
     public async Task<ActionResult<FiscalRealCommandResponse>> GetDateTime(CancellationToken cancellationToken)
     {
@@ -606,6 +616,12 @@ public sealed class FiscalController(IFiscalBridgeService fiscalBridge, ILogger<
     public ActionResult<FiscalDryRunResponse> DiagnosticDryRun()
     {
         return Ok(fiscalBridge.BuildDiagnosticDryRun());
+    }
+
+    [HttpGet("reports/daily-sums/dry-run")]
+    public ActionResult<FiscalDryRunResponse> DailySumsDryRun()
+    {
+        return Ok(fiscalBridge.BuildDailySumsDryRun());
     }
 
     [HttpGet("date-time/dry-run")]

@@ -7,6 +7,7 @@ public interface IFiscalBridgeService
     FiscalHealthResponse GetHealth();
     FiscalDryRunResponse BuildStatusDryRun();
     FiscalDryRunResponse BuildDiagnosticDryRun();
+    FiscalDryRunResponse BuildDailySumsDryRun();
     FiscalDryRunResponse BuildDateTimeDryRun();
     FiscalDryRunResponse BuildReceiptDryRun(FiscalReceiptRequest request);
     FiscalDryRunResponse BuildCancelReceiptDryRun();
@@ -14,6 +15,7 @@ public interface IFiscalBridgeService
     FiscalDryRunResponse BuildSetDateTimeDryRun(FiscalSetDateTimeRequest? request);
     Task<FiscalRealCommandResponse> ExecuteStatusAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken);
+    Task<FiscalRealCommandResponse> ExecuteDailySumsAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken);
     Task<FiscalRealCommandResponse> ExecutePaperFeedAsync(
         string? confirmationHeader,

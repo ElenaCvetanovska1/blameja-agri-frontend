@@ -17,6 +17,11 @@ function reportErrorToast(prefix: string, err: unknown) {
 }
 
 export const useFiscalOperations = () => {
+	const readDailySums = useMutation({
+		mutationFn: fiscalReports.getDailySums,
+		onError: (err) => reportErrorToast('Состојба (тековен промет)', err),
+	});
+
 	const printX = useMutation({
 		mutationFn: fiscalReports.printX,
 		onSuccess: () => toast.success('X извештај (контролен) испечатен.'),
@@ -48,5 +53,5 @@ export const useFiscalOperations = () => {
 		onError: (err) => reportErrorToast('Готово излезно', err),
 	});
 
-	return { printX, printZ, printFmDate, cashIn, cashOut };
+	return { readDailySums, printX, printZ, printFmDate, cashIn, cashOut };
 };
