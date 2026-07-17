@@ -159,10 +159,6 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 					</div>
 				</div>
 			)}
-
-			<p className="text-[11px] text-slate-500">
-				Ако избереш постоечки производ, системот ќе пополни PLU/баркод/цена/ДДВ/Ед. мера. Ако внесуваш нов производ: внеси име и PLU.
-			</p>
 		</div>
 	);
 };

@@ -79,6 +79,14 @@ function TaxGroupButtons({ value, onChange }: { value: TaxGroup; onChange: (v: T
 	);
 }
 
+/* Денешен датум во формат yyyy-mm-dd (локална зона) за <input type="date">. */
+const todayISO = () => {
+	const d = new Date();
+	const mm = String(d.getMonth() + 1).padStart(2, '0');
+	const dd = String(d.getDate()).padStart(2, '0');
+	return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
 /* ─────────────────────────────────────────────────
    RECEIVE PAGE
 ───────────────────────────────────────────────── */
@@ -90,7 +98,8 @@ const ReceivePage = () => {
 	const [dispatchNoteNo, setDispatchNoteNo] = useState('');
 	const [supplierName, setSupplierName] = useState('');
 	const [supplierAddress, setSupplierAddress] = useState('');
-	const [invoiceDate, setInvoiceDate] = useState('');
+	// Дифолт: денешен ден (може да се смени преку календарот).
+	const [invoiceDate, setInvoiceDate] = useState(todayISO);
 	const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
 	const [selectedSupplierHadAddress, setSelectedSupplierHadAddress] = useState<boolean>(true);
 	const [openAllSuppliers, setOpenAllSuppliers] = useState(false);
@@ -253,7 +262,7 @@ const ReceivePage = () => {
 		setDispatchNoteNo('');
 		setSupplierName('');
 		setSupplierAddress('');
-		setInvoiceDate('');
+		setInvoiceDate(todayISO()); // назад на денешен ден, не празно
 		setSelectedSupplierId(null);
 		setSelectedSupplierHadAddress(true);
 		setOpenAllSuppliers(false);
@@ -346,7 +355,7 @@ const ReceivePage = () => {
 						/>
 
 						<div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-2 sm:order-2">
 								<Field
 									label="Број на фактура"
 									htmlFor="receive-invoice-no"
@@ -361,7 +370,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-2 sm:order-1">
 								<Field
 									label="Број на испратница"
 									htmlFor="receive-dispatch-note-no"
@@ -376,7 +385,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-2 sm:order-5">
 								<Field
 									label="Датум"
 									htmlFor="receive-invoice-date"
@@ -391,7 +400,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-3">
+							<div className="sm:col-span-4 sm:order-3">
 								<div className="form-label">Добавувач</div>
 								<SupplierInputWithSuggestions
 									value={supplierName}
@@ -410,7 +419,7 @@ const ReceivePage = () => {
 								/>
 							</div>
 
-							<div className="sm:col-span-3 sm:col-start-10">
+							<div className="sm:col-span-2 sm:order-4">
 								<Field
 									label="Адреса (опц.)"
 									htmlFor="receive-supplier-address"
@@ -461,8 +470,7 @@ const ReceivePage = () => {
 							</div>
 						)}
 
-						<div className="mb-4">
-							
+						<div className="mb-4 sm:w-1/2">
 							<ProductNameWithSuggestions
 								value={form.name}
 								onChange={(v) => {
@@ -482,7 +490,7 @@ const ReceivePage = () => {
 						</div>
 
 						<div className="grid grid-cols-2 sm:grid-cols-12 gap-4">
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-3 sm:order-1">
 								<Field
 									label="PLU"
 									htmlFor="receive-plu"
@@ -502,7 +510,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-3">
+							<div className="sm:col-span-3 sm:order-5">
 								<Field
 									label="Баркод (опц.)"
 									htmlFor="receive-barcode"
@@ -523,7 +531,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-3">
+							<div className="sm:col-span-3 sm:order-6">
 								<div className="form-label flex items-center gap-1">
 									<FiBarChart2 className="w-3.5 h-3.5" />
 									ДДВ <span className="text-red-500">*</span>
@@ -537,7 +545,7 @@ const ReceivePage = () => {
 								/>
 							</div>
 
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-3 sm:order-7">
 								<Field
 									label="МКД производ"
 									htmlFor="receive-macedonian"
@@ -555,7 +563,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-3 sm:order-8">
 								<Field
 									label="Ед. мерка"
 									htmlFor="receive-unit"
@@ -576,7 +584,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-2">
+							<div className="sm:col-span-3 sm:order-2">
 								<Field
 									label="Количина"
 									htmlFor="receive-qty"
@@ -594,7 +602,7 @@ const ReceivePage = () => {
 							</div>
 
 							{/* Цени — заедно со производот */}
-							<div className="sm:col-span-3">
+							<div className="sm:col-span-3 sm:order-4">
 								<Field
 									label="Набавна цена (ден.)"
 									htmlFor="receive-unit-cost"
@@ -619,7 +627,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-3">
+							<div className="sm:col-span-3 sm:order-3">
 								<Field
 									label="Продажна цена (ден.)"
 									htmlFor="receive-selling-price"
@@ -644,19 +652,19 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							{/* Маргина indicator */}
-							<div className="sm:col-span-4 flex items-end">
-								{form.unitCost &&
-									form.sellingPrice &&
-									(() => {
-										const cost = Number.parseFloat(form.unitCost);
-										const sell = Number.parseFloat(form.sellingPrice);
-										if (cost > 0 && sell > 0) {
-											const margin = (((sell - cost) / sell) * 100).toFixed(1);
-											const marginNum = Number.parseFloat(margin);
-											return (
+							{/* Маргина indicator — само кога има двете цени (без празен простор) */}
+							{form.unitCost &&
+								form.sellingPrice &&
+								(() => {
+									const cost = Number.parseFloat(form.unitCost);
+									const sell = Number.parseFloat(form.sellingPrice);
+									if (cost > 0 && sell > 0) {
+										const margin = (((sell - cost) / sell) * 100).toFixed(1);
+										const marginNum = Number.parseFloat(margin);
+										return (
+											<div className="sm:col-span-12 sm:order-9">
 												<div
-													className={`w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold
+													className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold
 												${
 													marginNum < 0
 														? 'bg-red-50 text-red-600 border border-red-100'
@@ -671,11 +679,11 @@ const ReceivePage = () => {
 														{cost.toFixed(2)} → {sell.toFixed(2)} ден.
 													</span>
 												</div>
-											);
-										}
-										return null;
-									})()}
-							</div>
+											</div>
+										);
+									}
+									return null;
+								})()}
 						</div>
 					</div>
 
