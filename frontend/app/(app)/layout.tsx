@@ -54,9 +54,30 @@ const SIDEBAR_STYLE: React.CSSProperties = {
 	boxShadow: '4px 0 32px 0 rgba(0,0,0,.22), inset -1px 0 0 rgba(255,255,255,.06)',
 };
 
+const COLLAPSE_KEY = 'blameja_sidebar_collapsed';
+
 const AppLayout = () => {
 	const [mobileOpen, setMobileOpen] = useState(false);
+	// Собран десктоп сајдбар (само икони) — се памти помеѓу сесии.
+	const [collapsed, setCollapsed] = useState<boolean>(() => {
+		try {
+			return localStorage.getItem(COLLAPSE_KEY) === '1';
+		} catch {
+			return false;
+		}
+	});
 	const { role } = useRole();
+
+	const toggleCollapsed = () =>
+		setCollapsed((c) => {
+			const next = !c;
+			try {
+				localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+			} catch {
+				/* ignore */
+			}
+			return next;
+		});
 
 	const handleLogout = async () => {
 		try {
@@ -69,10 +90,16 @@ const AppLayout = () => {
 		window.location.reload();
 	};
 
-	const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-		isActive
-			? 'flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white text-emerald-900 font-bold shadow-md text-sm'
-			: 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/65 hover:bg-white/[0.08] hover:text-white transition-colors text-sm';
+	// `mini` = собран режим (икони центрирани, без текст). Мобилното мени секогаш е раширено.
+	const navLinkClass =
+		(mini: boolean) =>
+		({ isActive }: { isActive: boolean }) => {
+			const layout = mini ? 'justify-center px-0' : 'gap-3 px-3';
+			const base = `flex items-center ${layout} py-2.5 rounded-xl text-sm`;
+			return isActive
+				? `${base} bg-white text-emerald-900 font-bold shadow-md`
+				: `${base} text-white/65 hover:bg-white/[0.08] hover:text-white transition-colors`;
+		};
 
 	return (
 		<div className="flex bg-slate-100 min-h-screen lg:h-screen lg:overflow-hidden">
@@ -80,7 +107,9 @@ const AppLayout = () => {
 			    SIDEBAR — desktop only, fixed
 			═══════════════════════════════════════ */}
 			<aside
-				className="fixed left-0 top-0 h-screen w-[240px] flex flex-col z-30 hidden lg:flex"
+				className={`fixed left-0 top-0 h-screen flex-col z-30 hidden lg:flex transition-[width] duration-200 ${
+					collapsed ? 'w-[76px]' : 'w-[240px]'
+				}`}
 				style={SIDEBAR_STYLE}
 			>
 				{/* Diagonal texture overlay */}
@@ -98,49 +127,68 @@ const AppLayout = () => {
 					style={{ background: 'radial-gradient(ellipse at 50% 120%, rgba(52,211,153,.08) 0%, transparent 70%)' }}
 				/>
 
-				{/* ── Logo section ── */}
-				<div className="relative z-10 px-5 pt-7 pb-5">
-					<div className="flex items-center gap-3">
-						<div
-							className="h-11 w-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-white/15"
-							style={{ background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(4px)' }}
+				{/* ── Logo section + collapse toggle ── */}
+				<div className={`relative z-10 pt-6 pb-4 ${collapsed ? 'px-2' : 'px-5'}`}>
+					<div className={`flex items-center ${collapsed ? 'flex-col gap-3' : 'justify-between gap-2'}`}>
+						<div className="flex items-center gap-3 min-w-0">
+							<div
+								className="h-11 w-11 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-white/15"
+								style={{ background: 'rgba(255,255,255,.1)', backdropFilter: 'blur(4px)' }}
+							>
+								<img
+									src="/logo.png"
+									alt="Blameja logo"
+									className="h-11 w-11 object-contain"
+									onError={(e) => {
+										(e.currentTarget as HTMLImageElement).style.display = 'none';
+									}}
+								/>
+							</div>
+							{!collapsed && (
+								<div className="min-w-0">
+									<div className="text-white font-extrabold text-[15px] tracking-wide leading-tight truncate">Blameja</div>
+									<div className="text-white/45 text-[9px] font-semibold tracking-[.15em] uppercase mt-0.5">Агро Аптека</div>
+								</div>
+							)}
+						</div>
+
+						<button
+							type="button"
+							onClick={toggleCollapsed}
+							aria-label={collapsed ? 'Рашири мени' : 'Собери мени'}
+							title={collapsed ? 'Рашири мени' : 'Собери мени'}
+							className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white/70 hover:bg-white/[0.1] hover:text-white transition-colors"
 						>
-							<img
-								src="/logo.png"
-								alt="Blameja logo"
-								className="h-11 w-11 object-contain"
-								onError={(e) => {
-									(e.currentTarget as HTMLImageElement).style.display = 'none';
-								}}
-							/>
-						</div>
-						<div>
-							<div className="text-white font-extrabold text-[15px] tracking-wide leading-tight">Blameja</div>
-							<div className="text-white/45 text-[9px] font-semibold tracking-[.15em] uppercase mt-0.5">Агро Аптека</div>
-						</div>
+							<FiMenu className="w-4 h-4" />
+						</button>
 					</div>
 					<div className="mt-4 h-px bg-white/[0.08]" />
 				</div>
 
 				{/* ── Navigation ── */}
-				<nav className="relative z-10 flex-1 px-3 pb-2 overflow-y-auto space-y-4">
+				<nav className={`relative z-10 flex-1 pb-2 overflow-y-auto space-y-4 ${collapsed ? 'px-2' : 'px-3'}`}>
 					{NAV_GROUPS.map((group) => {
 						const visibleItems = group.items.filter((item) => !item.adminOnly || role === 'admin');
 						if (visibleItems.length === 0) return null;
 						return (
 							<div key={group.label}>
-								<div className="px-3 mb-1 text-[9px] font-extrabold uppercase tracking-[.18em] text-white/30 select-none">
-									{group.label}
-								</div>
+								{collapsed ? (
+									<div className="mx-2 mb-1 h-px bg-white/[0.08]" />
+								) : (
+									<div className="px-3 mb-1 text-[9px] font-extrabold uppercase tracking-[.18em] text-white/30 select-none">
+										{group.label}
+									</div>
+								)}
 								<div className="space-y-0.5">
 									{visibleItems.map((item) => (
 										<NavLink
 											key={item.to}
 											to={item.to}
-											className={navLinkClass}
+											className={navLinkClass(collapsed)}
+											title={collapsed ? item.label : undefined}
 										>
 											<item.Icon className="w-[15px] h-[15px] shrink-0" />
-											<span className="tracking-tight">{item.label}</span>
+											{!collapsed && <span className="tracking-tight">{item.label}</span>}
 										</NavLink>
 									))}
 								</div>
@@ -150,17 +198,22 @@ const AppLayout = () => {
 				</nav>
 
 				{/* ── Bottom: logout ── */}
-				<div className="relative z-10 px-3 pb-5 pt-3">
+				<div className={`relative z-10 pb-5 pt-3 ${collapsed ? 'px-2' : 'px-3'}`}>
 					<div className="h-px bg-white/[0.08] mb-3" />
 					<button
 						type="button"
 						onClick={handleLogout}
-						className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-white/55 hover:bg-white/[0.08] hover:text-white/80 transition-colors text-sm"
+						title={collapsed ? 'Одјава' : undefined}
+						className={`flex w-full items-center py-2.5 rounded-xl text-white/55 hover:bg-white/[0.08] hover:text-white/80 transition-colors text-sm ${
+							collapsed ? 'justify-center px-0' : 'gap-3 px-3'
+						}`}
 					>
 						<FiLogOut className="w-[15px] h-[15px] shrink-0" />
-						<span>Одјава</span>
+						{!collapsed && <span>Одјава</span>}
 					</button>
-					<div className="px-3 mt-1.5 text-[9px] text-white/20 select-none tracking-wide">© {new Date().getFullYear()} Blameja</div>
+					{!collapsed && (
+						<div className="px-3 mt-1.5 text-[9px] text-white/20 select-none tracking-wide">© {new Date().getFullYear()} Blameja</div>
+					)}
 				</div>
 			</aside>
 
@@ -213,7 +266,7 @@ const AppLayout = () => {
 											<NavLink
 												key={item.to}
 												to={item.to}
-												className={navLinkClass}
+												className={navLinkClass(false)}
 												onClick={() => setMobileOpen(false)}
 											>
 												<item.Icon className="w-[15px] h-[15px] shrink-0" />
@@ -242,7 +295,11 @@ const AppLayout = () => {
 			    Desktop: fixed height, inner scroll
 			    Mobile: normal flow
 			═══════════════════════════════════════ */}
-			<div className="flex-1 lg:ml-[240px] flex flex-col min-h-screen lg:min-h-0 lg:h-screen lg:overflow-hidden">
+			<div
+				className={`flex-1 flex flex-col min-h-screen lg:min-h-0 lg:h-screen lg:overflow-hidden transition-[margin] duration-200 ${
+					collapsed ? 'lg:ml-[76px]' : 'lg:ml-[240px]'
+				}`}
+			>
 				<main className="flex-1 flex flex-col mt-[52px] lg:mt-0 pt-4 pb-6 lg:pb-4 px-4 lg:px-6 lg:overflow-hidden lg:min-h-0 gap-0">
 					<Outlet />
 				</main>
