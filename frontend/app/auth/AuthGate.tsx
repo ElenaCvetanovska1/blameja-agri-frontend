@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { isTokenValid, tokenStorage, tryRefreshTokens } from '../lib/api-client';
+import { isTokenValid, startSessionKeepAlive, stopSessionKeepAlive, tokenStorage, tryRefreshTokens } from '../lib/api-client';
 import { AuthPage } from './AuthPage';
 
 type AuthGateProps = {
@@ -46,6 +46,17 @@ export const AuthGate = ({ children }: AuthGateProps) => {
 			cancelled = true;
 		};
 	}, []);
+
+	// Додека корисникот е најавен — тивко одржувај ја сесијата жива (обнови пред истек).
+	useEffect(() => {
+		if (!authenticated) return;
+		startSessionKeepAlive(() => {
+			// Сесијата реално истече — врати на најава.
+			tokenStorage.clear();
+			setAuthenticated(false);
+		});
+		return () => stopSessionKeepAlive();
+	}, [authenticated]);
 
 	if (loading) {
 		return (

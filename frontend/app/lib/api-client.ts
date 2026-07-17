@@ -198,3 +198,92 @@ export const isTokenValid = (): boolean => {
 	// exp is in seconds; add 30s buffer
 	return (payload.exp as number) > Date.now() / 1000 + 30;
 };
+
+// ── Proactive session keep-alive ─────────────────────────────────────────────
+//
+// Access токенот трае ~1h. Без ова, штом истече додека апликацијата стои отворена/мирна,
+// следната акција удира во истечен токен и обновувањето може да падне → одјава.
+// Затоа ТИВКО обновуваме ~60s ПРЕД истек, додека апликацијата е отворена, па токенот
+// никогаш не истекува во употреба. Дополнително обновуваме кога табот пак станува видлив.
+
+let keepAliveTimer: ReturnType<typeof setTimeout> | null = null;
+let onSessionExpired: (() => void) | null = null;
+
+const accessTokenExpMs = (): number | null => {
+	const token = tokenStorage.getAccessToken();
+	if (!token) return null;
+	const payload = decodeTokenPayload(token);
+	return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+};
+
+const clearKeepAliveTimer = () => {
+	if (keepAliveTimer) {
+		clearTimeout(keepAliveTimer);
+		keepAliveTimer = null;
+	}
+};
+
+const scheduleKeepAlive = () => {
+	clearKeepAliveTimer();
+	const expMs = accessTokenExpMs();
+	if (expMs == null) return;
+
+	// Обнови 60s пред истек; но најмалку 5s од сега (за да не се врти веднаш).
+	const delay = Math.max(expMs - Date.now() - 60_000, 5_000);
+
+	keepAliveTimer = setTimeout(() => {
+		void tryRefreshTokens().then((result) => {
+			if (result === 'invalid') {
+				clearKeepAliveTimer();
+				tokenStorage.clear();
+				onSessionExpired?.();
+				return;
+			}
+			if (result === 'network') {
+				// Серверот е недостапен — НЕ одјавувај; пробај повторно наскоро.
+				clearKeepAliveTimer();
+				keepAliveTimer = setTimeout(scheduleKeepAlive, 20_000);
+				return;
+			}
+			scheduleKeepAlive(); // 'ok' → пресметај повторно од новиот токен
+		});
+	}, delay);
+};
+
+const onVisibilityChange = () => {
+	if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+	const expMs = accessTokenExpMs();
+	if (expMs == null) return;
+
+	// Ако токенот е при крај (или веќе истечен) кога се враќаш во табот → обнови веднаш.
+	if (expMs - Date.now() < 90_000) {
+		void tryRefreshTokens().then((result) => {
+			if (result === 'invalid') {
+				tokenStorage.clear();
+				onSessionExpired?.();
+			} else {
+				scheduleKeepAlive();
+			}
+		});
+	} else {
+		scheduleKeepAlive();
+	}
+};
+
+/** Стартувај автоматско одржување на сесијата (се вика штом корисникот е најавен). */
+export const startSessionKeepAlive = (onExpired: () => void) => {
+	onSessionExpired = onExpired;
+	scheduleKeepAlive();
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', onVisibilityChange);
+	}
+};
+
+/** Запри го одржувањето (пр. при одјава). */
+export const stopSessionKeepAlive = () => {
+	clearKeepAliveTimer();
+	onSessionExpired = null;
+	if (typeof document !== 'undefined') {
+		document.removeEventListener('visibilitychange', onVisibilityChange);
+	}
+};

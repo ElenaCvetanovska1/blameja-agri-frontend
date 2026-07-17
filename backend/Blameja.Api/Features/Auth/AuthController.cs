@@ -17,7 +17,7 @@ namespace Blameja.Api.Features.Auth;
 /// </summary>
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IHttpClientFactory httpClientFactory, DbConnectionFactory db) : ControllerBase
+public sealed class AuthController(IHttpClientFactory httpClientFactory, DbConnectionFactory db, ILogger<AuthController> log) : ControllerBase
 {
     // ── Login ──────────────────────────────────────────────────────────────
     /// <summary>
@@ -80,7 +80,12 @@ public sealed class AuthController(IHttpClientFactory httpClientFactory, DbConne
         var raw = await res.Content.ReadAsStringAsync(ct);
 
         if (!res.IsSuccessStatusCode)
+        {
+            // Логирај ја ТОЧНАТА причина од Supabase (пр. "invalid_grant: Refresh Token Not Found",
+            // reuse detection и сл.) за да можеме да дијагностицираме автоматски одјави.
+            log.LogWarning("Token refresh rejected by Supabase ({Status}): {Body}", (int)res.StatusCode, raw);
             throw new ApiException("Сесијата истече. Најавете се повторно.", StatusCodes.Status401Unauthorized);
+        }
 
         var parsed = JsonSerializer.Deserialize<SupabaseTokenResponse>(raw,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });

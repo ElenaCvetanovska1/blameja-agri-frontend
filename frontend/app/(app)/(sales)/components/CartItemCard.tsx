@@ -41,13 +41,44 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 		}
 	};
 
-	// ArrowUp/ArrowDown во „Кол." → ±1 (не под 1 при намалување).
-	const stepQty = (delta: 1 | -1) => {
-		const parsed = Number(qtyStr.replace(',', '.'));
-		const current = Number.isFinite(parsed) && parsed > 0 ? parsed : item.qty;
-		const next = Math.round(Math.max(delta > 0 ? current + 1 : Math.max(1, current - 1), 0.001) * 1000) / 1000;
-		setQtyStr(String(next));
-		onQtyChange(next);
+	// Навигација меѓу ставки во кошничката преку „Кол." полињата (↑/↓).
+	// Враќа true ако имало соседна ставка во дадениот правец.
+	const focusSibling = (dir: 1 | -1): boolean => {
+		const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-cart-qty]'));
+		const idx = inputs.findIndex((el) => el === qtyRef.current);
+		if (idx === -1) return false;
+		const next = inputs[idx + dir];
+		if (!next) return false;
+		next.focus();
+		next.select();
+		return true;
+	};
+
+	const qtyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		// ↑/↓ → движење по ставки (претходна/следна).
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			focusSibling(1);
+			return;
+		}
+		if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			focusSibling(-1);
+			return;
+		}
+		// Delete → избриши ја оваа ставка; фокусот оди на следна (или претходна, или пребарување).
+		if (e.key === 'Delete') {
+			e.preventDefault();
+			if (!focusSibling(1) && !focusSibling(-1)) onLineDone?.();
+			onRemove();
+			return;
+		}
+		// Enter/Escape → готово со линијата (назад на пребарување).
+		if (e.key === 'Enter' || e.key === 'Escape') {
+			e.preventDefault();
+			e.currentTarget.blur(); // blur ги нормализира/клампа вредностите
+			onLineDone?.();
+		}
 	};
 
 	const fieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -123,25 +154,14 @@ export const CartItemCard = ({ item, busy, autoFocusQty, onRemove, onQtyChange, 
 					</label>
 					<input
 						id={`cart-qty-${item.product.id}`}
+						data-cart-qty
 						ref={qtyRef}
 						type="text"
 						inputMode="decimal"
 						value={qtyStr}
 						onChange={(e) => onQtyInput(e.target.value)}
 						onBlur={onQtyBlur}
-						onKeyDown={(e) => {
-							if (e.key === 'ArrowUp') {
-								e.preventDefault();
-								stepQty(1);
-								return;
-							}
-							if (e.key === 'ArrowDown') {
-								e.preventDefault();
-								stepQty(-1);
-								return;
-							}
-							fieldKeyDown(e);
-						}}
+						onKeyDown={qtyKeyDown}
 						className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-2 text-sm outline-none focus:border-blamejaGreen focus:ring-2 focus:ring-blamejaGreen/30"
 						disabled={busy}
 					/>

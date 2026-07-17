@@ -318,8 +318,10 @@ const SalesPage = () => {
 							</button>
 						</div>
 
-						{/* Suggestions dropdown */}
-						{(suggestOpen || suggestLoading) && (
+						{/* Suggestions dropdown — само додека има текст во полето.
+						    Штом производ се додаде и полето се исчисти (Enter/скен/клик),
+						    листата не може да остане отворена (спречува race со debounce). */}
+						{code.trim().length > 0 && (suggestOpen || suggestLoading) && (
 							<div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
 								<div
 									ref={suggestListRef}
