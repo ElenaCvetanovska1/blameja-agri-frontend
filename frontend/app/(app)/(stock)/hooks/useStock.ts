@@ -17,12 +17,16 @@ const normalizeNumber = (v: unknown) => {
 	return Number.isFinite(n) ? n : 0;
 };
 
-export const useStock = (search: string) => {
+export const useStock = (search: string, storeNo?: 20 | 30) => {
 	return useQuery({
-		queryKey: ['stock', search],
+		queryKey: ['stock', search, storeNo],
 		queryFn: async () => {
 			const q = search.trim();
-			const path = q.length > 0 ? `/api/stock?q=${encodeURIComponent(q)}` : '/api/stock';
+			const params = new URLSearchParams();
+			if (q.length > 0) params.set('q', q);
+			if (typeof storeNo === 'number') params.set('storeNo', String(storeNo));
+			const qs = params.toString();
+			const path = qs ? `/api/stock?${qs}` : '/api/stock';
 
 			const rows = await api.get<StockRow[]>(path);
 

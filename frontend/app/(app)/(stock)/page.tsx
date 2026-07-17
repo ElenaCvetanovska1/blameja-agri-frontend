@@ -22,13 +22,14 @@ const pluAsNumber = (plu: string | null) => {
 
 export default function StockPage() {
 	const [search, setSearch] = useState('');
+	const [storeNo, setStoreNo] = useState<20 | 30>(20);
 	const [selected, setSelected] = useState<StockRow | null>(null);
 	const [toDelete, setToDelete] = useState<StockRow | null>(null);
 	const [categoryFilter, setCategoryFilter] = useState<string>('');
 	const [sortKey, setSortKey] = useState<SortKey>('QTY');
 	const [sortDir, setSortDir] = useState<'ASC' | 'DESC'>('DESC');
 
-	const stockQuery = useStock(search);
+	const stockQuery = useStock(search, storeNo);
 	const rows = stockQuery.data ?? [];
 
 	// F4 → фокус на пребарување (конзистентно со Продажба). Не додека е отворен модал.
@@ -101,15 +102,29 @@ export default function StockPage() {
 						<p className="text-[11px] text-slate-500">Преглед и управување</p>
 					</div>
 				</div>
-				<button
-					type="button"
-					onClick={() => stockQuery.refetch()}
-					disabled={stockQuery.isFetching}
-					className="flex items-center gap-2 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
-				>
-					<FiRefreshCw className={`w-3.5 h-3.5 ${stockQuery.isFetching ? 'animate-spin' : ''}`} />
-					<span className="hidden sm:inline">Освежи</span>
-				</button>
+				<div className="flex items-center gap-3">
+					{/* Продавница — производите се прикажуваат според избраната */}
+					<div className="flex items-center gap-2">
+						<span className="text-xs font-semibold text-slate-500 hidden sm:block">Продавница</span>
+						<select
+							value={storeNo}
+							onChange={(e) => setStoreNo(Number(e.target.value) as 20 | 30)}
+							className="h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700"
+						>
+							<option value={20}>Бр. 20</option>
+							<option value={30}>Бр. 30</option>
+						</select>
+					</div>
+					<button
+						type="button"
+						onClick={() => stockQuery.refetch()}
+						disabled={stockQuery.isFetching}
+						className="flex items-center gap-2 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+					>
+						<FiRefreshCw className={`w-3.5 h-3.5 ${stockQuery.isFetching ? 'animate-spin' : ''}`} />
+						<span className="hidden sm:inline">Освежи</span>
+					</button>
+				</div>
 			</div>
 
 			{/* ── Stats row ── */}

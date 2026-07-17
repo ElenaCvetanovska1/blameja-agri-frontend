@@ -1,5 +1,6 @@
 using Blameja.Api.Features.FiscalReceipts.Dtos;
 using Blameja.Api.Infrastructure.Database;
+using Blameja.Api.Middleware;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -359,24 +360,28 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
         [FromBody] ManualStornoRequestDto req,
         CancellationToken ct = default)
     {
+        // ApiException → middleware враќа { error } (frontend-от го чита тоа) + логира причина.
         if (req.FiscalStatus is not ("success" or "failed" or "offline"))
-            return BadRequest(new { message = "Invalid fiscal status." });
+            throw new ApiException("Невалиден фискален статус.");
 
         if (req.Payment is not ("CASH" or "CARD"))
-            return BadRequest(new { message = "Invalid payment method." });
+            throw new ApiException("Невалиден начин на плаќање.");
 
         if (req.Items is null || req.Items.Count == 0)
-            return BadRequest(new { message = "Мора да се внесат ставки за сторно." });
+            throw new ApiException("Мора да се внесат ставки за сторно.");
 
         foreach (var it in req.Items)
         {
             if (it.Quantity <= 0)
-                return BadRequest(new { message = "Количината мора да биде поголема од 0." });
+                throw new ApiException("Количината мора да биде поголема од 0.");
             if (it.TaxGroup is < 1 or > 4)
-                return BadRequest(new { message = "Невалидна ДДВ група." });
+                throw new ApiException($"Невалидна ДДВ група ({it.TaxGroup}) за „{it.ProductName}“.");
             if (string.IsNullOrWhiteSpace(it.ProductName))
-                return BadRequest(new { message = "Ставката мора да има назив." });
+                throw new ApiException("Ставката мора да има назив.");
         }
+
+        // DB check дозволува само success/failed/partial/pending — мапирај 'offline' → 'pending'.
+        var dbFiscalStatus = req.FiscalStatus == "offline" ? "pending" : req.FiscalStatus;
 
         var currentUserId = User.FindFirst("sub")?.Value;
         var total = req.Items.Sum(i => i.UnitPrice * i.Quantity);
@@ -405,7 +410,7 @@ public sealed class FiscalReceiptsController(DbConnectionFactory db) : Controlle
                 {
                     Id           = newId,
                     req.FiscalSlipNo,
-                    req.FiscalStatus,
+                    FiscalStatus = dbFiscalStatus,
                     req.FiscalError,
                     StoreNo      = req.StoreNo,
                     req.Payment,

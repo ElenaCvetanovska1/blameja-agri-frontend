@@ -200,11 +200,18 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
             RETURNING id, receipt_no;
             """;
 
+        // DB правило (sales_receipts_cash_received_rule):
+        //   CARD → cash_received МОРА да е NULL;  CASH → cash_received МОРА да е NOT NULL.
+        // „Прима готово" е опционално: за CASH со празно поле → точен износ (= total, кусур 0).
+        decimal? cashReceived = request.Payment == "CASH"
+            ? (request.CashReceived ?? request.Total)
+            : null;
+
         var receipt = await conn.QuerySingleAsync<(Guid Id, int ReceiptNo)>(receiptSql, new
         {
             payment      = request.Payment,
             total        = request.Total,
-            cashReceived = request.CashReceived,
+            cashReceived,
         }, tx);
 
         // ── 2. Insert sales_items (bulk) ───────────────────────────────────

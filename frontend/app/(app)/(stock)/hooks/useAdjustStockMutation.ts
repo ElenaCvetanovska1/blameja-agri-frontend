@@ -31,8 +31,8 @@ export const useAdjustStockMutation = () => {
 
 			if (Math.abs(delta) < 0.0000001) throw new Error('Нема промена (новата залиха е иста).');
 
+			// Причината е опционална — ако е празна, backend става стандардна ознака.
 			const reason = payload.reason.trim();
-			if (!reason) throw new Error('Внеси причина (кратко).');
 
 			// userId is resolved server-side from JWT — no longer sent from client
 			await api.post('/api/stock/adjust', {

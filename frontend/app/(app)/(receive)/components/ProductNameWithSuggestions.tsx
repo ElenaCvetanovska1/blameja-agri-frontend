@@ -115,8 +115,8 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 						{!loading && suggestions.length === 0 && <div className="px-4 py-3 text-xs text-slate-500">Нема резултати.</div>}
 
 						{suggestions.map((s, i) => {
-							const cat = s.category_name ?? '—';
 							const unit = (s.unit ?? 'пар') as Unit;
+							const qoh = num(s.qty_on_hand);
 
 							return (
 								<button
@@ -148,8 +148,14 @@ export const ProductNameWithSuggestions = ({ value, onChange, placeholder, loadi
 										</div>
 										<div className="shrink-0 text-right">
 											<div className="text-sm font-bold text-slate-900 tabular-nums">{num(s.selling_price).toFixed(2)} ден.</div>
-											<div className="text-[11px] text-slate-500 truncate">
-												{cat} · {unit}
+											<div className="text-[11px] text-slate-500">
+												Залиха:{' '}
+												<span
+													className={`font-semibold ${qoh <= 0 ? 'text-red-600' : qoh <= 3 ? 'text-amber-600' : 'text-emerald-700'}`}
+												>
+													{qoh}
+												</span>{' '}
+												{unit}
 											</div>
 										</div>
 									</div>

@@ -11,6 +11,7 @@ public sealed class ReceiveProductChoiceDto
     public int?    TaxGroup     { get; init; }
     public Guid?   CategoryId   { get; init; }
     public string? CategoryName { get; init; }
-    public string? Unit         { get; init; }
-    public int?    StoreNo      { get; init; }
+    public string?  Unit        { get; init; }
+    public int?     StoreNo     { get; init; }
+    public decimal? QtyOnHand   { get; init; }
 }

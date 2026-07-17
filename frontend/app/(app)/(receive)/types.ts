@@ -17,4 +17,5 @@ export type ProductChoiceRow = {
 	unit?: Unit | null;
 
 	store_no?: StoreNo | null;
+	qty_on_hand?: number | null;
 };

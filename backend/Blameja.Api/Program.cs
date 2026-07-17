@@ -63,6 +63,28 @@ builder.Services.AddAuthorization();
 // ── Controllers ────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
+// ── Логирај и врати ЧИТЛИВА порака при неуспешна валидација на модел ──────────
+// [ApiController] по дифолт враќа груб 400 ProblemDetails ПРЕД да влезе кодот на
+// контролерот. Ова ја логира точната причина (кое поле) и враќа { error } што
+// frontend-от го чита (наместо генеричко „400").
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = string.Join(" · ", context.ModelState
+            .Where(kv => kv.Value?.Errors.Count > 0)
+            .Select(kv => $"{kv.Key}: {string.Join(", ", kv.Value!.Errors.Select(e => e.ErrorMessage))}"));
+
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>().CreateLogger("ModelValidation");
+        logger.LogWarning("Model validation failed on {Method} {Path}: {Errors}",
+            context.HttpContext.Request.Method, context.HttpContext.Request.Path, errors);
+
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
+            new { error = "Невалидни податоци: " + errors });
+    };
+});
+
 // ── JSON: use snake_case globally ──────────────────────────────────────────
 // This allows PascalCase C# properties to serialize as product_id, qty_on_hand, etc.
 // The frontend type definitions remain unchanged.

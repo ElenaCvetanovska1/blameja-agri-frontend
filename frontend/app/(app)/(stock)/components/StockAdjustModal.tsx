@@ -362,7 +362,7 @@ export function StockAdjustModal({ open, row, onClose }: { open: boolean; row: S
 									className="block text-xs font-medium text-slate-600"
 									htmlFor="stock-modal-reason"
 								>
-									Причина (само ако менуваш залиха)
+									Причина (опц.)
 								</label>
 								<textarea
 									id="stock-modal-reason"

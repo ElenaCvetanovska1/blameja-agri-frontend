@@ -21,6 +21,7 @@ export type Row = {
 	category_name?: string | null;
 	unit: string | null;
 	store_no: number | null;
+	qty_on_hand?: number | null;
 };
 
 export const useProductChoices = ({ name, categoryId, limit = 10, storeNo }: Args) => {

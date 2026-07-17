@@ -53,9 +53,11 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
                 p.category_id,
                 p.unit,
                 p.store_no,
-                c.name AS category_name
+                c.name AS category_name,
+                ps.qty_on_hand
             FROM products p
             LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN product_stock ps ON ps.product_id = p.id
             WHERE p.is_active = true
               AND (
                     p.barcode ILIKE '%' || @q || '%'

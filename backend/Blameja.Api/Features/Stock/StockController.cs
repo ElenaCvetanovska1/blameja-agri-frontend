@@ -23,6 +23,7 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
     [HttpGet("stock")]
     public async Task<IActionResult> GetStock(
         [FromQuery] string? q,
+        [FromQuery] int?    storeNo,
         CancellationToken   ct)
     {
         const string sql = """
@@ -45,11 +46,12 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
                 OR plu     ILIKE '%' || @q || '%'
                 OR barcode ILIKE '%' || @q || '%'
             )
+              AND (@storeNo IS NULL OR store_no = @storeNo)
             ORDER BY name ASC;
             """;
 
         using var conn = db.CreateConnection();
-        var rows = await conn.QueryAsync<StockRowDto>(sql, new { q = string.IsNullOrWhiteSpace(q) ? null : q });
+        var rows = await conn.QueryAsync<StockRowDto>(sql, new { q = string.IsNullOrWhiteSpace(q) ? null : q, storeNo });
         return Ok(rows);
     }
 
@@ -215,9 +217,10 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
         if (Math.Abs(delta) < 0.0000001m)
             return NoContent();
 
+        // Причината е ОПЦИОНАЛНА — ако е празна, стави стандардна ознака за евиденцијата.
         var reason = request.Reason?.Trim();
         if (string.IsNullOrEmpty(reason))
-            throw new ApiException("Причината е задолжителна.");
+            reason = "Рачна корекција";
 
         var direction = delta > 0 ? "PLUS" : "MINUS";
         var qty = Math.Abs(delta);

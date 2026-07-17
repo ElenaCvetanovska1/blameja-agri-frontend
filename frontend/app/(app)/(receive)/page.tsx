@@ -132,6 +132,7 @@ const ReceivePage = () => {
 		category_name: (c as Record<string, unknown> & { categories?: { name?: string }[] }).categories?.[0]?.name ?? null,
 		unit: (c.unit ?? 'пар') as Unit,
 		store_no: (c.store_no ?? storeNo) as StoreNo,
+		qty_on_hand: c.qty_on_hand ?? null,
 	}));
 
 	const suppliersQuery = useSupplierChoices({
@@ -344,6 +345,14 @@ const ReceivePage = () => {
 			══════════════════════════════════════ */}
 			<form
 				onSubmit={onSubmit}
+				onKeyDown={(e) => {
+					// Enter во кое било поле да НЕ го зачувува приемот автоматски.
+					// Приемот се зачувува само со клик на копчето „Зачувај прием".
+					// (Полето за назив има своја Enter-логика — тоа не се меша тука.)
+					if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+						e.preventDefault();
+					}
+				}}
 				className="flex-1 min-h-0 flex flex-col gap-4 lg:overflow-hidden"
 			>
 				<div className="flex-1 lg:min-h-0 lg:overflow-y-auto space-y-4 pb-2">
@@ -490,7 +499,8 @@ const ReceivePage = () => {
 						</div>
 
 						<div className="grid grid-cols-2 sm:grid-cols-12 gap-4">
-							<div className="sm:col-span-3 sm:order-1">
+							{/* Редоследот на полињата = редоследот на Tab (DOM). */}
+							<div className="sm:col-span-3">
 								<Field
 									label="PLU"
 									htmlFor="receive-plu"
@@ -510,81 +520,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							<div className="sm:col-span-3 sm:order-5">
-								<Field
-									label="Баркод (опц.)"
-									htmlFor="receive-barcode"
-								>
-									<div className="relative">
-										<FiHash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-										<input
-											id="receive-barcode"
-											value={form.barcode}
-											onChange={(e) => {
-												form.setBarcode(e.target.value);
-												setSelectedProductId(null);
-											}}
-											className="form-input pl-8"
-											placeholder="3830…"
-										/>
-									</div>
-								</Field>
-							</div>
-
-							<div className="sm:col-span-3 sm:order-6">
-								<div className="form-label flex items-center gap-1">
-									<FiBarChart2 className="w-3.5 h-3.5" />
-									ДДВ <span className="text-red-500">*</span>
-								</div>
-								<TaxGroupButtons
-									value={form.taxGroup}
-									onChange={(v) => {
-										form.setTaxGroup(v);
-										setSelectedProductId(null);
-									}}
-								/>
-							</div>
-
-							<div className="sm:col-span-3 sm:order-7">
-								<Field
-									label="МКД производ"
-									htmlFor="receive-macedonian"
-									required
-								>
-									<select
-										id="receive-macedonian"
-										value={form.isMacedonian ? '1' : '0'}
-										onChange={(e) => form.setIsMacedonian(e.target.value === '1')}
-										className="form-input"
-									>
-										<option value="0">Не</option>
-										<option value="1">Да</option>
-									</select>
-								</Field>
-							</div>
-
-							<div className="sm:col-span-3 sm:order-8">
-								<Field
-									label="Ед. мерка"
-									htmlFor="receive-unit"
-								>
-									<select
-										id="receive-unit"
-										value={form.unit ?? 'пар'}
-										onChange={(e) => {
-											form.setUnit(e.target.value as 'пар' | 'кг' | 'м');
-											setSelectedProductId(null);
-										}}
-										className="form-input"
-									>
-										<option value="пар">пар</option>
-										<option value="кг">кг</option>
-										<option value="м">м</option>
-									</select>
-								</Field>
-							</div>
-
-							<div className="sm:col-span-3 sm:order-2">
+							<div className="sm:col-span-3">
 								<Field
 									label="Количина"
 									htmlFor="receive-qty"
@@ -601,33 +537,7 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
-							{/* Цени — заедно со производот */}
-							<div className="sm:col-span-3 sm:order-4">
-								<Field
-									label="Набавна цена (ден.)"
-									htmlFor="receive-unit-cost"
-									required
-								>
-									<div className="relative">
-										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
-											ден.
-										</span>
-										<input
-											id="receive-unit-cost"
-											value={form.unitCost}
-											onChange={(e) => {
-												form.setUnitCost(e.target.value);
-												setSelectedProductId(null);
-											}}
-											className="form-input pl-12"
-											inputMode="decimal"
-											placeholder="0.00"
-										/>
-									</div>
-								</Field>
-							</div>
-
-							<div className="sm:col-span-3 sm:order-3">
+							<div className="sm:col-span-3">
 								<Field
 									label="Продажна цена (ден.)"
 									htmlFor="receive-selling-price"
@@ -652,6 +562,105 @@ const ReceivePage = () => {
 								</Field>
 							</div>
 
+							<div className="sm:col-span-3">
+								<Field
+									label="Набавна цена (ден.)"
+									htmlFor="receive-unit-cost"
+									required
+								>
+									<div className="relative">
+										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 pointer-events-none">
+											ден.
+										</span>
+										<input
+											id="receive-unit-cost"
+											value={form.unitCost}
+											onChange={(e) => {
+												form.setUnitCost(e.target.value);
+												setSelectedProductId(null);
+											}}
+											className="form-input pl-12"
+											inputMode="decimal"
+											placeholder="0.00"
+										/>
+									</div>
+								</Field>
+							</div>
+
+							<div className="sm:col-span-3">
+								<Field
+									label="Баркод (опц.)"
+									htmlFor="receive-barcode"
+								>
+									<div className="relative">
+										<FiHash className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+										<input
+											id="receive-barcode"
+											value={form.barcode}
+											onChange={(e) => {
+												form.setBarcode(e.target.value);
+												setSelectedProductId(null);
+											}}
+											className="form-input pl-8"
+											placeholder="3830…"
+										/>
+									</div>
+								</Field>
+							</div>
+
+							<div className="sm:col-span-3">
+								<div className="form-label flex items-center gap-1">
+									<FiBarChart2 className="w-3.5 h-3.5" />
+									ДДВ <span className="text-red-500">*</span>
+								</div>
+								<TaxGroupButtons
+									value={form.taxGroup}
+									onChange={(v) => {
+										form.setTaxGroup(v);
+										setSelectedProductId(null);
+									}}
+								/>
+							</div>
+
+							<div className="sm:col-span-3">
+								<Field
+									label="МКД производ"
+									htmlFor="receive-macedonian"
+									required
+								>
+									<select
+										id="receive-macedonian"
+										value={form.isMacedonian ? '1' : '0'}
+										onChange={(e) => form.setIsMacedonian(e.target.value === '1')}
+										className="form-input"
+									>
+										<option value="0">Не</option>
+										<option value="1">Да</option>
+									</select>
+								</Field>
+							</div>
+
+							<div className="sm:col-span-3">
+								<Field
+									label="Ед. мерка"
+									htmlFor="receive-unit"
+								>
+									<select
+										id="receive-unit"
+										value={form.unit ?? 'пар'}
+										onChange={(e) => {
+											form.setUnit(e.target.value as 'пар' | 'кг' | 'м');
+											setSelectedProductId(null);
+										}}
+										className="form-input"
+									>
+										<option value="пар">пар</option>
+										<option value="кг">кг</option>
+										<option value="м">м</option>
+									</select>
+								</Field>
+							</div>
+
 							{/* Маргина indicator — само кога има двете цени (без празен простор) */}
 							{form.unitCost &&
 								form.sellingPrice &&
@@ -662,7 +671,7 @@ const ReceivePage = () => {
 										const margin = (((sell - cost) / sell) * 100).toFixed(1);
 										const marginNum = Number.parseFloat(margin);
 										return (
-											<div className="sm:col-span-12 sm:order-9">
+											<div className="sm:col-span-12">
 												<div
 													className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold
 												${
