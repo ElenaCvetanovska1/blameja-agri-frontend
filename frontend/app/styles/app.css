@@ -1,6 +1,18 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+	--text-xs: 0.8125rem; /* 14px (беше 12) */
+	--text-sm: 0.9375rem; /* 16px (беше 14) */
+	--text-base: 1.0625rem; /* 18px (беше 16) */
+
+	/* Заклучени line-height на СТАРИТЕ апсолутни вредности (Tailwind по дифолт ги
+	   качува пропорционално). Со ова висината на редот останува иста → без scroll. */
+	--text-xs--line-height: 1rem; /* 16px */
+	--text-sm--line-height: 1.25rem; /* 20px */
+	--text-base--line-height: 1.5rem; /* 24px */
+}
+
 :root {
 	/* ─── Breakpoints ─── */
 	--breakpoint-xs: 425px;
