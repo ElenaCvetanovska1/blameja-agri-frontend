@@ -42,7 +42,7 @@ public sealed class ProductsController(DbConnectionFactory db) : ControllerBase
                 (@storeNo IS NULL OR store_no = @storeNo)
                 AND (
                     @search IS NULL
-                    OR name ILIKE '%' || @search || '%'
+                    OR mk_search_norm(name) LIKE '%' || mk_search_norm(@search) || '%'
                     OR plu ILIKE '%' || @search || '%'
                     OR barcode ILIKE '%' || @search || '%'
                 )

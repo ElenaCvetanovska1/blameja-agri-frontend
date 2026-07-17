@@ -59,7 +59,7 @@ public sealed class ReceiveController(DbConnectionFactory db) : ControllerBase
             WHERE p.is_active = true
               AND (
                     p.barcode ILIKE '%' || @q || '%'
-                 OR p.name    ILIKE '%' || @q || '%'
+                 OR mk_search_norm(p.name) LIKE '%' || mk_search_norm(@q) || '%'
                  OR p.plu     ILIKE '%' || @q || '%'
                  OR (@pluExact IS NOT NULL AND p.plu = @pluExact)
               )

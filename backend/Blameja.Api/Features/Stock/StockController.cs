@@ -41,7 +41,7 @@ public sealed class StockController(DbConnectionFactory db) : ControllerBase
             FROM product_stock
             WHERE (
                 @q IS NULL
-                OR name    ILIKE '%' || @q || '%'
+                OR mk_search_norm(name) LIKE '%' || mk_search_norm(@q) || '%'
                 OR plu     ILIKE '%' || @q || '%'
                 OR barcode ILIKE '%' || @q || '%'
             )

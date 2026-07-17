@@ -61,7 +61,7 @@ public sealed class SalesController(DbConnectionFactory db) : ControllerBase
                 WHERE store_no = @storeNo
                   AND (
                         barcode ILIKE '%' || @q || '%'
-                     OR name    ILIKE '%' || @q || '%'
+                     OR mk_search_norm(name) LIKE '%' || mk_search_norm(@q) || '%'
                      OR plu     ILIKE '%' || @q || '%'
                      OR (@pluExact IS NOT NULL AND plu = @pluExact)
                   )

@@ -45,7 +45,7 @@ public sealed class DispatchController(DbConnectionFactory db) : ControllerBase
                 COALESCE(unit, 'пар') AS unit,
                 selling_price
             FROM products
-            WHERE name    ILIKE '%' || @term || '%'
+            WHERE mk_search_norm(name) LIKE '%' || mk_search_norm(@term) || '%'
                OR plu     ILIKE '%' || @term || '%'
                OR barcode ILIKE '%' || @term || '%'
                OR (@pluExact IS NOT NULL AND plu = @pluExact)
