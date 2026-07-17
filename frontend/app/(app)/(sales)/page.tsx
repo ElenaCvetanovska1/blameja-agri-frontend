@@ -94,11 +94,19 @@ const SalesPage = () => {
 		focusSearch();
 	}, [focusSearch]);
 
-	const addProductToCart = async (row: ProductStockRow) => {
+	// Долг код = скен на баркод (8–13 цифри); краток = рачно куцан PLU.
+	// По ДОЛЖИНА (не по брзина) одлучуваме однесување — отпорно на бавни/нерамномерни читачи.
+	const isBarcode = (v: string) => /^\d{7,}$/.test(v.trim());
+
+	const addProductToCart = async (row: ProductStockRow, opts?: { focusSearchAfter?: boolean }) => {
 		if (num(row.qty_on_hand) <= 0) toast.warning(`Внимание: залиха ${num(row.qty_on_hand)}. Ќе дозволи продажба во минус.`);
 		const addedId = await addToCartFromRow(row);
-		// Фокус на „Кол." од додадената ставка (селектирано — пишуваш бројка или оставаш 1).
-		if (addedId) setFocusProductId(addedId);
+		if (addedId) {
+			// Скен → фокус назад на пребарување (спремно за следен скен).
+			// Рачен PLU → фокус на „Кол." (за брз внес на количина).
+			if (opts?.focusSearchAfter) focusSearch();
+			else setFocusProductId(addedId);
+		}
 		return addedId;
 	};
 
@@ -108,6 +116,7 @@ const SalesPage = () => {
 			toast.error('Внеси баркод или PLU.');
 			return;
 		}
+		const scan = isBarcode(value);
 		setBusy(true);
 		try {
 			const row = await fetchProductByCode(value, storeNo);
@@ -115,8 +124,7 @@ const SalesPage = () => {
 				toast.error(`Не е пронајден производ во продавница ${storeNo}.`);
 				return;
 			}
-			// Тек: код → Enter → фокус на „Кол." → (бројка или дифолт 1) → Enter → назад на пребарување.
-			await addProductToCart(row);
+			await addProductToCart(row, { focusSearchAfter: scan });
 			setCode('');
 			setSuggestions([]);
 			setSuggestOpen(false);
@@ -195,8 +203,10 @@ const SalesPage = () => {
 
 	/* Тастатурна навигација низ предлозите (стрелки + Enter/Escape) */
 	const pickSuggestion = async (s: ProductStockRow) => {
+		const scan = isBarcode(code);
 		setSuggestOpen(false);
-		await addProductToCart(s); // намерен избор по име → фокус на „Кол." за брза корекција
+		// Скен (долг баркод) → фокус на пребарување; избор по име/PLU → фокус на „Кол.".
+		await addProductToCart(s, { focusSearchAfter: scan });
 		setCode('');
 		setSuggestions([]);
 	};
