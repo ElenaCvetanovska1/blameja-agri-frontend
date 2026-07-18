@@ -261,16 +261,6 @@ export const fiscalArticles = {
 // Сите печатат на уредот → задолжителен confirmPrint + header.
 
 export const fiscalReports = {
-	/**
-	 * GET /reports/daily-sums — GET_DAILY_SUMS (0x43): моментална состојба на дневниот промет
-	 * (акумулираните суми на издадени сметки од последното Z затворање). НЕ печати ливче и НЕ
-	 * затвора ден — за разлика од X/Z. Read-only, без потврда. Одговорот е во `dataText` (суров).
-	 */
-	getDailySums: async (): Promise<FiscalCommandResult> => {
-		const res = await fiscalFetchReal<FiscalCommandResult>('/reports/daily-sums');
-		return assertCommandSuccess(res);
-	},
-
 	/** POST /reports/x — контролен извештај (ПРОШИРЕН), без затворање на ден. */
 	printX: async (): Promise<FiscalCommandResult> => {
 		const res = await fiscalFetchReal<FiscalCommandResult>('/reports/x', {

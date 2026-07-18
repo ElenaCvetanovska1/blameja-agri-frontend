@@ -45,11 +45,6 @@ public sealed class FiscalBridgeService(
         return DryRun([Build("GET_DATE_TIME", AccentCommandIds.GetDateTime, null)]);
     }
 
-    public FiscalDryRunResponse BuildDailySumsDryRun()
-    {
-        return DryRun([Build("GET_DAILY_SUMS", AccentCommandIds.GetDailySums, null)]);
-    }
-
     public FiscalDryRunResponse BuildReceiptDryRun(FiscalReceiptRequest request)
     {
         var warnings = new List<string>();
@@ -96,16 +91,6 @@ public sealed class FiscalBridgeService(
     public Task<FiscalRealCommandResponse> ExecuteDiagnosticAsync(CancellationToken cancellationToken)
     {
         return ExecuteReadOnlyCommandAsync("GET_DIAGNOSTIC_INFORMATION", AccentCommandIds.GetDiagnosticInformation, "1", cancellationToken);
-    }
-
-    // GET_DAILY_SUMS (0x43) — „моментална состојба" на дневниот промет: ги враќа акумулираните дневни
-    // суми директно од работната меморија на уредот. НЕ печати ливче и НЕ прави фискално затворање —
-    // за разлика од X (0x45 „X\t", печати КОНТРОЛЕН ИЗВЕШТАЈ) и Z (0x45 „Z\t", затвора денот и ресетира).
-    // Чиста read команда без payload (како GET_STATUS_BYTES/GET_DATE_TIME). Одговорот се враќа во data
-    // полето (CP1251) и се сурова изложува преку DataText/DataHex за интерпретација на повикувачот.
-    public Task<FiscalRealCommandResponse> ExecuteDailySumsAsync(CancellationToken cancellationToken)
-    {
-        return ExecuteReadOnlyCommandAsync("GET_DAILY_SUMS", AccentCommandIds.GetDailySums, null, cancellationToken);
     }
 
     public Task<FiscalRealCommandResponse> ExecuteDateTimeAsync(CancellationToken cancellationToken)
