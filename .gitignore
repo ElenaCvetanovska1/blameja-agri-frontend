@@ -15,3 +15,5 @@ backend/**/*.user
 backend/**/*.suo
 backend/.vs/
 backend/**/appsettings.Development.json
+.env
+full-database.backup

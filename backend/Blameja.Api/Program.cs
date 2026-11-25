@@ -45,7 +45,7 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.MetadataAddress      = $"{supabaseUrl}/auth/v1/.well-known/openid-configuration";
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
         options.MapInboundClaims     = false; // keep "sub" as "sub", not mapped to ClaimTypes.NameIdentifier
         options.TokenValidationParameters = new TokenValidationParameters
         {
